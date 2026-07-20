@@ -1,0 +1,860 @@
+Title: A Modern View on MCSat
+
+URL Source: https://arxiv.org/pdf/2607.03777v1
+
+Published Time: Tue, 07 Jul 2026 02:04:48 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# A Modern View on MCSat 
+
+Thomas Hader 1,*, Theo Jauschneg 1, Daniela Kaufmann 1 and Laura Kovács 1
+
+> 1
+
+TU Wien, Favoritenstraße 9-11, 1040 Wien, Austria 
+
+Abstract 
+
+The Model Constructing Satisfiability (MCSat) approach has shown strong performance in solving complex SMT problems, in particular in algebraic SMT theories such as non-linear integer and real arithmetic. In this paper we revisit the theory-independent MCSat framework as a proof system to provide a modern perspective that refines the original formulation of MCSat. By closely formalizing the implementation of MCSat within the Yices2 SMT solver, we incorporate design decisions that diverge from those in the seminal MCSat paper and thereby capture the current state-of-the-art in MCSat-based SMT reasoning. We present a general, theory-agnostic rule scheme for MCSat and instantiate it for several theories, including propositional logic, non-linear real arithmetic, and uninterpreted functions. We provide several detailed examples to illustrate the applicability of the presented calculus. 
+
+Keywords 
+
+SMT, MCSat, automated reasoning 
+
+# 1. Introduction 
+
+The Model Constructing Satisfiability ( MCSat ) calculus represents an alternative approach to DPLL(T) in SMT solving by integrating model construction and theory reasoning within a single, unified framework. It was initially developed under the name NLSAT as an efficient approach to solve the satisfiability problem for the theory of quantifier-free non-linear real arithmetic (NRA) [ 1 ]. When NLSAT proved to be particularly effective, it was extended to encompass arbitrary theories and later published as MCSat [ 2 , 3 ]. A theoretical view on the MCSat principles with focus on theory combination has been published in [4]. Unlike the traditional DPLL(T) approach, MCSat maintains a combined candidate model in all present theories throughout the solving process and extends it incrementally, allowing for more implicit (automatic) handling of complex theory combinations [ 2 ]. The MCSat -calculus uses conflict analysis to guide the search, drawing inspiration from Conflict-Driven Clause Learning ( CDCL ) in Boolean satisfiability ( SAT ) solving and conflict explanation techniques from constraint programming [ 5 ]. It, thus, can be seen as a generalization of the prevalent solving techniques from SAT solving to first-order theories where different theories are combined in a general search framework based on a common partial model. As the model search is handled by a common, theory-independent framework, individual theories are merely required to provide conflict explanation in case the partial assignment is detected inconsistent in the respective theory. To this day MCSat remains to be the state-of-the-art approach in solving NRA and has since been implemented in many SMT solvers, such as Yices2 [ 6 ] and SMT-RAT [ 7 ] (as a stand-alone solver) as well as Z3 [ 8 ] (as a theory back-end for NRA in its original NLSAT version). However, over years of development, current implementations of MCSat may sufficiently differ from the formal presentation in the original literature [ 2]. This poses additional challenges for interested readers in understanding state-of-the-art MCSat procedures. In this work, we revisit the MCSat theory by presenting an updated definition of MCSat as a proof system that closely captures the implementation of the MCSat reasoning 
+
+24th International Workshop on Satisfiability Modulo Theories, July 24–25, 2026, Lisbon, Portugal 
+
+> *
+
+Corresponding author. 
+
+$ thomas.hader@tuwien.ac.at (T. Hader); theo.jauschneg@tuwien.ac.at (T. Jauschneg); daniela.kaufmann@tuwien.ac.at (D. Kaufmann); laura.kovacs@tuwien.ac.at (L. Kovács) 
+
+ 0009-0002-8920-5469 (T. Hader); 0000-0002-5645-0292 (D. Kaufmann); 0000-0002-8299-2714 (L. Kovács)  
+
+> ©2026 Copyright for this paper by its authors. Use permitted under Creative Commons License Attribution 4.0 International (CC BY 4.0).
+
+engine of the Yices2 SMT solver. While an experienced reader will certainly see close similarity to the original formalization, we aim to provide a compact and example-driven presentation to enable novel readers an easy and understandable introduction to MCSat in general as well as its Yices2 implementation in particular. Based on SMT-LIB [ 9 ], we first provide necessary definitions (Section 2) to later define the search schema (Section 3), followed by some examples for theories (Section 4). 
+
+# 2. Preliminaries 
+
+Along the definitions of SMT-LIB (version 2.6 [ 9 ]), we define the SMT problem as the check for satisfia-bility in a many-sorted first-order logic with equality, limited to the quantifier free fragment, augmented with background theories . A background theory specifies (one or many) sorts . Each sort 𝒮 contains a 
+
+domain 𝐷 𝒮 which is a non-empty, possibly infinite, set. We define dom (𝒮 ) = 𝐷 𝒮 . By slight abuse of notation, we sometimes simply write 𝒮 for 𝐷 𝒮 . Logical expressions in an SMT problem are defined using the language of well-sorted terms , thus each term is associated with a unique sort. Terms are constructed using functions . A function consists of a function symbol (i.e. its name) and a signature , an ordered list of sorts of parameters and the sort it returns. We write 𝑓 : 𝒮 1 × · · · × 𝒮 𝑛 → 𝒮 to denote a function with symbol 𝑓 with a signature that maps sorts 𝒮 1 up to 𝒮 𝑛 to sort 𝒮 . A term 𝑡 generated by 𝑓 
+
+is of sort 𝒮 , denoted by sort (𝑡 ) = 𝒮 . Functions without parameters are constants . An interpretation 𝐼 is a total function that maps a function to its semantics, i.e. its meaning. To apply the interpretation 𝐼 on an arbitrary formula or term 𝑎 we write 𝑎 𝐼 . For a constant, this is an element of 𝒮 , for all other functions, this is a total function (in the mathematical sense). Functions can either be interpreted or uninterpreted .Interpreted functions have a fixed interpretation defined by the respective theory, e.g. addition in the theory of reals. Finding the semantics of an uninterpreted function is part of the search problem. A term 𝑡 defined by function 𝑓 is written as 𝑓 (𝑡 1, . . . , 𝑡 𝑛 ) where 𝑡 1, . . . , 𝑡 𝑛 are terms, called sub-terms of 
+
+𝑡 . We denote subterms (𝑡 ) = {𝑡 1, . . . , 𝑡 𝑛 }. We define the notion of interpreted and uninterpreted term accordingly. We further denote by terms (𝑡 ) the transitive closure of the sub-term relation. For better readability, we denote (dis-)equality inside of a term with ≈ and ̸ ≈.An SMT formula 𝜙 is a term of the distinguished Boolean sort B. Naturally, we have dom (B) = 
+
+{true , false } and we can define all regular Boolean operators as interpreted functions accordingly. We write ⊥ and ⊤ to denote the constant terms evaluated as false and true , respectively. A function 𝑐 that maps to B is denoted a constraint and a term of 𝑐 a constraint term . The sort B is available in all SMT problems by definition. The formula 𝜙 is satisfiable if there exists an interpretation 𝐼 such that 𝜙 𝐼 
+
+evaluates to true and we denote any such interpretation a model of 𝜙 .As usual in literature, we assume that any Boolean structure in 𝜙 is expressed in conjunctive normal form ( CNF ). We denote a constraint or its Boolean negation a literal , a (disjunctive) set of literals a 
+
+clause and treat formulas as (conjunctive) sets of clauses. We present a clause 𝐶 as a tuple of literals and define terms (𝐶 ) = ⋃︀ 𝑙 ∈𝐶 terms (𝑙 ) and terms (𝒞 ) = ⋃︀ 𝐶 ∈𝒞 terms (𝐶 ) for a set of clauses 𝒞 .
+
+Example 1. Let 
+
+𝜙 = 1 + 𝑥 < 𝑓 (12 .7) 
+
+be an SMT formula, with sorts propositional logic ( B), reals ( R) and integers ( Z). The interpreted function symbols are 𝐹 𝑖 = {<, +, 1, 12 .7} where < : Z × Z → B is a constraint, + : Z × Z → Z and the constants 
+
+1 and 12 .7 are of sort integer and real, respectively. 1 They are all interpreted in the standard way. The uninterpreted function symbols are 𝐹 𝑢 = {𝑥, 𝑓 } where 𝑥 is a function symbol of arity 0 of sort integer, and 𝑓 : R → Z. Note that we mix pre- and infix notation however appropriate. 
+
+Given an 𝑛 -ary interpreted function 𝑓 , we define the evaluation function eval 𝑓 to allow evaluating terms without a full interpretation function given. We thus extend each sort in the signature of 𝑓 with the new special domain element undef . Given the signature of 𝑓 and corresponding domain elements      
+
+> 1Note that, by slight abuse of notation, we do not distinguish between the (constant) term 1and its interpretation, the domain element 1∈dom (Z).
+
+𝑠 1 ∈ 𝒮 1 ∪ { undef }, . . . , 𝑠 𝑛 ∈ 𝒮 𝑛 ∪ { undef }, then eval 𝑓 (𝑠 1, . . . , 𝑠 𝑛 ) ↦ → 𝑠 for the correct 𝑠 ∈ 𝒮 ∪ { undef }
+
+according to the interpretation of 𝑓 . Along with SMT-LIB, we require 𝑓 to be a total function, thus it must return a domain element if all its parameters are domain elements. In case one or more parameters are undef , eval 𝑓 may still return a domain value, provided the value can be computed independently of the unspecified parameters; otherwise, it returns undef . For a term 𝑡 defined by 𝑓 , we may write eval 𝑡 
+
+for eval 𝑓 .
+
+Example 2. Assume term 𝑡 = +( 𝑡 1, 𝑡 2) of sort R with + as real addition. Thus, eval +(4 , 3) = 7 , and 
+
+eval +(2 , undef ) = undef . Let 𝑢 = ×(𝑡 1, 𝑡 2) be a multiplicative term in R then eval ×(0 , undef ) = 0 and 
+
+eval ×(2 , undef ) = undef . Assume the constraint term 𝑡 3 ≤ 0, then eval ≤0(2) = false .
+
+# 3. MCSat Search Schema 
+
+To solve an SMT formula 𝜙 , we need to find an assignment to all terms in 𝜙 . For the rest of this text, we consider 𝜙 and the set of all terms in the search problem 𝑇 as fixed. A term assignment 𝑡 ↦ → 𝛼 assigns to a term 𝑡 ∈ 𝑇 of sort 𝒮 a value 𝛼 ∈ dom (𝒮 ). Given a set 𝑆 
+
+of term assignments, we say that 𝑆 is unambiguous if for every (𝑡 1 ↦ → 𝛼 1) ∈ 𝑆 and (𝑡 2 ↦ → 𝛼 2) ∈ 𝑆 ,whenever 𝑡 1 = 𝑡 2 then 𝛼 1 = 𝛼 2. As we only consider unambiguous sets of term assignments we can define the term assignment function of 𝑆 as 
+
+𝜈 𝑆 (𝑡 ) = {︃ 𝛼 (𝑡 ↦ → 𝛼 ) ∈ 𝑆 
+
+undef otherwise We say that 𝑆 is consistent , denoted as consistent (𝑆 ), if and only if for all (𝑡 ↦ → 𝛼 ) ∈ 𝑆 with 𝑡 =
+
+𝑓 (𝑡 1, . . . , 𝑡 𝑚 ) we have that eval 𝑓 (𝜈 𝑆 (𝑡 1), . . . , 𝜈 𝑆 (𝑡 𝑚 )) is either undef or 𝛼 . We define the closure ¯𝑆 of a term assignment 𝑆 inductively: We start with ¯𝑆 = 𝑆 ; as long as there is a term 𝑡 ∈ 𝑇 such that 
+
+𝜈 ¯𝑆 (𝑡 ) = undef and eval 𝑡 (𝜈 ¯𝑆 (𝑡 1), . . . , 𝜈 ¯𝑆 (𝑡 𝑚 )) = 𝛼 with 𝛼 ̸ = undef , add (𝑡 ↦ → 𝛼 ) to ¯𝑆 . Intuitively, the assignment ¯𝑆 extends 𝑆 by exhaustively applying the evaluation functions until a fixed point is reached. Note that the closure of the empty term assignment set ¯∅ contains all term assignments induced by the background theories. We assume that ¯∅ is consistent. Further note that a consistent 𝑆 does not guarantee ¯𝑆 to be consistent. Given a term assignment 𝑆 such that ¯𝑆 is consistent and a yet unassigned term 𝑡 , we denote feasible (𝑆, 𝑡 ) ⊆ sort (𝑡 ) as the set of values that can be assigned to 𝑡 such that ¯𝑆 
+
+remains consistent. 
+
+Example 3. Assume a term assignment with integer terms 𝑥 and 𝑦 :
+
+𝑆 = {(𝑥 + 𝑦 ≈ 0) ↦ → true , 𝑥 ↦ → 2, 𝑦 ↦ → 3}
+
+then consistent (𝑆 ) holds. Towards constructing the closure ¯𝑆 , the evaluation function eval + is applied such that we get eval +(2 , 3) = 5 and add the term assignment (𝑥 + 𝑦 ) ↦ → 5 to ¯𝑆 . Then eval ≈(𝑥 + 𝑦, 0) = false .This, however, contradicts (( 𝑥 + 𝑦 ≈ 0) ↦ → true ) ∈ 𝑆 ⊆ ¯𝑆 , therefore, ¯𝑆 is not consistent. Consider integer term 𝑧 and the term assignment 𝑆 ′ = {(𝑧 2 ≈ 1) ↦ → true }, then both 𝑆 ′ and ¯𝑆 ′ are consistent and feasible (𝑆 ′, 𝑧 ) = {− 1, 1}.
+
+A trail 𝑀 is a sequence of term assignments that captures the current search state. We write J·K to denote a trail and treat 𝑀 as a set of term assignments whenever required. By slight abuse of notation, we write J𝑀, 𝑡 ↦ → 𝛼 K for the extension of trail 𝑀 with an assignment to 𝑡 . Each assignment on the trail is either a decision or a propagation . For a decision, the assigned value was chosen without any reasoning (usually) out of multiple options, on the other hand, a propagation assigns the only feasible value, i.e. 
+
+feasible (𝑀, 𝑡 ) = {𝛼 }, supported by theory specific reasoning. To distinguish between propagated and decided term assignments on a trail we may write 𝑡 ↣* 𝛼 or 𝑡 ↣ 𝛼 , respectively. The decision level of 
+
+𝑀 is the number of decisions on 𝑀 . Whenever appropriate, we append a suffix to a trail to make its decision level explicit. We may also write 𝑡 ↣𝑛 𝛼 to denote the 𝑛 -th decision on a trail. During the search, we aim to extend 𝑀 while keeping the consistency of ¯𝑀 .We extend the term assignment function to evaluate clauses. Given a clause 𝐶 , and a set of term assignments 𝑆 , we define 
+
+𝜈 𝑆 (𝐶 ) = 
+
+⎧⎪⎨⎪⎩
+
+true ∃ 𝑙 ∈ 𝐶 . 𝜈 𝑆 (𝑙 ) = true false ∀ 𝑙 ∈ 𝐶 . 𝜈 𝑆 (𝑙 ) = false undef otherwise We say that a term assignment 𝑆 satisfies a set of clauses 𝒞 , denoted by satisfies (𝑆, 𝒞 ), if all clauses are satisfied: 
+
+satisfies (𝑆, 𝒞 ) = consistent ( ¯𝑆 )
+
+∧ (∀ 𝑡 ∈ terms (𝒞 ) . 𝜈 ¯𝑆 (𝑡 )̸ = undef )
+
+∧ (∀ 𝐶 ∈ 𝒞 . 𝜈 ¯𝑆 (𝐶 ) = true )
+
+We further say that 𝑆 is infeasible for 𝒞 , denoted as infeasible (𝑆, 𝒞 ), when 𝑆 cannot be extended such that the clauses are satisfied: 
+
+infeasible (𝑆, 𝒞 ) = ∄ 𝑆 ′ . 𝑆 ′ ⊇ 𝑆 ∧ satisfies (𝑆 ′, 𝒞 )
+
+When we reach a trail 𝑀 such that satisfies (𝑀, 𝒞 ), then we can construct a model 𝐼 using ¯𝑀 and deduce that 𝒞 are satisfiable. 2
+
+3.1. Theory Reasoning and Explanations 
+
+Theory Plugins. The general MCSat search is independent of any background theory. As mentioned above, the only sort natively supported in all MCSat style search procedures is the Boolean sort B. In order to add an SMT-LIB theory including its sorts and interpreted function symbols, a theory reasoning plugin 𝒯 is attached to the MCSat search. A plugin 𝒯 has a set of sorts sort (𝒯 ) which values it can interpret as well as a set of functions func (𝒯 ) on those sorts. We say that a plugin can handle any sort that is has and supports an interpreted function 𝑓 if it provides eval 𝑓 . While more than one plugin may be able to handle a particular sort, we require all plugins supporting an interpreted function to agree on its evaluation. A plugin 𝒯 supports an uninterpreted function 𝑢 by ensuring congruence, i.e. that two terms 𝑡 1, 𝑡 2 of 𝑢 are assigned the same value if their sub-terms are assigned the same values. Usually there is one dedicated plugin to ensure congruence for all uninterpreted functions (see Section 4). Each interpreted or uninterpreted function must be supported by at least one theory plugin to ensure congruence and correct interpretation. We further say that a plugin supports a term if it is constructed by a supported function. Assume a plugin 𝒯 and a supported term 𝑡 that contains a non-supported sub-term 𝑡 ′ ∈ subterms (𝑡 ).Then 𝒯 can handle sort (𝑡 ). For 𝒯 , 𝑡 ′ is an atomic term that cannot be evaluated any further, but it can assign a value to 𝑡 ′ and use any assigned value to evaluate 𝑡 . We say that 𝑡 ′ is a variable for 𝒯 .If a supported term 𝑡 contains a non-supported 𝑡 ′ ∈ subterms (𝑡 ), 𝒯 treats 𝑡 ′ as an atomic term, the same way as a constant that cannot be further evaluated. An uninterpreted atomic term is considered a variable for the respective plugin. It may assign values to 𝑡 ′ as for any constant and must handle assignments to 𝑡 ′ by a different plugin. 
+
+Example 4. Consider the formula 𝜙 = [ 𝑓 (𝑥 + 𝑦 ) + 2 𝑦 ≤ 0] ∧ [𝑓 (0) − 𝑦 ≈ 0] where 𝑥, 𝑦 are of sort integer (Z). The term structure of 𝜙 is depicted below. Rounded corners indicate sort B, all other terms are of sort Z. Colors indicate the responsible plugin for each term, where green and orange indicate the plugins of integer arithmetic ℐ and uninterpreted functions 𝒰 , respectively. Boolean terms, which are handled by the MCSat reasoning procedure directly, are depicted black. 
+
+> 2This is formally proven in Lemma 5 of the appendix (Section A).
+
+∧ 
+
+> ≤0
+
++
+
+𝑓 
+
++
+
+𝑥 𝑦 
+
+*
+
+2 𝑦  
+
+> ≈0
+
+−
+
+𝑓 
+
+0
+
+𝑦 
+
+Consider the term 𝑓 (𝑥 + 𝑦 ) which is of sort Z. It is a variable for ℐ, thus the plugin assigns and reads the term’s (integer) value like any constant. The 𝒰 plugin can do the same and ensures the congruence property of 𝑓 when its sub-term 𝑥 + 𝑦 has a value assigned. The same happens for the unary constraint terms ( ≤ 0
+
+and ≈ 0) which are variables in MCSat ’s B reasoning. ℐ can set their boolean value (by evaluating the constraints using their evaluation function) or the MCSat search can force them to be either true or false 
+
+using Boolean reasoning, requiring ℐ to set values accordingly. Note that in this example constraints have been normalized as comparisons to 0 and defined as unary constraints. This is common in computer algebra and, of course, a possible alternative formalization in an MCSat procedure that is actually implemented in Yices2. However, for better readability, we are using binary comparison constraints in other examples. 
+
+Explanations. While different plugins interact with each other using the assigned terms on the trail, they need to translate theory-specific reasoning for those assignments into the common MCSat search procedure. This is done using a plugin-specific explanation function . Given a formula 𝜙 as the search problem, a trail 𝑀 , and a (constraint) term 𝑝 of sort B, then lemma clause 𝐸 is constructed by 
+
+𝐸 = ( 𝑒 1, . . . , 𝑒 𝑛 , 𝑝 ) = explain (𝑀, 𝑝 )
+
+fulfilling the following conditions: (i) 𝐸 is a valid lemma in the search problem, i.e. for every interpreta-tion 𝐼 such that 𝜙 𝐼 = true , there exists an 𝑒 ∈ 𝐸 such that 𝑒 𝐼 = true .3 (ii) 𝐸 justifies 𝑝 , i.e. for every 𝑒 𝑖 
+
+with 1 ≤ 𝑖 ≤ 𝑛 we have 𝜈 ¯𝑀 (𝑒 𝑖 ) = false . (iii) 𝐸 may introduce new literals, as long as they stem from a finite basis. The implementation of explain is fully dependent on the theory plugin that produces the lemma. In fact, admitting an explain function is all a background theory must support for integrating it in an MCSat search (c.f. [ 2]). Note that the explanation function might generate valid theory lemmas (independent of 𝜙 ), thus ensuring for any interpretation 𝐼 , there exists 𝑒 ∈ 𝐸 such that 𝑒 𝐼 = true .
+
+Example 5. Assume a search in real arithmetic with real terms 𝑥 and 𝑦 reaches a trail 
+
+𝑀 = J(𝑥𝑦 ≤ 0) ↦ → true , 𝑥 ↦ → 1, 𝑦 ↦ → 1K
+
+which clearly leads to a not consistent ¯𝑀 . An explanation function 𝐸 = explain (𝑀, ⊥) is used to generate an explanation clause that translates this arithmetic reasoning to a clause: 
+
+𝐸 = (( 𝑥𝑦 ≤ 0) ∧ (𝑥 > 0) ∧ (𝑦 > 0) = ⇒ ⊥ )= (( 𝑥𝑦 ≤ 0) ∧ (𝑥 > 0) = ⇒ (𝑦 ≤ 0)) = ( ¬(𝑥𝑦 ≤ 0) ∨ ¬ (𝑥 > 0) ∨ (𝑦 ≤ 0)) 
+
+Clearly, this fulfills the requirements of an explanation function. It is a valid lemma (requirement (i)), as it is true for any assignment to 𝑥 and 𝑦 which can be seen by trivial algebraic reasoning. It justifies ⊥ on the trail 𝑀 (requirement (ii)), as ¬(𝑥𝑦 ≤ 0) is on the trail in opposite polarity, and 𝜈 ¯𝑀 (¬(𝑥 > 0)) as well as 𝜈 ¯𝑀 (𝑦 ≤ 0) are false . The finite basis condition (iii) is a property of the explanation procedure as a whole. The explanation introduced the new terms 𝑥 > 0 and 𝑦 ≤ 0 and these terms must come from a finite set of terms the procedure can generate. For example, it must not generate arbitrary many terms like 
+
+{𝑥 > 0, 𝑥 > 1, 𝑥 > 2, . . . } as this would violate termination.           
+
+> 3Note that this is a weaker definition than presented in previous literature which requires a valid lemma in any interpretation, i.e. for any interpretation 𝐼 , there exists an 𝑒 ∈𝐸 such that 𝑒 𝐼 =true .
+
+During the search the explain function is used in two cases: (i) Whenever theory-specific procedures detect that ¯𝑀 is inconsistent, then 𝐶 = explain (𝑀, ⊥) is used to derive the conflict clause 𝐶 . By the construction requirements of the explanation function, this excludes the current trail and forces the search to pivot. (ii) When propagating a term assignment, i.e. when a theory related procedure detects that feasible (𝑀, 𝑡 ) = {𝛼 } for a yet unassigned term 𝑡 , we use 𝐽 = explain (𝑀, 𝑡 = 𝛼 ) to generate a 
+
+justification 𝐽 that explains the propagation with regard to the current trail 𝑀 . By construction of 𝐽 ,we have that (𝑡 = 𝛼 ) ↦ → true on 𝑀 and, thus, (𝑡 ↣* 𝛼 ) is added to 𝑀 . We denote 𝐽 = just (𝑡 ↣* 𝛼 )
+
+and write 𝐽 = just (𝑡 ) as a shorthand. It must be available whenever required by conflict resolution as long as the propagation is on the trail. This enables justifications to be calculated lazily, i.e. only when required by conflict analysis. This is important, as calls to the explain function might be costly, depending on the theory. While MCSat performs all Boolean propagations, any propagation for other sorts is optional. Propa-gations are helpful for performance in general, constructing the required justification may be infeasible in many cases and a plugin is not required to perform a possible propagation. In case a propagation of term 𝑡 to value 𝛼 is detected, but no explanation can be constructed (with reasonable effort), it is, in general, still beneficial to add 𝑡 ↣ 𝛼 to 𝑀 as a decision (c.f. [10]). 
+
+3.2. Search Rules 
+
+As in the previous publications, we are describing the MCSat search as a system of symbolic proof rules. Given a set of clauses 𝒞 , we start with an empty trail 𝑀 = JK 0 and end in one of the two terminal states 
+
+sat or unsat .An active search can be in one of two states: search state or conflict state . While in a search state, 𝑀 
+
+gets extended with either decisions or propagations until everything is assigned or ¯𝑀 is detected to be inconsistent. In a conflict state, we aim to recover from an inconsistent ¯𝑀 or detect the unsatisfiability of 𝒞 . We explain the conflict as a conflict clause 𝐶 , resolve 𝐶 with previous propagations and remove assignments from 𝑀 until a relevant decision is reached. In the rules below, we denote a search state as a pair ⟨𝑀, 𝒞⟩ of trail 𝑀 and a set of clauses 𝒞 . A state in conflict mode with conflict clause 𝐶 is written as ⟨𝑀, 𝒞⟩ ⊢ 𝐶 . We denote rules that take a conflict state as conflict rules , all other rules as search rules .
+
+Running Example. Let 𝒞 = {𝐶 1, 𝐶 2, 𝐶 3, 𝐶 4, 𝐶 5} be an instance over propositional logic B and real arithmetic R.
+
+𝐶 1 = ( 𝑥 2 ≈ 4 ∨ 𝑦 ≈ 8) 𝐶 4 = ( 𝑥 > 5 ∨ 𝑥 + 𝑦 ≈ 1) 
+
+𝐶 2 = ( 𝑥 2 + 2 𝑦 > 𝑦 2 ∨ 𝑦 ≈ 1) 𝐶 5 = ( 𝑥 ≈ 7𝑦 ∨ 𝑥 ̸ ≈ 𝑦 + 3) 
+
+𝐶 3 = (1 < −𝑥 ∨ (𝑥 − 2) 𝑦 ̸ ≈ 3) 
+
+Here 𝑥 and 𝑦 are uninterpreted constants of sort R. In this running example we denote the number of applied rules in the superscript of the trail. We start the search in the state ⟨𝑀 00 , 𝒞⟩ . By definition, we have 
+
+𝑀 00 = JK 0. For brevity we write 𝑝 , 𝑝 𝑛 , and 𝑝 * on the trail instead of 𝑝 ↣ true , 𝑝 ↣𝑛 true , and 𝑝 ↣* true ,respectively. 
+
+Decide 
+
+Assume a trail 𝑀 𝑛 and a term 𝑥 such that 𝜈 ¯𝑀 (𝑥 ) = undef , then any value 𝛼 ∈ feasible (𝑀, 𝑥 )
+
+can be decided for 𝑥 .
+
+⟨𝑀 𝑛 , 𝒞⟩ −→ ⟨J𝑀, 𝑥 ↣(𝑛 +1) 𝛼 K, 𝒞⟩ 
+
+While a general term can be decided upon, in practice, deciding is limited to variables, i.e. terms that are atomic for a dedicated theory plugin. All non-atomic terms can be evaluated using the plugin’s eval 
+
+function and, thus, will get an assignment using the closure of the trail ¯𝑀 . Although more than one theory plugin can support sort (𝑡 ), we usually dedicate one plugin to make decisions for each particular sort. While this rule does not limit the choice for 𝑥 and 𝛼 , in any practical implementation, those choices are important considerations for the performance of the solver. Heuristics are essential to achieve reasonable performance in practice [10, 11]. Running Example. In the first search state ⟨𝑀 00 , 𝒞⟩ , we decide 𝑥 ↣1 2 using Decide: 
+
+⟨J𝑥 ↣1 2K11, 𝒞⟩ 
+
+and denote the new trail 𝑀 11 . Note that in the new search state ⟨𝑀 11 , 𝒞⟩ we cannot decide on the propositional variable (𝑥 − 2) 𝑦 ̸ ≈ 3, because 𝜈 ¯𝑀 11
+
+(( 𝑥 − 2) 𝑦 ̸ ≈ 3) = true , but on 𝑥 2 + 2 𝑦 > 𝑦 2 ↣2 true to get: 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2K22, 𝒞⟩ 
+
+Propagate 
+
+Assume a clause of the form 𝐶 = explain (𝑀, 𝑥 = 𝑡 ) = ( 𝑙 1 ∧ · · · ∧ 𝑙 ℓ =⇒ 𝑥 = 𝑡 ) = (¬𝑙 1 ∨ · · · ∨ ¬ 𝑙 ℓ ∨ 𝑥 = 𝑡 ) with a term 𝑡 such that 𝜈 ¯𝑀 (𝑡 ) = 𝛼 ∈ sort (𝑡 ) can be derived from the clause database. By construction, for all 1 ≤ 𝑖 ≤ ℓ we have that 𝜈 ¯𝑀 (𝑙 𝑖 ) = true , thus we can set 
+
+𝛼 for 𝑥 .
+
+⟨𝑀 𝑛 , 𝒞⟩ −→ ⟨J𝑀, 𝑥 ↣* 𝛼 K𝑛 , 𝒞⟩ 
+
+Note that not all possible propagations are actually required to be performed by a theory plugin. Even if a plugin realizes that there is only one feasible value for a term, it may decide not to propagate the value, because a justification is either too expensive or even impossible to calculate. In such cases, it is beneficial to force a decision of that variable soon (c.f. [ 10 ]). For completeness of the system, propagations are not required, as the system could also decide an assignment to the propagated value. For infinite domains, it might even be impossible to generate any justification as this would violate the finite basis requirement of the explain function (c.f. Example 5. 
+
+Running Example. We continue with 𝑀 22 as the current trail. The clause 𝐶 3 has only one literal that does not evaluate to false . So we use Boolean unit propagation to get the new state: 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2, (( 𝑥 − 2) 𝑦 ̸ ≈ 3) *K32, 𝒞⟩ 
+
+This is possible because we take explain (⟨𝑀 22 , 𝒞⟩ , (𝑥 − 2) 𝑦 ̸ ≈ 3) = 𝐶 3 = (1 < −𝑥 ∨ (𝑥 − 2) 𝑦 ̸ ≈
+
+3) = ( ¬(1 < −𝑥 ) → (𝑥 − 2) 𝑦 ̸ ≈ 3) and 𝜈 ¯𝑀 22
+
+(¬(1 < −𝑥 )) = true , so we can propagate (𝑥 − 2) 𝑦 ̸ ≈
+
+3 ↣* true with justification 𝐶 3. We can perform the similar propagation 𝑥 + 𝑦 ≈ 1 ↣* true with 
+
+just (𝑥 + 𝑦 ≈ 1) = 𝐶 4 = ( 𝑥 > 5 ∨ 𝑥 + 𝑦 ≈ 1) and get: 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2, (( 𝑥 − 2) 𝑦 ̸ ≈ 3) *, (𝑥 + 𝑦 ≈ 1) *K42, 𝒞⟩ 
+
+Finally, we perform the arithmetic theory propagation 𝑦 ↣* −1 with justification explain (J. . . K, 𝑦 ≈−1) = ( 𝑥 ̸ ≈ 2 ∨ ¬ (𝑥 + 𝑦 ≈ 1) ∨ 𝑦 ≈ − 1) and get: 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2, (( 𝑥 − 2) 𝑦 ̸ ≈ 3) *, (𝑥 + 𝑦 ≈ 1) *, 𝑦 ↣* −1K52, 𝒞⟩ 
+
+Conflict 
+
+Given infeasible (𝑀, 𝒞 ), let 𝐸 = explain (𝑀, ⊥) = ( 𝑒 1 ∧ · · · ∧ 𝑒 ℓ =⇒ ⊥ ) = ( ¬𝑒 1 ∨ · · · ∨ ¬ 𝑒 ℓ)
+
+such that for all 1 ≤ 𝑖 ≤ ℓ we have 𝜈 ¯𝑀 (𝑒 𝑖 ) = false , then the search switches to the conflict mode with 𝐸 as its initial conflict clause: 
+
+⟨𝑀 𝑛 , 𝒞⟩ −→ ⟨𝑀 𝑛 , 𝒞⟩ ⊢ 𝐸 
+
+Running Example. We continue in the search state ⟨𝑀 52 , 𝒞⟩ , with 𝑀 52 = J𝑥 ↣1 2, . . . , 𝑦 ↣* −1K2.Note that 𝐶 5 = ( 𝑥 ≈ 7𝑦 ∨ 𝑥 ̸ ≈ 𝑦 + 3) ∈ 𝒞 , so we get 𝜈 ¯𝑀 52
+
+(𝐶 5) = false , which is a propositional conflict. Therefore, we use rule Conflict with 𝐸 = explain (⟨𝑀 52 , 𝒞⟩ , ⊥) = 𝐶 5 to get (with same trail 𝑀 62 = 𝑀 52 ): 
+
+⟨𝑀 62 , 𝒞⟩ ⊢ 𝐶 5Resolve 
+
+When in conflict mode, we can resolve a previous made propagation using its justification if the propagated term 𝑥 occurs in the conflict clause 𝐶 , i.e. 𝑥 ∈ terms (𝐶 ):
+
+⟨J𝑀, 𝑥 ↣* 𝛼 K𝑛 , 𝒞⟩ ⊢ 𝐶 −→ ⟨𝑀 𝑛 , 𝒞⟩ ⊢ 𝑅 
+
+Then by the construction of the propagation, the justification is of the form just (𝑥 ) = ( 𝑙 1 ∧ · · · ∧ 
+
+𝑙 ℓ =⇒ 𝑥 ≈ 𝑡 ) and the resolved conflict clause 𝑅 = 𝐶 [𝑥/𝑡 ] ∪ (¬𝑙 1 ∨ · · · ∨ ¬ 𝑙 ℓ).
+
+Before continuing with the running example, let us first consider two other applications of Resolve: 
+
+Example 6. Assume B variables 𝑎 , 𝑏 , and 𝑐 , the clause 𝐷 = ( 𝑎 ∨ 𝑐 ), and a trail that assigns 𝑎 to false .Then the propagation rule can use 𝐷 for the propagation ¬𝑎 =⇒ 𝑐 (by simplifying 𝑐 ≈ true ). Later, a conflict clause 𝐶 = ( 𝑏 ∨ ¬ 𝑐 ) becomes 𝑅 = ( 𝑏 ∨ 𝑎 ), which is Boolean resolution. 
+
+Example 7. Let 𝑦 and 𝑧 be integer variables, 𝐷 = ( 𝑦 < 3 ∨ 𝑧 ≈ 5) a clause, and a trail that assigns 𝑦 
+
+to 6. Then the propagation rule can use 𝐷 for the propagation ¬(𝑦 < 3) =⇒ 𝑧 ≈ 5. Later a conflict clause 𝐶 = ( 𝑦 · 𝑧 ≈ 3 ∨ ¬ (𝑧 ≈ 5)) becomes 𝑅 = ( 𝑦 · 5 ≈ 3 ∨ 𝑦 < 3) , which is arithmetic resolution. 
+
+Running Example. In the conflict state 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2, (( 𝑥 − 2) 𝑦 ̸ ≈ 3) *, (𝑥 + 𝑦 ≈ 1) *, 𝑦 ↣* −1K62, 𝒞⟩ ⊢ 𝐶 5
+
+we can apply the rule Resolve, because 𝑦 ∈ terms (𝐶 5). Recall just (𝑦 ) = ( 𝑥 ̸ ≈ 2 ∨ ¬ (𝑥 +𝑦 ≈ 1) ∨ 𝑦 ≈ − 1) 
+
+so the resolvent is 𝑅 = ( 𝑥 ≈ 7𝑦 ∨ 𝑥 ̸ ≈ 𝑦 + 3)[ 𝑦/ − 1] ∪ (𝑥 ̸ ≈ 2 ∨ ¬ (𝑥 + 𝑦 ≈ 1)) = ( 𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈
+
+2 ∨ ¬ (𝑥 + 𝑦 ≈ 1)) . This yields the new conflict state: 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2, (( 𝑥 − 2) 𝑦 ̸ ≈ 3) *, (𝑥 + 𝑦 ≈ 1) *K72, 𝒞⟩ ⊢ 𝑅 
+
+Because (𝑥 + 𝑦 ≈ 1) ∈ 𝑅 , we can perform a similar resolution on 𝑥 + 𝑦 ≈ 1 ↣* true , which has the justification 𝐶 4 = ( 𝑥 > 5 ∨ 𝑥 + 𝑦 ≈ 1) . So 𝑅 ′ = 𝑅 [𝑥 + 𝑦 ≈ 1/⊤] ∪ (𝑥 > 5) =( 𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈
+
+2 ∨ ¬ (⊤) ∨ 𝑥 > 5) = ( 𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈ 2 ∨ 𝑥 > 5) . The new conflict state is: 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2, (( 𝑥 − 2) 𝑦 ̸ ≈ 3) *K82, 𝒞⟩ ⊢ 𝑅 ′
+
+Note that for the propagation (𝑥 − 2) 𝑦 ̸ ≈ 3 ↣* true , with justification (1 < −𝑥 ∨ (𝑥 − 2) 𝑦 ̸ ≈ 3) , the Resolve rule cannot be applied, because (( 𝑥 − 2) 𝑦 ̸ ≈ 3) /∈ terms (𝑅 ′).
+
+Consume 
+
+In conflict mode, whenever a propagation is not part of the conflict clause, it may be omitted. Assume 𝑥 / ∈ terms (𝐶 ), then 
+
+⟨J𝑀, 𝑥 ↣* 𝛼 K𝑛 , 𝒞⟩ ⊢ 𝐶 −→ ⟨𝑀 𝑛 , 𝒞⟩ ⊢ 𝐶 
+
+Running Example. In the current conflict state, we can use rule Consume to get rid of the last trail element and reach state 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2K92, 𝒞⟩ ⊢ 𝑅 ′,
+
+Drop 
+
+When a decision does not influence the current conflict clause 𝐶 , then the decision can be dropped. Assuming 𝜈 ¯𝑀 𝑛 (𝐶 ) = false , any decision of level 𝑛 + 1 can be dropped: 
+
+⟨J𝑀 𝑛 , 𝑥 ↣𝑛 +1 𝛼 K, 𝒞⟩ ⊢ 𝐶 −→ ⟨𝑀 𝑛 , 𝒞⟩ ⊢ 𝐶 
+
+In practice, one can calculate the decision level 𝑛 of 𝐶 and drop all decisions and corresponding propagations with level greater than 𝑛 at once. Running Example. In the conflict state 
+
+⟨J𝑥 ↣1 2, (𝑥 2 + 2 𝑦 > 𝑦 2)2K92, 𝒞⟩ ⊢ (𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈ 2 ∨ 𝑥 > 5) ,
+
+the rule Drop is applied because 𝜈 ¯𝑀 ′ (𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈ 2 ∨ 𝑥 > 5) = false with 𝑀 ′ = J𝑥 ↣ 2K:
+
+⟨J𝑥 ↣1 2K10 1 , 𝒞⟩ ⊢ (𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈ 2 ∨ 𝑥 > 5) 
+
+We cannot apply the Drop further as 𝜈 ¯∅(𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈ 2 ∨ 𝑥 > 5) = undef .
+
+Backjump 
+
+When a decision on the trail influences the conflict clause 𝐶 , then undoing the decision changes 
+
+𝜈 ¯𝑀 𝑛 (𝐶 ) to undef . Then there exists a subset of literals 𝐶 ′ ⊆ 𝐶 such that 𝜈 ¯𝑀 𝑛 (𝐿 ) = undef for all 𝐿 ∈ 𝐶 ′. In case 𝐶 ′ = {𝐿 } then 𝐿 can be propagated by 𝐶 . Thus a propagation is put on the trail with just (𝐿 ) = 𝐶 :
+
+⟨J𝑀 𝑛 , 𝑥 ↣𝑛 +1 𝛼 K, 𝒞⟩ ⊢ 𝐶 −→ ⟨J𝑀 𝑛 , 𝐿 ↣* true K, 𝒞⟩ 
+
+Otherwise, we need to perform a Boolean decision and pick a choice 𝐿 ∈ 𝐶 ′ to satisfy 𝐶 :
+
+⟨J𝑀 𝑛 , 𝑥 ↣𝑛 +1 𝛼 K, 𝒞⟩ ⊢ 𝐶 −→ ⟨J𝑀 𝑛 , 𝐿 ↣𝑛 +1 true K, 𝒞⟩ 
+
+When choosing 𝐿 we need to make sure that 𝑥 ∈ terms (𝐿 ), i.e. 𝑥 ̸ = 𝐿 .
+
+The last condition for the second case is important to ensure termination. In case 𝑥 is a literal as well as a sub-term of another literal (for example if 𝑥 is a propositional term and 𝐶 = {𝑥, 𝑓 (𝑥 )}), we need to ensure not to replace a decision on 𝑥 with another decision on 𝐿 (indefinitely). 
+
+Running Example. We are in the conflict state: 
+
+⟨J𝑥 ↣1 2K10 1 , 𝒞⟩ ⊢ (𝑥 ≈ − 7 ∨ 𝑥 ̸ ≈ 2 ∨ 𝑥 > 5) 
+
+Here the decision 𝑥 ↣1 2 affects the evaluation of the conflict clause 𝑅 ′ because 𝜈 ¯∅(𝑅 ′) = undef . Before leaving the conflict state, we apply the Learn rule (see below) in order to add the final resolvent 𝑅 ′ to the clause set. Then we can apply the Backjump to leave the conflict state. Since multiple literals of 𝑅 ′ evaluate to undef , we replace the decision on the trail with one of the following decisions in 𝑅 ′ 
+
+> 𝑢
+
+= 𝑅 ′ = {(𝑥 ≈−7) 1, (𝑥 ̸ ≈ 2) 1, (𝑥 > 5) 1} and pick 𝑥 ≈ − 7 ↣1 true . Then the new state is 
+
+⟨J(𝑥 ≈ − 7) 1K11 1 , 𝒞 ∪ { 𝑅 ′}⟩ 
+
+Sat 
+
+Assume a trail 𝑀 such that satisfies (𝑀, 𝒞 ), then 
+
+⟨𝑀, 𝒞⟩ −→ sat 
+
+Note that this is also the case when for each term 𝑡 , we have that 𝜈 ¯𝑀 (𝑡 )̸ = undef and not infeasible (𝑀 ).In the sat case, the model can be constructed by taking the closure of the last trail and assign all still unassigned terms with arbitrary consistent values. 
+
+Running Example. We propagate 𝑥 ↣* −7, 𝑥 + 𝑦 ≈ 1 ↣* true and 𝑦 ↣* 8 to get: 
+
+⟨J(𝑥 ≈ − 7) 1, 𝑥 ↣* −7, (𝑥 + 𝑦 ≈ 1) *, 𝑦 ↣* 8K14 1 , 𝒞 ∪ { 𝑅 ′}⟩ 
+
+The Sat rule can be applied here because satisfies (𝑀 14 1 , 𝒞 ∪ { 𝑅 ′}) holds. Unsat 
+
+Assume a trail 𝑀 and a conflict at decision level 0, then 
+
+⟨𝑀 0, 𝒞⟩ ⊢ 𝐶 −→ unsat 
+
+3.3. Learning and Forgetting 
+
+The rules presented above are sufficient to perform an MCSat search. For practical performance reasons it is, however, beneficial to add, i.e. learn, clauses to the clause database 𝒞 as well as delete, i.e. forget, previously learned clauses. Note that any conflict clause 𝐶 is logically implied by the clause database 𝒞 .This is because any explanation clause is implied by 𝒞 by requirement (i) of explain and the resolvent of two implied clauses with rule Resolve keeps this property. 4 Adding or removing an implied clause to a set of clauses does not change the models. There are two opportunities to learn clause: (i) any clause during conflict analysis, i.e. the original conflict clause or any resolvent thereof, as well as (ii) any justification that was generated during a propagation. In practice, the most important clause to learn tends to be the last conflict clause right before exiting conflict analysis with rule Backjump as this clause is used for pivoting the search. 
+
+Learn 
+
+Assume a search state in conflict with clause 𝐶 , then 𝐶 can be added to the clause database 𝒞 if 
+
+𝐶 / ∈ 𝒞 :
+
+⟨𝑀, 𝒞⟩ ⊢ 𝐶 −→ ⟨𝑀, 𝒞 ∪ { 𝐶 }⟩ ⊢ 𝐶 
+
+Learn-Justification 
+
+Assume the search propagated 𝑥 ↣* 𝛼 , then 𝐽 = just (𝑥 ↣* 𝛼 ) can be added to the clause database 𝒞 if 𝐽 / ∈ 𝒞 :
+
+⟨J𝑀, 𝑥 ↣* 𝛼 K, 𝒞⟩ −→ ⟨J𝑀, 𝑥 ↣* 𝛼 K, 𝒞 ∪ { 𝐽 }⟩ 
+
+If, for practical performance considerations, the justification 𝐽 is calculated lazily, i.e. only when required by conflict analysis, it can still be learned upon calculation. Since, in the proof system, we assume that justifications are available right away, we limit applications of Learn-Justification to be used directly after Propagate for technicalities the termination proof. 
+
+Forget 
+
+Assume clause 𝐶 ∈ 𝒞 is a learned clause, then we may forget 𝐶 :
+
+⟨𝑀, 𝒞⟩ −→ ⟨𝑀, 𝒞 ∖ { 𝐶 }⟩ 
+
+The Forget rule is optional but important for practical performance. As for any choice in the search, heuristics can greatly help in deciding which clauses to forget. It is important to note that a justification 𝐽 = just (𝑥 ) of a propagation 𝑥 ↣* 𝛼 on the trail can not be forgotten, as just (𝑥 ) is a property of the trail element and not an element of 𝒞 . If 𝐽 had previously been leaned using Learn-Justification, it can be removed from 𝒞 , however 𝐽 is available as just (𝑥 ) as long as 𝑥 ↣* 𝛼 is remains on the trail. 
+
+> 4This is formally proven in Lemma 2 of the appendix (Section A).
+
+3.4. Soundness, Completeness, and Termination 
+
+The main theorem of [ 2 ] is the soundness and completeness of the calculus. For our adapted set of rules, we provide the same result and give the proof in the appendix (Section A). 
+
+Theorem 1. Given a set of clauses 𝒞 , and assuming an explanation function explain , any derivation starting from the initial state ⟨JK , 𝒞⟩ will terminate either in a state sat , when 𝒞 is satisfiable (soundness), or in the state unsat , when 𝒞 is unsatisfiable (completeness). 
+
+# 4. MCSat Theories 
+
+In Section 3.1 we have outlined the requirements of a theory reasoning plugin and a corresponding explanation function. Based on these definitions we will provide some examples for specific theories. 
+
+Propositional Logic. Although not an actual theory plugin, we can define an explanation function for a Boolean conflict. Recall that the Boolean sort B = {true , false } together with the Boolean connectives translated in CNF are natively handled by MCSat . Given a clause database 𝒞 and a trail 𝑀 , a conflict is a clause 𝐶 ∈ 𝒞 that evaluates to false under 𝑀 . The explanation function explain (𝑀, ⊥) simply returns the clause 𝐶 . 𝐶 trivially justifies ⊥ and does not introduce new literals, thus satisfying property (ii) and (iii) of an explanation function. Although 𝐶 is not a valid lemma in general, it is (trivially) implied by the clause database 𝒞 and thus it is a lemma within the search problem. The same works for propagation. The propagate rule can be used for any clause 𝐶 ∈ 𝒞 that is unit with regard to 𝑀 . The explanation is simply 𝐶 .
+
+Arithmetic. Non-linear real arithmetic has been the first theory to be applied to MCSat in its original NLSAT publication [ 1 ]. It is based on cylindrical algebraic decomposition ( CAD ) which is a well known technique from computer algebra. The theory can solve polynomial constraints with integer coefficients and defines the sort of reals R containing all algebraic numbers, i.e. the subset of real numbers that can be the root of a polynomial with integer coefficients. Note that R is of infinite size. To gain a finite basis explain function, the theory plugin uses CAD to describe an 𝑛 -dimensional area in which all polynomials of the conflict are sign-invariant. As all possible decompositions of the (finitely many) input polynomials contain only finitely many such areas, there are only finitely many terms to describe those areas. For further details on the implementation of this theory we refer to [ 1 ] as well as to the SMT solver SMT-RAT [ 7] which contains one of the most advanced implementations of this MCSat theory. In addition to reals, there haven been MCSat theories for linear integers [ 12 ] as well as non-linear integers [13]. 
+
+Uninterpreted Functions. The theory of uninterpreted functions (UF) does not contain its own sort. It rather tracks the assignments of its terms by other theories plugins and detects conflicts and possible propagations using equality graphs (e-graphs). Therefore, each generated explanation 𝐸 given by explain only contains existing literals, trivially fulfilling property (iii) of an explanation function. 
+
+𝐸 contains terms from the trail that are equal due to the e-graph, by the correctness of the e-graph, this satisfies (i). The third property (ii) is fulfilled by the construction of 𝐸 , as only assigned terms are considered. Based on the theory UF, an MCSat implementation of the theory of arrays has been implemented [14]. 
+
+Further theories. Further interesting theories that have been implemented in an MCSat search are the theory of fixed-size bit-vectors (BV) [15] and the theory of finite fields (FF) [16]. 5. Conclusion 
+
+Implementation Notes. The general idea of this adapted version of the MCSat calculus was based on its implementation within Yices2 [ 3]. The software architecture of the MCSat engine includes a general MCSat core independent of any theory. Each theory (including the theory of propositional logic) is implemented as a plugin that provides, using a well-defined interface, functionality for decisions, propagations as well as conflict detection and explanation. Each plugin can register terms and types that it is capable of handling. This lead us to defining the transition systems on term assignments instead of a strict separation in theory and propositional variables. The core MCSat engine queries all plugins for all available propagations before proceeding with the next decision. It is up to the individual plugin to choose which propagations to perform. See [ 3 , 10 ] for a description of the general MCSat core algorithm in Yices2. While the MCSat proof system requires an explanation function to be finite basis for proving termi-nation, the implementation in Yices2 departs from this requirement: by letting the arithmetic variable order for decisions change dynamically using the Variable State Independent Decaying Sum ( VSIDS )heuristic, explanations generated by CAD the finite basis cannot be guaranteed. Although, this is a bad choice for termination, VSIDS improves performance for practical instances significantly [10]. 
+
+Calculus Updates. Notable changes to the MCSat proof calculus as presented in this work compared to the original publications [1, 2, 3] are: 
+
+• Term assignments instead of theory variables. Previous publications defined two distinct kinds of variables: propositional literals and theory variables. The former were any constraints over a term in a theory, the latter an uninterpreted constant in a particular theory. An (overloaded) value 
+
+function evaluates literals according to assignment to theory variables. We changed this to better match the definitions of functions and sorted terms in SMT-LIB and allow an arbitrary assignments to terms. This enables us to present theory combination in MCSat closer to implementation, especially in the presence of uninterpreted functions (see Example 4). 
+
+• Combining Boolean and theory reasoning. Due to the clear distinction between theory variables and propositional literals, previous publications maintained two sets of proof rules to cater to both cases. This led to similar rules with minor differences, depending on whether they are handling theory terms or the propositional structure. In this work, we implemented Boolean reasoning closer to theory reasoning to allow a single set of rules to handle both cases (see, for example, rule Propagate or rule Decide). While Boolean reasoning is still a special case due to additional rules for conflict analysis, this clarifies the meaning of the rules and avoids minor differences in similar rules. 
+
+• Common framework for propagation. The original publications of MCSat did not provide a way to propagate theory values as depicted in rule Propagate. This form of propagation was introduced as a side note in a later publication [ 17 ]. In this work, the Propagate and Resolve rules have been adapted to support both theory and Boolean propagation. By adding the Learn-Justification rule, learning a potentially expensive justification for a theory-based propagation has been enabled, which was not possible by Learn. 
+
+• Updated explain function. The original publications require the explain function to return a valid lemma 𝐸 . A valid lemma is a clause that is true under any interpretation, i.e. ⊨ 𝐸 . We relax this requirement to 𝐸 to be true under any model of the search problem 𝜙 , i.e., 𝜙 ⊨ 𝐸 . This is a strictly weaker definition, as any valid explanation still fulfills the requirement but allows modeling Boolean conflicts as regular explanations. Furthermore, this change gives more flexibility to the implementation of the explain function for particular theories, for example, allowing it to return an empty clause if the theory’s reasoning procedure detects unsatisfiability of 𝜙 .Conclusion. In this work we have presented an updated version of the original formal description of the MCSat calculus. In contrast to the original version we describe the calculus on arbitrary term assignments and do not distinguish between propositional and theory rules. We presented all relevant concepts, showed the calculus’ rules as well as provided examples. 
+
+# Acknowledgments 
+
+The authors thank Ahmed Irfan, Stéphane Graham-Lengrand, and Jasper Nalbach for discussion and feedback. We further thank the anonymous reviewers for exceptional feedback. This research was funded in whole or in part by the ERC Consolidator Grant ARTIST 101002685; the the WWTF ICT22-007 grant ForSmart; the FWF 10.55776/ESP666 grant, and by the SBA Research COMET Center SBA-K1 NGC managed by the FFG. 
+
+# Declaration on Generative AI 
+
+The authors have not employed any Generative AI tools. 
+
+# References 
+
+[1] D. Jovanovic, L. M. de Moura, Solving non-linear arithmetic, in: B. Gramlich, D. Miller, U. Sattler (Eds.), Intl. Joint Conf. on Automated Reasoning (IJCAR), volume 7364 of LNCS , Springer, 2012, pp. 339–354. doi: 10.1007/978-3-642-31365-3\_27 .[2] L. de Moura, D. Jovanovic, A model-constructing satisfiability calculus, in: R. Giacobazzi, J. Berdine, I. Mastroeni (Eds.), Intl. Conference on Verification, Model Checking, and Abstract Interpretation (VMCAI), volume 7737 of LNCS , Springer, 2013, pp. 1–12. doi: 10.1007/978-3-642-35873-9\_1 .[3] D. Jovanovic, C. Barrett, L. de Moura, The design and implementation of the model constructing satisfiability calculus, in: Intl. Conf on Formal Methods in Computer-Aided Design (FMCAD), IEEE, 2013, pp. 173–180. doi: 10.1109/FMCAD.2013.7027033 .[4] M. P. Bonacina, S. Graham-Lengrand, N. Shankar, Conflict-driven satisfiability for theory combination: Transition system and completeness, Journal of Automated Reasoning 64 (2020) 579–609. doi: 10.1007/s10817-018-09510-y .[5] K. Korovin, N. Tsiskaridze, A. Voronkov, Conflict resolution, in: Springer (Ed.), Principles and Practice of Constraint Programming, volume 5732 of Lecture Notes in Computer Science , Springer Nature, 2009, pp. 509–523. [6] B. Dutertre, Yices 2.2, in: CAV, volume 8559 of Lecture Notes in Computer Science , Springer, 2014, pp. 737–744. [7] F. Corzilius, G. Kremer, S. Junges, S. Schupp, E. Ábrahám, SMT-RAT: an open source C++ toolbox for strategic and parallel SMT solving, in: SAT, volume 9340 of Lecture Notes in Computer Science , Springer, 2015, pp. 360–368. [8] L. M. de Moura, N. S. Bjørner, Z3: an efficient SMT solver, in: TACAS, volume 4963 of Lecture Notes in Computer Science ,Springer, 2008, pp. 337–340. [9] C. Barrett, P. Fontaine, C. Tinelli, SMT-LIB Standard (Version 2.6), https://smt-lib.org/, 2021. [10] T. Hader, A. Irfan, S. Graham-Lengrand, Decision heuristics in MCSat, in: International Conference on Computer Aided Verification, Springer, 2025, pp. 42–56. [11] E. Lipparini, Boosting mcsat modulo nonlinear integer arithmetic via local search, in: Automated Deduction–CADE 30: 30th International Conference on Automated Deduction, Stuttgart, Germany, July 28-31, 2025, Proceedings, Springer Nature, 2025, p. 95. [12] D. Jovanovic, L. M. de Moura, Cutting to the chase solving linear integer arithmetic, in: N. S. Bjørner, V. Sofronie-Stokkermans (Eds.), Intl. Conf on Automated Deduction (CADE), volume 6803 of LNCS , Springer, 2011, pp. 338–353. doi: 10.1007/978-3-642-22438-6\_26 .[13] D. Jovanovic, Solving nonlinear integer arithmetic with MCSAT, in: VMCAI, volume 10145 of Lecture Notes in Computer Science , Springer, 2017, pp. 330–346. [14] A. Irfan, S. Graham-Lengrand, Arrays reasoning in MCSat, in: SMT@CAV, volume 3725 of CEUR Workshop Proceedings ,CEUR-WS.org, 2024, pp. 24–35. [15] S. Graham-Lengrand, D. Jovanovic, B. Dutertre, Solving bitvectors with MCSAT: explanations from bits and pieces, in: N. Peltier, V. Sofronie-Stokkermans (Eds.), Intl. Joint Conf. on Automated Reasoning (IJCAR), Part I, volume 12166 of 
+
+LNCS , Springer, 2020, pp. 103–121. doi: 10.1007/978-3-030-51074-9\_7 .[16] T. Hader, D. Kaufmann, A. Irfan, S. Graham-Lengrand, L. Kovács, MCSat-based finite field reasoning in the Yices2 SMT solver (short paper), in: IJCAR (1), volume 14739 of Lecture Notes in Computer Science , Springer, 2024, pp. 386–395. [17] D. Jovanović, B. Dutertre, Interpolation and model checking for nonlinear arithmetic, in: International Conference on Computer Aided Verification, Springer, 2021, pp. 266–288. A. Proofs 
+
+We adapt the soundness and correctness proof [ 2 ] (Theorem 1) to suite our definitions. While the proof is more detailed and structured differently, the general ideas remains the same. 
+
+Lemma 1. Given a set of clauses 𝒞 , in any derivation of the transition system starting from the initial state ⟨JK , 𝒞⟩ , any terminating derivation of the transition system ends in sat or unsat .Proof. To show that the derivation cannot be stuck in a state outside sat and unsat , we show that, given an arbitrary state 𝑆 / ∈ { sat , unsat }, we can apply a rule to reach a different state. We distinguish two cases on 𝑆 :1. 𝑆 = ⟨𝑀, 𝒞⟩ , i.e. 𝑆 is not in conflict. If there exists a term 𝑡 such that feasible (𝑀, 𝑡 )̸ = ∅ we apply rule Decide to reach state 𝑆 ′. If all terms are assigned and satisfies (𝑀, 𝒞 ) holds, then we use rule Sat to reach state 𝑆 ′ = sat . Otherwise, if there are only unassigned terms with feasible (𝑀, 𝑡 ) = ∅,then clearly infeasible (𝑀, 𝒞 ) and we use rule Conflict to reach a conflict state 𝑆 ′. In any case we have 𝑆 ̸ = 𝑆 ′.2. 𝑆 = ⟨𝑀, 𝒞⟩ ⊢ 𝐶 , i.e. 𝑆 is in conflict with clause 𝐶 . Then we can apply rules Resolve, Consume, and Drop exhaustively until we either reach a state 𝑆 ′ such that either rule Backjump can be used to reach a state ⟨𝑀, 𝒞⟩ not in conflict or rule Unsat to reach state unsat . In both cases the new state is different from 𝑆 .Since this clearly holds for 𝑆 = ⟨JK , 𝒞⟩ , the desired property holds for any reachable state by induction. 
+
+Lemma 2. Given a set of clauses 𝒞 , in any derivation of the transition system starting from the initial state ⟨JK , 𝒞⟩ , all ⊢ 𝐶 clauses are implied by 𝒞 .Proof. Let the implication of a clause 𝐶 by a set of clauses 𝒞 be denoted as 𝒞 ⊨ 𝐶 . Given a state 𝑆 such that it is either of form ⟨𝑀, 𝒞⟩ or ⟨𝑀, 𝒞⟩ ⊢ 𝐶 where 𝒞 ⊨ 𝐶 . We show that applying an arbitrary rule ℛ
+
+to reach state 𝑆 ′, the property holds for 𝑆 ′ as well. We split on ℛ:
+
+• Rule Conflict: Given 𝑆 = ⟨𝑀, 𝒞⟩ to apply Conflict, we have that 𝐶 = explain (𝑀, ⊥). By the requirements of explain , 𝒞 ⊨ 𝐶 or a valid lemma, thus 𝑆 ′ = ⟨𝑀, 𝒞⟩ ⊢ 𝐶 fulfills the property. 
+
+• Rule Resolve: Let 𝑆 = ⟨J𝑀, 𝑥 ↣* 𝛼 K, 𝒞⟩ ⊢ 𝐶 and 𝐽 = just (𝑥 ). Then 𝐽 was created using explain 
+
+on a previous application of the rule Propagate, thus 𝒞 ⊨ 𝐽 and 𝐽 = ( ¬𝑙 1 ∨ · · · ∨ ¬ 𝑙 ℓ ∨ 𝑥 = 𝑡 ). By assumption, we have 𝒞 ⊨ 𝐶 . We need to show that 𝒞 ⊨ 𝐶 ′ for 𝐶 ′ = 𝐶 [𝑥/𝑡 ]∪(¬𝑙 1 ∨· · ·∨¬ 𝑙 ℓ). From 
+
+𝒞 ⊨ 𝐽 we have that each model 𝐼 of 𝒞 either 𝑙 𝐼 𝑖 = false or 𝑥 𝐼 = 𝑡 𝐼 . In the first case 𝐶 ′𝐼 = true as 
+
+¬𝑙 𝑖 ∈ 𝐶 ′, in the second case, since 𝑥 𝐼 = 𝑡 𝐼 together with 𝐶 𝐼 = true , 𝐶 [𝑥/𝑡 ]𝐼 = true and, thus, 
+
+𝐶 ′𝐼 = true .
+
+• Any other rule does not generate a new clause ⊢ 𝐶 clause. Since the property holds for the initial state ⟨JK , 𝒞⟩ trivially, the property holds for any reachable state in the derivation by induction. 
+
+Lemma 3. Given a set of clauses 𝒞 , in any derivation of the transition system starting from the initial state ⟨JK , 𝒞⟩ , we have that 𝜈 ¯𝑀 (𝐶 ) = false for the ⊢ 𝐶 clauses. Proof. We perform the same induction as for Lemma 2 and split on the applied rule ℛ:
+
+• Rule Conflict: By construction of 𝐶 = explain (𝑀, ⊥) in the resulting state 𝑆 ′ = ⟨𝑀, 𝒞⟩ ⊢ 𝐶 we have that 𝜈 ¯𝑀 (𝐶 ) = false .• Rule Resolve: Let 𝑆 = ⟨J𝑀, 𝑥 ↣* 𝛼 K, 𝒞⟩ ⊢ 𝐶 and 𝐽 = just (𝑥 ). By the induction hypothesis we have 𝜈 ¯𝑀 (𝐶 ) = false . Since 𝐽 was created using explain on a previous application of the rule Propagate, 𝐽 = ( ¬𝑙 1 ∨ · · · ∨ ¬ 𝑙 ℓ ∨ 𝑥 = 𝑡 ) and 𝜈 ¯𝑀 (𝑙 𝑖 ) = false for 1 ≤ 𝑖 ≤ ℓ, thus 𝜈 ¯𝑀 (𝑥 ) = 𝜈 ¯𝑀 (𝑡 ).Therefore, 𝜈 ¯𝑀 (𝐶 ) = 𝜈 ¯𝑀 (𝐶 [𝑥/𝑡 ]) and, therefore, 𝜈 ¯𝑀 (𝐶 ′) = false .
+
+• Rule Consume: As the propagated term 𝑥 is not contained in 𝐶 , we have 𝜈 ¯𝑀 (𝐶 ) = false trivially. 
+
+• Rule Drop: The condition holds for the updated trail trivially as the desired property is a prereq-uisite of the rule. 
+
+• Any other rule does not generate a state with a ⊢ 𝐶 clause. Since the property holds for the initial state ⟨JK , 𝒞⟩ trivially, the property holds for any reachable state in the derivation by induction. 
+
+Lemma 4 (Congruence) . Given a set of clauses 𝒞 , in any derivation of the transition system starting from the initial state ⟨JK , 𝒞⟩ , for every reachable state with trail 𝑀 , every uninterpreted function symbol 𝑓 , and every pair of 𝑓 (𝑡 1, . . . , 𝑡 𝑛 ), 𝑓 (𝑡 ′
+
+> 1
+
+, . . . , 𝑡 ′
+
+> 𝑛
+
+) with 𝜈 ¯𝑀 (︀ 𝑓 (𝑡 1, . . . , 𝑡 𝑛 ))︀ , 𝜈 ¯𝑀 (︀ 𝑓 (𝑡 ′
+
+> 1
+
+, . . . , 𝑡 ′
+
+> 𝑛
+
+))︀ ̸ = undef , we have (︀ 
+
+∀𝑖. 𝜈 ¯𝑀 (𝑡 𝑖 ) = 𝜈 ¯𝑀 (𝑡 ′
+
+> 𝑖
+
+))︀ =⇒ 𝜈 ¯𝑀 (︀ 𝑓 (𝑡 1, . . . , 𝑡 𝑛 ))︀ = 𝜈 ¯𝑀 (︀ 𝑓 (𝑡 ′
+
+> 1
+
+, . . . , 𝑡 ′
+
+> 𝑛
+
+))︀ .
+
+Proof. By induction on the derivation. The base case ⟨JK , 𝒞⟩ holds automatically. Only Decide , Propa-gate , and the decision case of Backjump assign a new value to a term; in each case the assigned term is handled by its owning plugin, which we require to respect congruence. All other rules only remove trail elements or leave 𝑀 unchanged, so the property is inherited from the induction hypothesis. 
+
+Lemma 5 (Model Existence) . Given a set of clauses 𝒞 and a term assignment 𝑆 such that satisfies (𝑆, 𝒞 )
+
+holds, 𝒞 is satisfiable. Proof. Define interpretation 𝐼 to agree with ¯𝑆 on terms (𝒞 ): for interpreted symbols this is fixed by the evaluation function, and for uninterpreted 𝑓 , set 𝑓 𝐼 (𝜈 ¯𝑆 (𝑡 1), . . . , 𝜈 ¯𝑆 (𝑡 𝑛 )) = 𝜈 ¯𝑆 (𝑓 (𝑡 1, . . . , 𝑡 𝑛 )) for each 𝑓 (𝑡 1, . . . , 𝑡 𝑛 ) ∈ terms (𝒞 ), extending arbitrarily elsewhere. This is well-defined by Lemma 4, and by consistent ( ¯𝑆 ) we get 𝑡 𝐼 = 𝜈 ¯𝑆 (𝑡 ) for every 𝑡 ∈ terms (𝒞 ) by induction on term structure. Since 
+
+satisfies (𝑆, 𝒞 ) gives 𝜈 ¯𝑆 (𝐶 ) = true for every 𝐶 ∈ 𝒞 , we obtain 𝐶 𝐼 = true for every 𝐶 ∈ 𝒞 , so 𝐼 is a model of 𝒞 .
+
+Lemma 6 (Termination) . Any derivation of the transition system starting from the initial state ⟨JK , 𝒞⟩ 
+
+terminates. Proof. It is obvious that the search leaves the conflict mode after a finite number of rule applications towards the search mode or the state unsat . This is because each rule in conflict mode removes an element from the trail. We define a big-step transition relation −→ 𝑏𝑠 that covers a transition from a search state, applying a finite number of conflict rules to the next search state. Since explain returns new terms from a finite basis, we can assume a finite set of terms 𝑇 that contains all possible terms. In order to show progress of the search, we define a partial order 𝑀 1 ≺ 𝑀 2 on trails. A trail contains two different kinds of elements: propagations ( 𝑥 ↣* 𝛼 ) and decision ( 𝑥 ↣ 𝛼 ). We consider propagations to be heavier than any decision and define the weight of a decision by the size of the term. We define the size of a term 𝑡 by |terms (𝑡 )| and the maximum term size Ω = max 𝑡 ∈𝑇 |terms (𝑡 )|.We capture this in a weight function 𝑤 as follows: 
+
+𝑤 (𝑥 ↣* 𝛼 ) = Ω + 1 
+
+𝑤 (𝑥 ↣ 𝛼 ) = |terms (𝑥 )|
+
+We define 𝑀 1 ≺ 𝑀 2 using a lexicographical partial order based on the weights of the trail elements by 
+
+JK ≺ 𝑀 if 𝑀 ̸ = JK J𝑎, 𝑀 1K ≺ J𝑏, 𝑀 2K if 𝑤 (𝑎 ) < 𝑤 (𝑏 ) or (𝑤 (𝑎 ) = 𝑤 (𝑏 ) ∧ 𝑀 1 ≺ 𝑀 2)
+
+Clearly, JK is the minimal element and for all trails 𝑀 and 𝑁 ̸ = JK we have 𝑀 ≺ J𝑀, 𝑁 K and since |𝑇 |
+
+is finite, there is a maximal element. Any rule that adds a new element to the trail is creating a bigger trail with regard to ≺. This already covers most rules. Now let us consider the big-step −→ 𝑏𝑠 transition from a state ⟨𝑀 1, 𝒞 1⟩ to ⟨𝑀 2, 𝒞 2⟩. Since the only rule to exit the conflict state is Backjump, any big step −→ 𝑏𝑠 will end in exactly one application of that rule. Note that no rule in conflict analysis adds an element to the trail, with the sole exception of Backjump that replaces one trail element. Thus, 𝑀 1
+
+and 𝑀 2 share a common prefix followed by the one trail element (𝑥 ↣ 𝛼 ) ∈ 𝑀 1 that was replaced by (𝑥 ′ ↣ 𝛼 ′) ∈ 𝑀 2. There are two cases in the application of Backjump. In the first case the decision 
+
+𝑥 ↣ 𝛼 is replaced with a propagation 𝑥 ′ ↣* 𝛼 ′, thus 𝑀 1 ≺ 𝑀 2 as 𝑤 (𝑥 ↣ 𝛼 ) < 𝑤 (𝑥 ′ ↣* 𝛼 ′). In the second case, since there are multiple literals of 𝐶 which are evaluated to undef by unassigning 𝑥 ,there is at least one such literal 𝑥 ̸ = 𝑥 ′ such that 𝑥 ∈ terms (𝑥 ′) and thus 𝑤 (𝑥 ↣ 𝛼 ) < 𝑤 (𝑥 ′ ↣ 𝛼 ′).Therefore, we have that 𝑀 1 ≺ 𝑀 2.Regarding clause learning and forgetting: Observe that any application of the rule Learn is part of one big step −→ 𝑏𝑠 application. Any application of Learn-Justification can only happen immediately after an application of Propagate, thus any trail after the application of the two rules (as a big-step) will be bigger than before as the propagation has been added. To justify the Forget rule we define another partial order ⟨𝑀 1, 𝒞 1⟩ ≪ ⟨ 𝑀 2, 𝒞 2⟩ by 
+
+𝑀 1 ≺ 𝑀 2 or (𝑀 1 = 𝑀 2 and |𝒞 1| > |𝒞 2|)
+
+With this definition we have that removing a clause generates a bigger state with regard to ≪. A maximal element ⟨𝑀 max , 𝒞 0⟩ of ≪ is a maximal element of ≺ and 𝐶 0, the initial set of clauses. Since all rules are producing bigger states and we cannot increase forever, the termination of the system follow. With the above lemmas, we can finally proof Theorem 1. 
+
+Proof of Theorem 1. Assume a set of clauses 𝒞 and an explanation function explain . Starting from the initial state ⟨JK , 𝒞⟩ , by Lemma 1 and Lemma 6 we have that all derivations terminate in either sat or 
+
+unsat . In case the derivation terminates in sat , the last applied rule was Sat, i.e., satisfies (𝑀, 𝒞 ) holds; by Lemma 5, 𝒞 is satisfiable. Thus we have that the original problem is indeed satisfied. Otherwise, if the derivation terminates in unsat , then rule Unsat was applied, and the previous state was ⟨𝑀 0, 𝒞⟩ ⊢ 𝐶 where 𝑀 0 contains propagations only. By Lemma 3, 𝜈 ¯𝑀 (𝐶 ) = false . Resolving 𝐶 
+
+with all remaining propagations on 𝑀 0 to 𝐶 ′, we have 𝜈 ¯∅(𝐶 ′) = false . Then by Lemma 2, 𝒞 implies 𝐶 .Thus, there is no interpretation that satisfies 𝒞 and the search problem is unsatisfiable. 
+
+# B. Examples 
+
+This section provides further examples of different theories including theory combination using the conversion functions between different sorts. We denote the sort of 𝑚 -bit vectors as 𝒮 [𝑚 ] 
+
+> 𝐵𝑉
+
+, with the corresponding domain dom (𝒮 [𝑚 ] 
+
+> 𝐵𝑉
+
+) = {0, 1}𝑚 ,
+
+i.e. the set of all bit strings of length 𝑚 . Sorts for different sizes 𝑚 are disjoint, but they share a common set of function symbols: (i) Constants for each bit-vector of fixed width, e.g., #b1011 for 𝑚 = 4 ,(ii) Bitwise operators such as and , or , xor , and not , (iii) arithmetic operators, (iv) as well as comparison operators, as usual, and (v) conversion operators such as bv2int , bv2nat , and nat2bv .For a prime power 𝑞 = 𝑝 𝑛 with 𝑝 prime and 𝑛 ≥ 1, we denote the finite field with 𝑞 elements as F𝑞 .For 𝑛 = 1 , F𝑞 corresponds to the integers modulo 𝑝 ; for 𝑛 > 1, the field is constructed as a quotient ring of polynomials over F𝑝 modulo an irreducible polynomial of degree 𝑛 . To indicate that a constant 
+
+𝑥 ∈ F𝑝 we write 𝑥 𝑝 .Additional Example 1 Assume we have the following instance 𝒞 𝛼 = {𝐶 1, 𝐶 2, 𝐶 3, 𝐶 4}:
+
+𝐶 1 = ( 𝑔 (𝑥 ) ≈ 𝑥 )
+
+𝐶 2 = ( 𝑥 − 50 ≈ 3) 
+
+𝐶 3 = ( 𝑧 > 𝑢 #b10 ∨ 𝑓 (𝑔 (𝑔 (𝑥 ))) ≈ 16) 
+
+𝐶 4 = ( 𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16) ∨ 𝑦 37 ≈ 27)
+
+Here, 𝑥 ∈ R, 𝑦 from F7, and 𝑧 from 𝒮 2 
+
+> 𝐵𝑉
+
+are uninterpreted constants. Furthermore, 𝑓 : R → R and 
+
+𝑔 : R → R are uninterpreted functions. In our search, we obtain the following search states by applying the rules of the calculus: 
+
+1. ⟨JK , 𝒞 𝛼 ⟩↓ Propagate with just (𝑔 (𝑥 ) ≈ 𝑥 ) = ( 𝑔 (𝑥 ) ≈ 𝑥 )2. ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*K, 𝒞 𝛼 ⟩↓ Propagate with just (𝑥 − 50 ≈ 3) = ( 𝑥 − 50 ≈ 3) 3. ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *K, 𝒞 𝛼 ⟩↓ Propagate with just (𝑥 ↣* 53) = ( 𝑥 − 50 ≈ 3) 4. ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 K, 𝒞 𝛼 ⟩↓ Decide 
+
+5. ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 , 𝑧 ↣1 #b01 K, 𝒞 𝛼 ⟩
+
+We introduce the trail 𝑀 1 = J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 , 𝑧 ↣1 #b01 K.
+
+↓ Propagate with just (𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16) = ( 𝑧 > 𝑢 #b10 ∨ 𝑓 (𝑔 (𝑔 (𝑥 ))) ≈ 16) 6. ⟨J𝑀 1, 𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16 K, 𝒞 𝛼 ⟩↓ Propagate with just (𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16) ↣* false ) = (¬(𝑔 (𝑥 ) ≈ 𝑥 ) ∨ ¬ (𝑥 ≈ 53) ∨ ¬ (𝑓 (𝑔 (𝑔 (𝑥 ))) ≈ 16) ∨ ¬ (𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16))) 7. ⟨J𝑀 1, 𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16 , ¬(𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16)) *K, 𝒞 𝛼 ⟩↓ Propagate with just (𝑦 37 ≈ 27 ↣* true ) = ( 𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16) ∨ 𝑦 37 ≈ 27)8. ⟨J𝑀 1, 𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16 , ¬(𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16)) *, (𝑦 37 ≈ 27)*K, 𝒞 𝛼 ⟩↓ Conflict from 𝒯 𝐹 𝐹 
+
+9. ⟨J𝑀 1, 𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16 , ¬(𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16)) *, (𝑦 37 ≈ 27)*K, 𝒞 𝛼 ⟩ ⊢ (𝑦 37̸ ≈ 27)
+
+↓ Resolve with just (𝑦 37 ≈ 27 ↣* true )10 . ⟨J𝑀 1, 𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16 , ¬(𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16)) *K, 𝒞 𝛼 ⟩ ⊢ (𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16)) 
+
+↓ Resolve with just (𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16) ↣* false )11 . ⟨J𝑀 1, 𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16 K, 𝒞 𝛼 ⟩ ⊢ (¬(𝑔 (𝑥 ) ≈ 𝑥 ) ∨ ¬ (𝑥 ≈ 53) ∨ ¬ (𝑓 (𝑔 (𝑔 (𝑥 ))) ≈ 16)) 
+
+↓ Resolve with just (𝑓 (𝑔 (𝑔 (𝑥 ))) ↣* 16) 12 . ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 , 𝑧 ↣1 #b01 K, 𝒞 𝛼 ⟩ ⊢ 
+
+(¬(𝑔 (𝑥 ) ≈ 𝑥 ) ∨ ¬ (𝑥 ≈ 53) ∨ 𝑧 > 𝑢 #b10 )
+
+Let 𝒞 ′ 
+
+> 𝛼
+
+= 𝒞 𝛼 ∪ { (¬(𝑔 (𝑥 ) ≈ 𝑥 ) ∨ ¬ (𝑥 ≈ 53) ∨ 𝑧 > 𝑢 #b10 )}.
+
+↓ Backjump 
+
+13 . ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 , (𝑧 > 𝑢 #b10 )*K, 𝒞 ′
+
+> 𝛼
+
+⟩↓ Propagate with just (𝑧 ↣* #b11 ) = ( ¬(𝑧 > 𝑢 #b10 ) ∨ 𝑧 ≈ #b11 )14 . ⟨J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 , (𝑧 > 𝑢 #b10 )*, 𝑧 ↣* #b11 K, 𝒞 ′
+
+> 𝛼
+
+⟩
+
+Let 𝑁 0 = J(𝑔 (𝑥 ) ≈ 𝑥 )*, (𝑥 − 50 ≈ 3) *, 𝑥 ↣* 53 , (𝑧 > 𝑢 #b10 )*, 𝑧 ↣* #b11 K.
+
+↓ Propagate with just (𝑔 (53) ↣* 53) = ( ¬(𝑥 ≈ 53) ∨ ¬ (𝑔 (𝑥 ) ≈ 𝑥 ) ∨ 𝑔 (53) ≈ 53) 15 . ⟨J𝑁 0, 𝑔 (53) ↣* 53 K, 𝒞 ′
+
+> 𝛼
+
+⟩↓ Decide 
+
+16 . ⟨J𝑁 0, 𝑔 (53) ↣* 53 , 𝑔 (16) ↣1 0K, 𝒞 ′
+
+> 𝛼
+
+⟩↓ Decide 
+
+17 . ⟨J𝑁 0, 𝑔 (53) ↣* 53 , 𝑔 (16) ↣1 0, 𝑓 (53) ↣2 0K, 𝒞 ′
+
+> 𝛼
+
+⟩↓ Decide 
+
+18 . ⟨J𝑁 0, 𝑔 (53) ↣* 53 , 𝑔 (16) ↣1 0, 𝑓 (53) ↣2 0, 𝑔 (0) ↣3 53 K, 𝒞 ′
+
+> 𝛼
+
+⟩↓ Decide 19 . ⟨J𝑁 0, 𝑔 (53) ↣* 53 , 𝑔 (16) ↣1 0, 𝑓 (53) ↣2 0, 𝑔 (0) ↣3 53 , 𝑦 7 ↣4 07K, 𝒞 ′
+
+> 𝛼
+
+⟩↓ Sat 
+
+20 . ⟨sat , J𝑁 0, 𝑔 (53) ↣* 53 , 𝑔 (16) ↣1 0, 𝑓 (53) ↣2 0, 𝑔 (0) ↣3 53 , 𝑦 7 ↣4 07K⟩
+
+In this example, we can see that the decision 𝑧 ↣1 #b01 applied in line 4 caused the conflict. The conflict was detected in line 8 after three propagations. The propagation in line 6 from the theory of uninterpreted functions uses that 𝑔 (𝑥 ) ≈ 𝑥 ∧ 𝑥 ≈ 53 ∧ 𝑓 (𝑔 (𝑔 (𝑥 ))) ≈ 16 implies 𝑔 (𝑓 (53)) ≈ 𝑔 (16) , which is equivalent to ¬(𝑔 (𝑓 (53)) ̸ ≈ 𝑔 (16)) . The subsequent resolution steps (lines 9 − 12 ) systematically eliminate the assignments that led to the conflict, ultimately learning a new clause that forces a different value for 𝑧 . This learned constraint guides the search towards a valid model, which is successfully constructed through a series of decisions in the final steps (lines 16 − 19 ). 
+
+Additional Example 2 Assume we have the following instance 𝒞 𝛽 = {𝐶 1, 𝐶 2, 𝐶 3}:
+
+𝐶 1 = ( 𝑧 53 − 𝑧 253 ≈ 51 53 )
+
+𝐶 2 = ( nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )
+
+𝐶 3 = ( ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 ))) 
+
+Here, 𝑧 from F53 and 𝑥, 𝑦 from 𝒮 8 
+
+> 𝐵𝑉
+
+are uninterpreted constants. Furthermore, 𝑓 : 𝒮 8 
+
+> 𝐵𝑉
+
+→ Z is an uninterpreted function of arity 1. By applying the transition rules of our calculus, we obtain the following trace of search states: 
+
+1. ⟨JK , 𝒞 𝛽 ⟩↓ Propagate with just (𝑧 53 − 𝑧 253 ≈ 51 53 ) = ( 𝑧 53 − 𝑧 253 ≈ 51 53 )2. ⟨J(𝑧 53 − 𝑧 253 ≈ 51 53 )*K, 𝒞 𝛽 ⟩↓ Propagate with just (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 ) = ( nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )3. ⟨J(𝑧 53 − 𝑧 253 ≈ 51 53 )*, (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )*K, 𝒞 𝛽 ⟩↓ Propagate with just (𝑓 (𝑥 ) ≈ 𝑓 (𝑦 )) = ( ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 ))) 4. ⟨J(𝑧 53 − 𝑧 253 ≈ 51 53 )*, (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )*, ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 )) *K, 𝒞 𝛽 ⟩↓ Decide 
+
+5. ⟨J(𝑧 53 − 𝑧 253 ≈ 51 53 )*, (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )*, ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 )) *, 𝑧 53 ↣1 253 K, 𝒞 𝛽 ⟩
+
+Let 𝑀 1 = J(𝑧 53 − 𝑧 253 ≈ 51 53 )*, (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )*, ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 )) *, 𝑧 53 ↣1 253 K.
+
+↓ Decide 
+
+6. ⟨J𝑀 1, 𝑥 ↣2 #b01100010 K, 𝒞 𝛽 ⟩↓ Propagate with just (𝑦 ) = ( nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )7. ⟨J𝑀 1, 𝑥 ↣2 #b01100010 , 𝑦 ↣* #b01100010 K, 𝒞 𝛽 ⟩↓ Conflict from 𝒯 𝑈 𝐹 
+
+8. ⟨J𝑀 1, 𝑥 ↣2 #b01100010 , 𝑦 ↣* #b01100010 K, 𝒞 𝛽 ⟩ ⊢ (¬(𝑥 ≈ 𝑦 )) 
+
+↓ Resolve with just (𝑦 ) = ( nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )9. ⟨J𝑀 1, 𝑥 ↣2 #b01100010 K, 𝒞 𝛽 ⟩ ⊢ (¬(𝑥 ≈ nat2bv (bv2nat (𝑥 )))) 
+
+Let 𝒞 ′ 
+
+> 𝛽
+
+= 𝒞 𝛽 ∪ { (¬(𝑥 ≈ nat2bv (bv2nat (𝑥 )))) }.
+
+↓ Backjump 
+
+10 . ⟨J𝑀 1, ¬(𝑥 ≈ nat2bv (bv2nat (𝑥 ))) *K, 𝒞 ′ 
+
+> 𝛽
+
+⟩↓ Conflict from 𝒯 𝐵𝑉 
+
+11 . ⟨J𝑀 1, ¬(𝑥 ≈ nat2bv (bv2nat (𝑥 ))) *K, 𝒞 ′ 
+
+> 𝛽
+
+⟩ ⊢ (𝑥 ≈ nat2bv (bv2nat (𝑥 ))) 
+
+↓ Resolve with just (𝑥 ≈ nat2bv (bv2nat (𝑥 ))) = ( 𝑥 ≈ nat2bv (bv2nat (𝑥 ))) 12 . ⟨J(𝑧 53 − 𝑧 253 ≈ 51 53 )*, (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )*, ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 )) *, 𝑧 53 ↣1 253 K, 𝒞 ′ 
+
+> 𝛽
+
+⟩ ⊢ (⊥)
+
+↓ Drop 
+
+13 . ⟨J(𝑧 53 − 𝑧 253 ≈ 51 53 )*, (nat2bv (bv2nat (𝑥 )) ≈ 𝑦 )*, ¬(𝑓 (𝑥 ) ≈ 𝑓 (𝑦 )) *K, 𝒞 ′ 
+
+> 𝛽
+
+⟩ ⊢ (⊥)
+
+↓ Unsat 
+
+14 . unsat The instance 𝒞 𝛽 is unsat because of the clauses 𝐶 2 = ( nat2bv (bv2nat (𝑥 )) ≈ 𝑦 ) and 𝐶 3 = ( ¬(𝑓 (𝑥 ) ≈
+
+𝑓 (𝑦 ))) . The core contradiction arises because 𝐶 2 equates 𝑦 to a function of 𝑥 that is semantically equiv-alent to 𝑥 itself, effectively forcing 𝑥 = 𝑦 . This directly contradicts 𝐶 3, which requires 𝑓 (𝑥 )̸ = 𝑓 (𝑦 )
+
+and therefore 𝑥 ̸ = 𝑦 . 𝐶 2 forces 𝑥 = 𝑦 to hold, and 𝐶 3 implies 𝑥 ̸ = 𝑦 , which leads to the unsatisfi-ability. In line 9, the Backjump rule is applied to learn (¬(𝑥 ≈ nat2bv (bv2nat (𝑥 )))) and propagate 
+
+(𝑥 ≈ nat2bv (bv2nat (𝑥 ))) ↣* false with the justification just (𝑥 ≈ nat2bv (bv2nat (𝑥 ))) = ( ¬(𝑥 ≈
+
+nat2bv (bv2nat (𝑥 )))) . The learned clause (¬(𝑥 ≈ nat2bv (bv2nat (𝑥 )))) captures the fundamental in-consistency that the term nat2bv (bv2nat (𝑥 )) cannot be equal to 𝑥 under the constraints imposed by the other clauses. This propagated literal immediately leads to the conflict in line 10 because there is no 
+
+feasible value for 𝑥 .
+
+Additional Example 3 Let 𝒞 𝛾 be the following instance: 
+
+𝐶 1 = (2 𝑥 ≤ 37) 
+
+𝐶 2 = ( bv2nat (𝑦 ) < 𝑥 − 3) 
+
+𝐶 3 = ( nat2bv (𝑥 ) ≈ or (𝑦, #b0011 ) ∨ 20 − 𝑥 < 2) 
+
+Here, 𝑥 ∈ Z and 𝑦 from 𝒮 4 
+
+> 𝐵𝑉
+
+are uninterpreted constants. By applying the rules of our calculus, we obtain the following trace of search states: 
+
+1. ⟨JK , 𝒞 𝛾 ⟩↓ Propagate with just (2 𝑥 ≤ 37) = (2 𝑥 ≤ 37) 2. ⟨J(2 𝑥 ≤ 37) *K, 𝒞 𝛾 ⟩↓ Propagate with just (bv2nat (𝑦 ) < 𝑥 − 3) = ( bv2nat (𝑦 ) < 𝑥 − 3) 3. ⟨J(2 𝑥 ≤ 37) *, (bv2nat (𝑦 ) < 𝑥 − 3) *K, 𝒞 𝛾 ⟩↓ Decide 
+
+4. ⟨J(2 𝑥 ≤ 37) *, (bv2nat (𝑦 ) < 𝑥 − 3) *, (20 − 𝑥 < 2) 1K, 𝒞 𝛾 ⟩↓ Conflict 
+
+5. ⟨J(2 𝑥 ≤ 37) *, (bv2nat (𝑦 ) < 𝑥 − 3) *, (20 − 𝑥 < 2) 1K, 𝒞 𝛾 ⟩ ⊢ 
+
+(¬(2 𝑥 ≤ 37) ∨ ¬ (20 − 𝑥 < 2)) 
+
+Let 𝒞 ′ 
+
+> 𝛾
+
+= 𝒞 𝛾 ∪ { (¬(2 𝑥 ≤ 37) ∨ ¬ (20 − 𝑥 < 2)) }.
+
+↓ Backjump 
+
+6. ⟨J(2 𝑥 ≤ 37) *, (bv2nat (𝑦 ) < 𝑥 − 3) *, ¬(20 − 𝑥 < 2) *K, 𝒞 ′ 
+
+> 𝛾
+
+⟩
+
+Let 𝑀 = J(2 𝑥 ≤ 37) *, (bv2nat (𝑦 ) < 𝑥 − 3) *, ¬(20 − 𝑥 < 2) *K.
+
+↓ Propagate with just (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) = (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 ) ∨ 20 − 𝑥 < 2) 7. ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *K, 𝒞 ′ 
+
+> 𝛾
+
+⟩↓ Decide 
+
+8. ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *, 𝑥 ↣1 −1K, 𝒞 ′ 
+
+> 𝛾
+
+⟩↓ Conflict 
+
+9. ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *, 𝑥 ↣1 −1K, 𝒞 ′ 
+
+> 𝛾
+
+⟩ ⊢ (0 < 𝑥 − 3) 
+
+Let 𝒞 ′′  
+
+> 𝛾
+
+= 𝒞 ′ 
+
+> 𝛾
+
+∪ { (0 < 𝑥 − 3) }.
+
+↓ Backjump 
+
+10 . ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *, (0 < 𝑥 − 3) *K, 𝒞 ′′  
+
+> 𝛾
+
+⟩↓ Decide 
+
+11 . ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *, (0 < 𝑥 − 3) *, 𝑥 ↣1 7K, 𝒞 ′′  
+
+> 𝛾
+
+⟩↓ Conflict 
+
+12 . ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *, (0 < 𝑥 − 3) *, 𝑥 ↣1 7K, 𝒞 ′′  
+
+> 𝛾
+
+⟩ ⊢ 
+
+(¬(2 𝑥 ≤ 37) ∨ ¬ (bv2nat (𝑦 ) < 𝑥 − 3) ∨ ¬ (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 ))) 
+
+↓ Drop 
+
+13 . ⟨J𝑀, (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 )) *, (0 < 𝑥 − 3) *K, 𝒞 ′′  
+
+> 𝛾
+
+⟩ ⊢ 
+
+(¬(2 𝑥 ≤ 37) ∨ ¬ (bv2nat (𝑦 ) < 𝑥 − 3) ∨ ¬ (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 ))) ↓ Unsat 
+
+14 . unsat 
+
+We have shown that the instance 𝒞 𝛾 is unsat . In this example, the final conflict in line 11 was only detected after a different conflict was managed. The final conflict could have been detected in line 7 already. For the conflict detected in line 8, we use the conflict clause (0 < 𝑥 −3) , which is generated by an oracle that uses the fact bv2nat (𝑦 ) ≥ 0. The clause (0 < 𝑥 −3) learned from the first conflict effectively prunes the search space by restricting 𝑥 to values greater than 3. Here the solver explores multiple possible assignments for 
+
+𝑥 until the final conflict is derived. The final conflict demonstrates that even when 𝑥 is assigned a value like 7, which satisfies all individual theory constraints, the specific combination of constraints from 𝐶 1,
+
+𝐶 2, and 𝐶 3 is inherently unsatisfiable. The Drop rule can be applied in line 12 because all literals of the conflict clause (¬(2 𝑥 ≤ 37) ∨ ¬ (bv2nat (𝑦 ) < 𝑥 − 3) ∨ ¬ (nat2bv (𝑥 ) ≈ or (𝑦, #b0011 ))) evaluate to 
+
+false under the current trail. This is due to the fact that their negations 2𝑥 ≤ 37 , bv2nat (𝑦 ) < 𝑥 − 3
+
+and nat2bv (𝑥 ) ≈ or (𝑦, #b0011 ) are on the current trail and evaluate to true .

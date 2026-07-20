@@ -1,6 +1,12 @@
 {
-  "generated_at": "2026-03-06T19:11:18.471356+00:00",
-  "updated_date": "20260306",
+  "generated_at": "2026-07-20T12:31:04.191262+00:00",
+  "updated_date": "20260621-20260720",
   "carryover_days": 9,
-  "items": []
+  "tag_states": {
+    "sat-bva-cnf": {
+      "updated_date": "20260621-20260720",
+      "carryover_days": 9,
+      "items": []
+    }
+  }
 }

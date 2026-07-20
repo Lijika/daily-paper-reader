@@ -1,0 +1,471 @@
+Title: Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing
+
+URL Source: https://arxiv.org/pdf/2607.11492v1
+
+Published Time: Tue, 14 Jul 2026 02:27:31 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 
+
+Jean Marie Lagniez [0000 −0002 −6557 −4115] and Emmanuel Lonca [0000 −0002 −9502 −2821] 
+
+CRIL, U. Artois & CNRS, F-62300 Lens, France 
+
+{lagniez,lonca}@cril.fr 
+
+Abstract. In this paper, we investigate preprocessing techniques aimed at im-proving the efficiency of accessing models of propositional formulas represented in conjunctive normal form (CNF). We focus on three fundamental tasks: uni-form sampling, direct model access, and model enumeration. Our analysis re-veals that most state-of-the-art preprocessors, when they do not preserve formula equivalence, are generally unsuitable for these tasks. In contrast, we demonstrate that preprocessors which preserve model counts can be effectively leveraged, pro-vided relevant preprocessing information is maintained. To validate our approach, we perform extensive experiments on a diverse suite of benchmarks from multiple domains. The experimental results show that our preprocessing methods are both efficient and robust, yielding significant performance improvements for model access queries when CNF formulas are compiled into d-DNNF representations. 
+
+Keywords: Preprocessing techniques · Uniform sampling· Direct access· Model enumeration· Decision-DNNF 
+
+# 1 Introduction 
+
+Propositional logic forms the backbone of a wide array of fields, including databases [1], automated planning [11], and explainable artificial intelligence [9], among others. When problems from these domains are encoded as propositional formulas, efficiently query-ing these formulas becomes essential for extracting meaningful insights and solving practical tasks. Crucial queries in this context include model counting , direct access ,
+
+uniform sampling , and model enumeration . However, the computational complexity of these queries, often #P-complete, poses significant challenges, making the choice of suitable formula representations highly influential to overall performance. In this work, we focus specifically on formulas expressed in conjunctive normal form (CNF), the pre-dominant representation in many practical settings due to its compatibility with modern SAT solvers and widespread use in real-world applications. To overcome the inherent computational difficulties associated with these queries on CNF formulas, preprocessing has emerged as a vital strategy. Preprocessing in-volves transforming a CNF formula into an equivalent (or, under certain relaxations, satisfiability-equivalent) CNF representation that is better suited for efficient query eval-uation. Such transformations are valuable if they facilitate downstream tasks, even after accounting for the preprocessing cost itself. Indeed, preprocessing has proven effective arXiv:2607.11492v1 [cs.AI] 13 Jul 2026 2 Lagniez and Lonca 
+
+across a variety of reasoning tasks, such as SAT solving [3], model counting [22,29], and almost-uniform sampling [28], often yielding significant runtime improvements. This paper provides a comprehensive analysis of elementary preprocessing tech-niques, with a particular focus on their impact and suitability for direct access, uni-form sampling, and model enumeration tasks. The techniques considered include viv-ification , occurrence reduction , backbone identification , variable elimination , blocked clause elimination , and the removal of implicitly and explicitly defined variables [22,19]. Notably, the first three techniques preserve full logical equivalence, making them broadly applicable regardless of the specific query. In contrast, variable elimination and blocked clause elimination only preserve satisfiability, limiting their utility for our target queries. Finally, under certain conditions, eliminating implicitly or explicitly defined variables (while preserving the model count) can enable more efficient solutions for direct access, uniform sampling, and model enumeration. To empirically evaluate the practical benefits of preprocessing techniques, we adopt a pipeline centered on compiling propositional formulas into d-DNNF. Specifically, we first apply preprocessing to the CNF formula, then compile the resulting CNF into a d-DNNF representation, upon which queries are subsequently answered. This workflow reflects the common strategy for tackling the considered queries, as many inference and enumeration tasks can be performed efficiently on d-DNNF representations. Our ex-periments leverage a diverse suite of benchmarks, utilizing the state-of-the-art d-DNNF compiler d4 [21] in conjunction with preprocessing capabilities from B+E [23]. We systematically assess the impact of different preprocessing strategies, ranging from no preprocessing to advanced techniques that remove explicitly defined variables, on over-all query runtime and efficiency. Through this study, we aim to provide practitioners with clearer insight into the trade-offs between preprocessing overhead and query per-formance, and to illustrate how effective preprocessing can substantially enhance the practical utility of logical reasoning tools for challenging inference and enumeration tasks. The remainder of this paper is organized as follows. Section 2 presents the nec-essary formal preliminaries. Section 3 introduces and analyzes the considered prepro-cessing techniques, focusing on their applicability to direct access, uniform sampling, and model enumeration. Section 4 reports our experimental results and evaluates the effectiveness of these techniques. Finally, Section 5 concludes the paper and outlines promising directions for future work. 
+
+# 2 Formal Preliminaries 
+
+We consider a propositional language P ROP P S in the standard manner, derived from a finite set P S of propositional symbols and the standard logical connectives ( ∧, ∨, ←,
+
+↔, ¬). P ROP P S is interpreted classically. For any formula Σ in P ROP P S , Var (Σ)
+
+denotes the set of propositional variables present in Σ. Given a finite set of variables 
+
+X, {0, 1}X represents the set of all possible Boolean assignments to the variables in X.Each propositional formula Σ in P ROP P S defines a Boolean function over V ar (Σ),mapping Σ from {0, 1}|V ar (Σ)| to {0, 1}. Assignments to V ar (Σ) that evaluate to 1 under Σ are termed satisfying assignments or models of Σ. M od (Σ) represents the set Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 3
+
+of all models of Σ. Two formulas Σ1 and Σ2 are considered equivalent if their sets of models are identical, that is, if M od (Σ1) = M od (Σ2). This equivalence is denoted as Σ1 ≡ Σ2. Σ1 implies Σ2, denoted as Σ1 |= Σ2, if M od (Σ1) = M od (Σ2). ⊥
+
+represents the formula which is always falsified and ⊤ the formula which is always satisfied. A literal is defined as either a Boolean variable or its negation. For any literal ℓ,
+
+Var (ℓ) represents the variable x of ℓ (Var (x) = x and Var (¬x) = x), and ∼ℓ denotes the complementary literal of ℓ. In other words, for every variable x, ∼x = ¬x and 
+
+∼¬ x = x. The conditioning of a formula Σ by a literal ℓ = x (resp. ℓ = ¬x) results in the formula Σ[ℓ], where each occurrence of x (resp. ¬x) in Σ is replaced by ⊤, and each occurrence of ¬x (resp. x) is replaced by ⊥. After such replacement, simplification is carried out using the semantics of the logical connectors (e.g., ⊤ ∨ Γ = ⊤, ⊤ ∧ Γ = Γ ,etc.) until a fixed point is reached. This notion can be extended to set of literals S =
+
+{ℓ1, . . . , ℓ m} in the following way Σ[S] = (( Σ[ℓ1]) . . . )[ ℓm]. Each assignment μ is conceptualized as a (conjunctively interpreted) set of literals. We differentiate between total assignments and partial assignments based on whether all variables are assigned truth values or not, respectively. A CNF formula Σ is a conjunction of clauses, where a clause is a disjunction of literals. Every CNF is viewed as a set of clauses, and every clause is viewed as a set of literals. 
+
+Example 1. Let Ψ = {a ∨ b, ¬a ∨ ¬ b, c ∨ d ∨ a, c ∨ d ∨ b} a CNF formula and Var (Ψ ) = 
+
+{a, b, c, d }.
+
+2.1 Knowledge Compilation and d-DNNF representation 
+
+A d-DNNF formula, which stands for Deterministic Decomposable Negation Normal Form, is a Boolean circuit with a single output, serving as its root. It can be conceptual-ized as a rooted Directed Acyclic Graph (DAG), denoted as ⟨V, E ⟩, where each input is either a literal or a Boolean constant ( ⊥ or ⊤), and each internal gate is either a decom-posable ∧ gate or a deterministic ∨ gate. In a decomposable gate N = ∧(N1, . . . , N k),no common variable is shared between the sub-circuits rooted at Ni and Nj for all 
+
+i̸ = j. In a deterministic gate N = ∨(N1, . . . , N k), the sub-circuits rooted at Ni and 
+
+Nj are jointly inconsistent for all i̸ = j. The size of a d-DNNF Σ = ⟨V, E ⟩, denoted by |Σ| is its number of edges |E|. d-DNNF is universal, as it can accommodate every propositional theory [7]. Knowledge compilers such as C2D [8], Dsharp [24], d4 [21], and SharpSAT-TD [16] are not able to produce d-DNNF but they are able of producing a sub-class of d-DNNF which is decision-DNNF (decision Decomposable Negation Normal Form) representations. decision-DNNF is defined similarly, but with decision gates of the form 
+
+N = ite (x, N 1, N 2) replacing deterministic ∨ gates. Here, x is the decision variable at gate N , absent in the sub-circuits N1 or N2, and ite is a ternary connective denot-ing “ if . . . then . . . else . . . ”. decision-DNNF representations, also termed decom-posable decision graphs [10], can be converted into specific d-DNNF representations in linear time. By replacing a decision node of the form N = ite (x, N 1, N 2) in a decision-DNNF representation with N = ( ¬x ∧ N1) ∨ (x ∧ N2), the resulting d-DNNF 4 Lagniez and Lonca 
+
+representation maintains decomposable ∧ nodes (as x appears neither in N1 nor in N2)and a deterministic ∨ node (since (¬x ∧ N1) ∧ (x ∧ N2) is inconsistent). For sim-plicity of exposition, we will use the term d-DNNF throughout the remainder of this paper, although our experiments are carried out using decision-DNNF representations. Importantly, all our results apply equally to both d-DNNF and decision-DNNF formats. 
+
+Example 2 (Example 1 cont’ed). Consider the CNF formula Ψ given in Example 1, the d-DNNF Σ = (( ¬a ∧ b) ∨ (a ∧ ¬ b)) ∧ (c ∨ (¬c ∧ d)) is equivalent to Ψ .d-DNNF serves as a compelling language of representation due to its ability to efficiently handle various queries and transformations, such as satisfiability and con-ditioning in polynomial time. Notably, queries involving direct access [5,4], uniform sampling [26] and model enumeration [7], which we will discuss in the next section, can be answered efficiently when the formula is represented as a d-DNNF. Although our experimental methodology is based on compiling CNF formulas into d-DNNF, the applicability of our findings regarding suitable preprocessing techniques extends be-yond this specific approach. Indeed, these results hold for any query-strategy, as pre-processing can be applied prior to query evaluation, and the answers obtained for the simplified formula can subsequently be mapped back to the original CNF in polynomial time. This generality underscores the practical value of our recommended preprocess-ing techniques, regardless of the downstream reasoning or enumeration strategy. 
+
+2.2 Model Enumeration, Direct Access and Uniform Sampling Queries 
+
+The enumeration problem involves listing the set of models of a propositional formula without redundancies, commonly referred to as the disjoint AllSAT problem. Models can be enumerated in two forms: complete or partial . A complete model assigns a value to every propositional variable in the formula. However, due to the often vast number of complete models associated with a formula, compact representations are desirable in certain applications. A partial model provides such a compact representation by allow-ing some variables to remain unassigned. For a partial model to be valid, it must ensure that assigning any truth value to the unassigned variables does not alter the satisfiability of the model. Consequently, a partial model with m assigned variables represents 2n−m
+
+complete models, where n is the total number of variables. As we will demonstrate in the next section, the preprocessing techniques applicable to these two enumeration tasks behave differently and require distinct considerations. 
+
+Example 3 (Example 1 cont’ed). For the CNF formula Φ provided in Example 1, the complete models of M od (Ψ ) are: {a, ¬b, c, d }, {¬ a, b, c, d }, {a, ¬b, c, ¬d} {¬ a, b, c, ¬d},
+
+{a, ¬b, ¬c, d }, {¬ a, b, ¬c, d }.A possible compact representation of Φ can be expressed using the following partial models: {a, ¬b, c }, {¬ a, b, c }, {a, ¬b, ¬c, d }, {¬ a, b, ¬c, d }.The direct access task, first introduced in the database context by [2], consists of, given an input k and an order ≺lex over the assignments, returning the k-th model of a propositional formula Φ with respect to ≺lex if k ≤ | M od (Φ)| and failing otherwise. In the case of propositional logic, ≺lex involves fixing an order τ on the Boolean variables Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 5
+
+and then considering each assignment as a word constructed from {0, 1}|V ar (Φ)|. We will denote ≺τlex when ≺lex depends on the order τ . We will use the notation <τ to specify that a variable x precedes a variable y according to τ , i.e., x < τ y.
+
+Example 4 (Example 1 cont’ed). Given the CNF formula Φ in Example 1, if τ =(a, b, c, d ), then the first model of Φ is {¬ a, b, ¬c, d } (corresponding to the word (0101) )and the third model is {¬ a, b, c, d } (corresponding to the word (0111) ). If instead we use the variable ordering τ = ( d, c, b, a ), the first model becomes {a, ¬b, c, ¬d} (bit-string (0101) ), and the last model is {¬ a, b, c, d } (bitstring (1110) ). The direct access query can serve as a building block for many other important tasks, such as counting, enumerating, and sampling without repetition [26]. However, answer-ing this query is generally hard (#P-difficult) for propositional logic. Nevertheless, since d-DNNF supports both conditioning and model counting in polynomial time, this query can be answered in polynomial time. Specifically, if |M od (Φ)| ≤ k, an error is returned. Otherwise, starting with an empty term σ and an interval I = [0 , |M od (Φ)|], the algo-rithm iteratively picks the next variable x in order. If I.min + |M od (Φ[σ][ ¬x]) | ≥ k,then σ = σ ∪ {¬ x} and I is updated to [I.min, I.min + |M od (Φ[σ][ ¬x]) |]. Otherwise, 
+
+σ = σ ∪ { x} and I is updated to [I.min + |M od (Φ[σ][ ¬x]) | + 1 , I.max ], where I.min 
+
+is the lower endpoint and I.max is the upper endpoint. 
+
+Example 5 (Example 4 cont’ed). Let us consider the previous example when we seek the third model. The algorithm starts with σ = ∅ and I = [0 , 6] . As we can see, 
+
+|M od (Φ[¬a]) | = 3 , which means ¬a is added to σ and I is updated to [0 , 3] . Next, 
+
+b is considered, and |M od (Φ[{¬ a, ¬b}]) | is computed to be 0. Since 0 + 0 < 3, b
+
+is added to σ and I remains [0 , 3] . Then, c is selected and |M od (Φ[{¬ a, b, ¬c}]) | is computed to be 1. As 0 + 1 < 3, c is added to σ and I becomes [1 , 3] . Finally, d is picked, and since |M od (Φ[{¬ a, b, c, ¬d}]) | = 1 and 1 + 1 < 3, σ is ultimately equal to 
+
+{¬ a, b, c, d }, which is the expected result of I.The concept of uniform sampling involves generating samples RΦ from the set of models of Φ using a generator G that ensures ∀μ ∈ R Φ, P r [G(Φ) = μ] = 1 /|M od (Φ)|.A technique for uniform sampling involves these steps: first, count the total number of models, c. Then, generate k integers uniformly within the range {1, . . . , c } and use direct access to identify the corresponding models. 
+
+Example 6 (Example 1 cont’ed). Given the CNF formula Φ in Example 1, we first com-pute its total number of models, which is 6, before selecting 2 random models. Next, we randomly choose a set of two integers from the set {1, . . . , 6}; for example, {1, 4}.Finally, if the order considered for the direct access query is the lexicographical order of the variables in Φ, then the set of models {{¬ a, b, ¬c, d }, {a, ¬b, ¬c, d }} is returned. In [14], the authors observed a deep relationship between model counting and uni-form sampling. They showed that given access to an exact model counter, it is possible to design a uniform generator that requires only polynomially many queries to the exact model counter. Specifically, since d-DNNF supports model counting queries in polyno-mial time, it is evident that this language is well-suited for sampling a set of models. 6 Lagniez and Lonca 
+
+In [26], the authors propose an approach that tags the d-DNNF circuit to efficiently com-pute uniform sampling. This approach leverages recent advances in knowledge compi-lation, which can be harnessed to design a scalable uniform sampler. It is important to note that the approach proposed in [26] does not impose any order on the models, meaning that the uniform sampling generated cannot be controlled by a seed. More specifically, the set of models produced depends on the d-DNNF formula generated by the compiler, and in general, compilers do not allow for control over the compilation process. In the following, we will show that the selection of preprocessing techniques may vary depending on whether or not we require the ability to control the set of models through a seed. 
+
+# 3 Preprocessing for Direct Access, Uniform Sampling, and Model Enumeration 
+
+Preprocessing a propositional formula transforms it while preserving properties like satisfiability and model count. This process is beneficial because the problem at hand (e.g., satisfiability) can often be solved more efficiently after the input formula has been preprocessed, accounting for the preprocessing time in the overall solving time. Various preprocessing techniques are now recognized as valuable for SAT solving, QBF solving, and model counting [21,19,28,12,3]. These techniques can be categorized based on the type of equivalence they maintain with the input formula: satisfiability, model counting, or logical equivalence. First, let us examine the preprocessing techniques that produce a formula equivalent to the input formula, such as vivification, backbone detection, and occurrence elimina-tion [25,20]. The backbone of a CNF formula Φ is the set of all literals implied by Φ
+
+when Φ is satisfiable; if Φ is unsatisfiable, the backbone is the empty set. The purpose of backbone identification is to explicitly identify the backbone of the input CNF formula 
+
+Φ and conjoin it to Φ. Vivification [25] is a preprocessing technique aimed at reducing a given CNF formula Φ by removing some clauses and literals while preserving equiv-alence. Given a clause α = ℓ1 ∨ . . . ∨ ℓk in Φ, two rules are used to determine whether 
+
+α can be removed from Φ or simply shortened. On one hand, if for any j ∈ { 1, . . . , k },a Boolean Constraint Propagator (BCP) [31] can prove that Φ \ { α} | = ℓ1 ∨ . . . ∨ ℓj ,then α is entailed by Φ \ { α} and can be removed from Φ. On the other hand, if BCP can prove that Φ \ { α} | = ℓ1 ∨ . . . ∨ ℓj ∨ ∼ ℓj+1 , then ℓj+1 can be removed from α
+
+without affecting equivalence. Occurrence elimination considers only the second rule, focusing on the elimination of literals instead of clauses. 
+
+Example 7 (Example 1 cont’ed). Let us consider again the CNF formula Φ given in Example 1. When we observe the models, we see that the variables can take all possible values, indicating that the backbone of Φ is empty. Upon employing occurrence elim-ination, the third clause can be simplified to c ∨ d, as Φ \ { c ∨ d ∨ a} | = c ∨ d ∨ ¬ a,provable via BCP. Φ is now equal to {a ∨ b, ¬a ∨ ¬ b, c ∨ d, c ∨ d ∨ b}. Now, we can see that the fourth clause can be removed using the vivification rule since Φ \ { c ∨ d ∨ b}
+
+can infer c ∨ d by BCP. Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 7
+
+Preprocessing techniques that ensure equivalence can be applied to a variety of queries, such as direct access, uniform sampling, and both complete and partial model enumeration. However, not all techniques share this versatility. Prominent SAT-solving preprocessing methods [20,18] are unsuitable for model counting as they may alter the number of models in equisatisfiable formulas. Now, let us explore the effects of prepro-cessing techniques solely maintaining satisfiability, like blocked clause elimination and variable elimination [13,30], on the queries under consideration. The resolution rule asserts that, given two clauses α1 = {ℓ, a 1, . . . , a n} and α2 =
+
+{∼ ℓ, b 1, . . . , b m}, the resulting clause α = {a1, . . . , a n, b 1, . . . , b m} is the resolvent of 
+
+α1 and α2 on the literal ℓ. Variable elimination of x in Φ is performed by removing from Φ all clauses containing the variable x (either as a positive or negative literal) and adding into Φ all possible resolvents between the removed clauses. It is equivalent to existentially quantify x in Φ. This rule is applied effectively only when it does not increase the number of clauses in Φ [30]. The simplification technique known as blocked clause elimination [13] targets the removal of specific clauses, termed blocked clauses ,from CNF formulas. A literal ℓ within a clause α is termed a blocking literal if it blocks 
+
+α with respect to Φ. This occurs when, for every clause α′ in Φ containing ∼ℓ, the resulting resolvent on ℓ is a tautology. Essentially, a clause is considered blocked if it contains a literal that can effectively block it. Applying blocked clause elimination to Φ
+
+involves removing every clause containing a blocking literal and repeating the process iteratively until no blocked literals remain. 
+
+Proposition 1. Let Φ be a CNF formula. Variable elimination and blocked clause elim-ination cannot be applied when the objective is to answer direct access, uniform sam-pling and model enumeration queries. Proof. Consider the CNF formula Φ = {a ∨ b} over the variable set X = {a, b }. It is evident that both preprocessing techniques produce the formula Φ′ = ⊤. From Φ′
+
+it is impossible to retrieve the models of Φ. Thus, these preprocessing techniques are unsuitable for the queries considered. These findings echo conclusions drawn from the model counting domain, reveal-ing the inadequacy of these preprocessing methods for addressing such problems. This underscores the interrelationship between model counting, direct access, and uniform sampling queries. To delve deeper into this relationship, let us investigate preprocessing techniques tailored to the model counting task, like eliminating defined variables [18,20]. Defined variables O of Φ are variables whose valuation depends on other variables from 
+
+V ar (Φ) \ O . In propositional logic, definability can manifest in two equivalent forms: implicit and explicit. More precisely, the formula Φ implicitly defines the variable y in terms of X ⊂ V ar (Φ) if and only if for assignment γX over X, we have γX ∧ Φ |= y
+
+or γX ∧ Φ |= ¬y. The formula Φ explicitly defines the variable y in terms of X if and only if there exists a formula ΨX ∈ P ROP X such that Φ |= ( ΨX ↔ y). In such a case, 
+
+ΨX is called a definition (or gate) of y on X in Φ, y is the output variable of the gate, and X are its input variables . In [18], the authors demonstrate that defined variables can be eliminated while keeping the number of models unchanged. 
+
+Example 8 (Example 1 cont’ed). Let Φ the CNF formula given in Example 1. As we can see, a ↔ ¬ b, meaning that Φ defines the variable a in terms of {b}. After eliminating 8 Lagniez and Lonca 
+
+a, the resulting formula is Φ′ = {c∨d∨¬ b, c ∨d∨b} ≡ { c∨d}, defined over the Boolean variables {b, c, d }. The list of models of Φ′ is {{¬ b, c, d }, {b, c, d }, {¬ b, c, ¬d}, {b, c, ¬d},
+
+{¬ b, ¬c, d }, {b, ¬c, d }} . As we can see, the model count of Φ′, which is 6, is the same as that of Φ.While preserving the number of models, as stated in Proposition 2, such preprocess-ing techniques cannot be applied directly when the targeted queries are direct access, uniform sampling and model enumeration. 
+
+Proposition 2. Let Φ be a CNF formula and x a variable such that Φ defines x in terms of V ar (Φ)\{ x}. The formula obtained after eliminating x from Φ cannot be used solely to answer either direct access, uniform sampling or model enumeration queries. Proof. Consider the CNF formula Φ = ( ¬x ∨ y1 ∨ . . . ∨ yk) ∧ (Vki=1 (x ∨ ¬ yi)) , which represents the Boolean function x ↔ y1 ∨ . . . ∨ yk. Clearly, Φ defines x in terms of 
+
+{y1, . . . , y k}. Eliminating the variable x produces the CNF formula Φ′ = ⊤ over the variables {y1, . . . , y k}. Although Φ and Φ′ have the same number of models, the models of Φ cannot be obtained from Φ′ alone. Proposition 2 demonstrates that, in the general case, it is impossible to answer direct access or uniform sampling queries on the preprocessed formula Φ′ to obtain the results for the original formula Φ. However, as demonstrated in Proposition 3, this preprocess-ing can be utilized for uniform sampling and complete model enumeration queries, pro-vided that the values of the eliminated variables can be determined from the variables in Φ′. But first, let us introduce the concept of a compatible evaluation function. 
+
+Definition 1 (Compatible Evaluation Function). Let Φ be a CNF formula, and let 
+
+O ⊆ V ar (Φ) be a set of variables that Φ defines in terms of I = V ar (Φ) \ O . f
+
+is called a compatible evaluation function , if given any o ∈ O and γ ∈ { 0, 1}I , it computes the literal associated with o given γ regarding Φ (which is o if Φ forces o to be true given γ, and ¬o otherwise). 
+
+Proposition 3. Let Φ be a CNF formula, let O ⊆ V ar (Φ) be a set of variables defined by Φ in terms of I = V ar (Φ) \ O , and let f be the associated compatible evaluation function. Let Φ′ be the formula obtained by eliminating the variables in O from Φ. The following results hold: 1. If RΦ′ is a uniform sample of Φ′, then RΦ = {ω ∪ S 
+
+> o∈O
+
+f (o, ω ) | ω ∈ R Φ′ } is a uniform sample of Φ;2. M od (Φ) = {ω ∪ S 
+
+> o∈O
+
+f (o, ω ) | ω ∈ M od (Φ′)}.Proof. Proposition 1 in [19] establishes that |M od (Φ)| = |M od (Φ′)|. The proof relies on showing that if ω ∈ M od (Φ′), then ω ∪ S 
+
+> o∈O
+
+f (o, ω ) ∈ M od (Φ). This implies that f defines a bijection between M od (Φ′) and M od (Φ). Given that f is bijective, the results follow directly: 1. Since RΦ′ is a uniform sample of Φ′, applying f preserves uniformity. Thus, RΦ =
+
+{ω ∪ S 
+
+> o∈O
+
+f (o, ω ) | ω ∈ R Φ′ } is a uniform sample of Φ.Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 9
+
+2. The bijection guarantees that every model of Φ′ is transformed into a unique model of Φ, ensuring M od (Φ) = {ω ∪ S 
+
+> o∈O
+
+f (o, ω ) | ω ∈ M od (Φ′)}.Observe that if f can be computed in polynomial time, it facilitates the polynomial-time construction of both uniform samples and the complete models of Φ from Φ′.This is particularly applicable when the eliminated variables are explicitly defined by Boolean functions, such as equivalence gates, AND-gates, OR-gates, or XOR-gates. Now, let us consider the scenario where the direct access query is the focus. As demonstrated in the following example, merely knowing the function f is insufficient for effectively answering this query. 
+
+Example 9 (Example 1 cont’ed). Let us revisit the CNF formula Φ′ computed in Ex-ample 8, which is derived from the original CNF formula Φ introduced in Example 1. Considering the natural order, the first model of Φ′, {¬ b, ¬c, d }, is augmented using the information from f , resulting in {a, ¬b, ¬c, d } (due to a ↔ ¬ b). However, this differs from the first model of Φ, which is {¬ a, b, ¬c, d }.The problem arises because variable valuation can depend on variables that come later in the order τ specified by ≺τlex for the direct access task. To overcome this, we define a compatible order as follows: 
+
+Definition 2 (Compatible order). Let Φ be a CNF formula, and let O ⊆ V ar (Φ) be a set of variables defined by Φ in terms of I = V ar (Φ) \ O . An order τ over ⟨Φ, I, O⟩ 
+
+is a compatible order if and only if τ is an order over V ar (Φ), (I, O) is a bi-partition over V ar (Φ), and for every o ∈ O , x < τ o for all x ∈ I o, where Φ defines o in terms of Io.
+
+Two strategies can be applied regarding the control the user has regarding the choice of τ . The first strategy involves adjusting the order to comply with the preprocessing step, meaning all eliminated variables must be placed at the end of τ . For example, in the previous case, τ = ( b, c, d, a ) is a compatible order. The second strategy involves constraining the preprocessing method to only eliminate a variable o if Φ defines o
+
+in terms of I, such that for all x ∈ I , x < τ o. For example, in the previous case, 
+
+τ = ( b, a, c, d ) is a compatible order. We can observe that the first strategy allows for the elimination of more variables during the preprocessing step but restricts the operator ≺τlex by partially fixing it. Con-versely, the second strategy may reduce the number of eliminated variables, but it grants the user complete freedom in choosing ≺τlex . Regardless of the chosen strategy, Propo-sition 4 demonstrates that it is possible to leverage preprocessing methods that eliminate defined variables to construct a CNF formula Φ′ from the input CNF formula Φ, while still maintaining the ability to reason about Φ′ to answer the direct access query on Φ.
+
+Proposition 4. Let Φ be a CNF formula, let O ⊆ V ar (Φ) be a set of variables such that 
+
+Φ defines O in terms of I = V ar (Φ) \ O , and f the associated compatible evaluation function. Let Φ′ = ∃O .Φ and τ is a compatible order over ⟨Φ, I, O⟩ . If ω′ is the k-th model of Φ′ with respect to ≺τ ′ 
+
+> lex
+
+(where τ ′ is the projection of τ onto V ar (Φ′)), then 
+
+ω = ω′ ∪ S 
+
+> o∈O
+
+f (Io, o ) will be the k-th model of Φ.10 Lagniez and Lonca 
+
+Proof. First, since the preprocessing technique preserves the number of models, if 
+
+k > |M od (Φ′)|, then k > |M od (Φ)|. Therefore, the answer to the direct access query remains the same whether it is applied to Φ′ or Φ, meaning that it will fail for both formulas as expected. Now let us suppose that k ≤ | M od (Φ′)|.First, let us demonstrate that if ω1, ω 2 ∈ M od (Φ) such that ω1 ≺τlex ω2, then 
+
+ω′ 
+
+> 1
+
+≺τ ′ 
+
+> lex
+
+ω′
+
+> 2
+
+. As Φ′ = ∃O .Φ , we directly deduce that ω′ 
+
+> 1
+
+and ω′ 
+
+> 2
+
+are models of Φ′.Now, let us argue by contradiction. Suppose ω′ 
+
+> 2
+
+≺τ ′ 
+
+> lex
+
+ω′
+
+> 1
+
+. By the definition of ≺τ ′
+
+> lex
+
+, this implies that there exists ¬x ∈ ω′ 
+
+> 2
+
+such that x ∈ ω′
+
+> 1
+
+, and ∀ℓ ∈ ω′ 
+
+> 2
+
+with V ar (ℓ) <τ ′ x,we have ℓ ∈ ω′
+
+> 1
+
+. Since ω′ 
+
+> 1
+
+and ω′ 
+
+> 2
+
+are projections of ω1 and ω2 onto V ar (Φ′), it follows that ¬x ∈ ω2 and x ∈ ω1. Moreover, for all literals ℓ ∈ ω1 with V ar (ℓ) <τ x, we have ℓ ∈ ω2. This is because if V ar (ℓ) ∈ I , then ℓ is trivially in ω2. Otherwise, since 
+
+τ is a compatible order, all variables in O will be fixed with respect to f in both ω1
+
+and ω2. Since ¬x ∈ ω2 and x ∈ ω1, this implies ω2 ≺τlex ω1, contradicting the initial assumption that ω1 ≺τlex ω2.Then, let us demonstrate that if ω′
+
+> 1
+
+, ω ′ 
+
+> 2
+
+∈ M od (Φ′) such that ω′ 
+
+> 1
+
+≺τ ′ 
+
+> lex
+
+ω′
+
+> 2
+
+, then 
+
+ω1 ≺τlex ω2 with ω1 = ω′ 
+
+> 1
+
+∪ S 
+
+> o∈O
+
+f (o, ω ′
+
+> 1
+
+) and ω2 = ω′ 
+
+> 2
+
+∪ S 
+
+> o∈O
+
+f (o, ω ′
+
+> 2
+
+). The proof is straightforward and follows from the fact that τ is a compatible order. To conclude this proof, let us demonstrate that if ω′ is the k-th model of Φ′ with respect to ≺τ ′
+
+> lex
+
+, then ω = ω′ ∪ S 
+
+> o∈O
+
+f (o, ω ′), will be the k-th model of Φ. We will argue by contradiction and assume that ω is not the k-th model of Φ. This means ω
+
+is the j-th model of Φ where j < k or j > k . First, consider the case where j < k .Let Ω′ ⊆ M od (Φ′) be the first k models of Φ′. By construction, all models in Ω′ are disjoint, and by the definition of definability, each corresponds to exactly one model of 
+
+Φ. Since ω′ 
+
+> 1
+
+≺τ ′ 
+
+> lex
+
+ω′ 
+
+> 2
+
+implies ω1 ≺τlex ω2, the k-th model of Φ′ cannot be associated with the j-th model of Φ where j < k , otherwise |Ω′| < k . Now, consider the case where j > k . Let Ω ⊆ M od (Φ) be the first j − 1 models of Φ with respect to τ . Since 
+
+τ is a compatible order, particularly Φ defines O in terms of I, for all ω1, ω 2 ∈ Ω,the projected models ω′ 
+
+> 1
+
+and ω′ 
+
+> 2
+
+of ω1 and ω2 over V ar (Φ′) are such that ω′
+
+> 1
+
+̸ = ω′
+
+> 2
+
+.Since ω1 ≺τlex ω2 implies ω′ 
+
+> 1
+
+≺τ ′ 
+
+> lex
+
+ω′
+
+> 2
+
+, there exist at least k models Ω′′ of Φ′ such that 
+
+ω′′ ≺lex ω′ with ω′′ ∈ Ω′′ . This contradicts the fact that ω′ is the k-th model of Φ′.It is important to note that, by leveraging the previous proposition, it is also possible to design a pseudo-uniform sampler that incorporates a seed as part of its operation. This capability is particularly valuable when determinism is required, as the seed allows the sampling process to be reproducible and consistent across different runs. Such a pseudo-uniform sampler can be employed in scenarios where repeatability is essential, such as debugging, benchmarking, or ensuring fairness in randomized processes. In conclusion, when enumerating partial models, it is important to note that elim-inating defined variables during preprocessing can create an exponential gap between the number of partial models in the original and simplified formulas. This is demon-strated in the following example, where the preprocessing step significantly reduces the formula but at the cost of losing information critical for partial model enumeration. 
+
+Example 10. Consider the CNF formula Φ representing the Boolean function x ↔Lni=1 yi. In this function, the variable x is fully determined by the parity of the vari-ables {y1, . . . , y n}. As such, during the preprocessing phase, x can be safely eliminated, Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 11 Original CNF Formula Preprocessing ( B+E )Knowledge Compilation ( d4 )Query Answering ( decdnnf_rs )Fig. 1: Experimental pipeline for preprocessing, compilation, and query answering. 
+
+resulting in the simplified formula Φ′ = ∃x.Φ = ⊤. A compact representation of Φ′ is 
+
+{⊤} . However, this representation no longer encodes any partial models of the original formula Φ. Moreover, it is well known that the parity function ¬x ⊕ Lni=1 yi does not admit a compact representation. Thus, there is an exponential gap between the number of partial models of Φ and those of Φ′.
+
+# 4 Experimentation 
+
+To systematically evaluate the impact of the preprocessing methods outlined above on the efficiency of answering direct access, uniform sampling, and model enumera-tion queries, we conducted a series of experiments focused on runtime performance and scalability. The knowledge compiler d4 (https://github.com/crillab/d4v2) served as the backbone for the d-DNNF compilation process, while preprocessing strategies were inspired and implemented based on features available in the B+E framework (https://github.com/crillab/b-plus-e) [23]. Our work also introduced new preprocess-ing techniques that emphasize fixed variable orderings, extending the capabilities of existing tools. 
+
+Implementation Pipeline. Our experimental pipeline, presented in Figure 1, comprises the following stages: 
+
+– Preprocessing: The B+E [23] preprocessor is used to apply a suite of simplifica-tions, including variable elimination and redundancy detection. Depending on the experimental setting, B+E is configured to operate in equivalence-preserving or model count-preserving modes, optionally enforcing a fixed variable ordering. 
+
+– Knowledge Compilation: The simplified CNF formula is compiled into a decision-DNNF using the d4 [21] compiler. As previously discussed, our results apply to both decision-DNNF and general d-DNNF representations. 
+
+– Query Answering: For each compiled circuit, we answer direct access, uniform sampling, and model enumeration queries using the decdnnf_rs tool (https://crates. io/crates/decdnnf_rs) [17], building on customized enumeration modules. 
+
+Preprocessing Strategies. We evaluated the following preprocessing configurations in our experiments: 
+
+– no : d4 is run directly on the original formula, without preprocessing. 12 Lagniez and Lonca 500 600 700 800 900 1000 1100 1200 1300 
+
+> Number of instances solved
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> CPU time (in seconds)
+> equiv (1259)
+> no (1251)
+> #equiv-explicit (1306)
+> #equiv-explicit-ordered (1298)
+
+Fig. 2: Cactus plot showing the running time of d4 with various preprocessing methods. Each line represents a different preprocessing method, with the number of instances solved indicated in parentheses in the legend. The plot displays the number of instances completed within a given CPU time limit, measured in seconds. 
+
+– equiv : The formula is preprocessed using vivification, backbone detection, and occurrence elimination. 
+
+– #equiv-explicit : In addition to the equiv preprocessing, explicitly defined variables are eliminated. 
+
+– #equiv-explicit-ordered : Builds on #equiv-explicit but enforces a compatible variable ordering τ ; for our experiments, we select the natural order. These strategies extend and customize the core functionalities of B+E to suit the re-quirements of our workflow. 
+
+Experimental Setup. All experiments were conducted on a cluster with dual quad-core Intel Xeon E5-2637 v4 CPUs (3.50 GHz)., 128GiB RAM, and running CentOS 8 (kernel 4.18.0-301.1.el8.x86_64). Hyperthreading was disabled and no cache sharing between cores was permitted. Each run was constrained to 3,600 seconds of CPU time and 32GiB of memory. Compilation was performed with g++ version 13.2.0. We evalu-ated 1,425 benchmark instances from previous uniform sampling studies[26], available at https://github.com/meelgroup/KUS. All experimental logs and materials needed for reproducibility are provided at https://zenodo.org/records/15837216. 
+
+Results. Figure 2 presents a cactus plot that illustrates the impact of each preprocessing method on the performance of d4 . This plot also shows the number of instances solved for each preprocessing method used. As observed, the preprocessing method that pre-serves equivalence, #equiv , is not particularly effective, as it provides only a marginal improvement in the performance of d4 . Specifically, it enables the solver to handle only 8 additional instances compared to the version without preprocessing. 
+
+#equiv-explicit-ordered substantially enhances the performance of d4 ,enabling it to handle 47 more instances than the compiler without preprocessing. One of the key advantages of this method is that it supports answering direct access queries. Next, let us examine the preprocessing method #equiv-explicit . Notably, this method is able to solve 8 more instances than #equiv-explicit-ordered , demon-strating its enhanced effectiveness. Its flexibility lies in the fact that it does not require Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 13 10 1 10 0 10 1 10 2              
+
+> equiv
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> #equiv-explicit
+> instance
+> (a) Uniform Sampling. 10 110 010 110 210 3
+> equiv
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> #equiv-explicit
+> instance (b) Uniform Sampling with a Seed. 10 110 010 110 210 3
+> equiv
+> 10 1
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> #equiv-explicit
+> instance
+> (c) Enumeration.
+
+Fig. 3: Comparison of CPU time for the tasks under consideration: uniform sampling, uniform sampling with a seed, and model enumeration. The d-DNNF representations analyzed were ob-tained using the preprocessing methods equiv and #equiv-explicit for uniform sampling and enumeration, and equiv and #equiv-explicit-ordered for uniform sampling with a seed. 
+
+constraints on the ordering of variable assignments, making it particularly suitable for tasks such as model enumeration and uniform sampling. Now, let us analyze the impact of preprocessing on the efficiency of answering the targeted queries. For uniform sampling and model enumeration queries, we focus the d-DNNF representations produced after applying the preprocessing methods equiv and 
+
+#equiv-explicit . To assess the direct access query, we consider uniform sampling with a seed, which leverages the direct access query. For each instance and each query, a timeout of 3600 seconds and a memory limit of 32 GiB were imposed. It is important to note that this runtime does not include the compilation time. Figure 3 displays three scatter plots comparing the running times of various d-DNNF representations across the three queries. Each data point corresponds to an in-stance, with the x-axis showing the time (in seconds) required to solve it using the d-DNNF formula obtained after applying the equiv preprocessing, and the y-axis showing the time needed when using the d-DNNF derived from preprocessings that eliminate defined variables. The experimental results clearly demonstrate that queries can be answered more efficiently using d-DNNF representations generated from formu-las preprocessed with the #equiv-explicit based methods. Furthermore, the fig-ures highlight instances where the #equiv-explicit based preprocessings achieve 14 Lagniez and Lonca 
+
+speeds up to an order of magnitude faster than the equiv preprocessing, irrespective of the query type. We evaluate the impact of #equiv-explicit over equiv on uniform sam-pling runtimes (size 10,000). Figure 3a illustrates this analysis, which includes 1,255 instances from the 1,425 assessed in the previous experiment. Instances excluded are 51 that failed to compile with equiv , 4 with #equiv-explicit , and 115 where nei-ther preprocessing method succeeded. As shown in the figure, #equiv-explicit 
+
+generally outperforms equiv except for instances solvable in under 2 seconds. Most points lie above the diagonal, indicating faster uniform sampling queries when using 
+
+#equiv-explicit . Moreover, memory limits were reached in 15 instances with 
+
+equiv , compared to only 1 instance with #equiv-explicit , primarily due to the larger size of the d-DNNF generated under equiv .For model enumeration queries, we consider instances with at least 10 4 models but fewer than 10 9 models, resulting in 367 instances solved by both approaches. Figure 3c highlights the benefits of using #equiv-explicit , which generally provides faster enumeration. However, the performance gains are less pronounced than for uniform sampling queries, as enumeration still requires generating all models, even when the d-DNNF simplifies to ⊤.To conclude, we examine the deterministic uniform sampling query (size 10,000) results in Figure 3b. This analysis considers 1,254 out of the 1,425 instances from the previous experiment. Instances excluded include 44 that failed to compile with equiv ,4 with #equiv-explicit-ordered , and 122 where neither method was success-ful. The d-DNNF produced by #equiv-explicit-ordered improves the man-ageability of uniform sampling with a seed, solving more instances and often one order of magnitude faster. Furthermore, #equiv-explicit-ordered significantly re-duces timeouts, with only 173 compared to 391 for equiv .
+
+# 5 Conclusion and Perspectives 
+
+We have investigated the potential of using preprocessing methods to enhance the ef-ficiency of direct access, uniform sampling, and model enumeration queries. We show that, except for the preprocessing method that maintains equivalence, current state-of-the-art preprocessing techniques are unsuitable for these queries as they lead to incorrect results. However, we demonstrate that preprocessing techniques preserving the number of models can be effectively employed if information about the eliminated variables is retained. Our experimental evaluations clearly show that employing such preprocessing methods in practice is advantageous. As a future direction, we intend to assess the preprocessing methods discussed in this paper on other advanced sampling techniques [27,15,6]. Since these approaches do not necessarily depend on model counting, different types of preprocessing methods might be leveraged. Another area for improvement involves exploring alternative kinds of explicit definitions. In this paper, we concentrated on explicit definitions expressed as equivalences, AND-gates, OR-gates, and XOR-gates, but it may be beneficial to explore other types of definitions, such as NOR and NAND gates. Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing 15 
+
+Acknowledgments. We thank the reviewers for their insightful comments and constructive sug-gestions, which helped improve the quality of this paper. This work has benefited from the support of the AI Chair EXPEKCTATION (ANR-19-CHIA-0005-01) of the French National Research Agency (ANR). 
+
+# References 
+
+1. Abiteboul, S., Hull, R., Vianu, V.: Foundations of Databases. Addison-Wesley (1995) 2. Bagan, G., Durand, A., Grandjean, E., Olive, F.: Computing the jth solution of a first-order query. RAIRO Theor. Informatics Appl. 42 (1), 147–164 (2008) 3. Biere, A., Järvisalo, M., Kiesl, B.: Preprocessing in SAT solving. In: Handbook of Satisfia-bility - Second Edition, vol. 336, pp. 391–435. IOS Press (2021) 4. Bringmann, K., Carmeli, N., Mengel, S.: Tight fine-grained bounds for direct access on join queries. In: Proceedings of PODS’22. pp. 427–436 (2022) 5. Carmeli, N., Tziavelis, N., Gatterbauer, W., Kimelfeld, B., Riedewald, M.: Tractable orders for direct access to ranked answers of conjunctive queries. ACM Trans. Database Syst. 48 (1), 1:1–1:45 (2023) 6. Chakraborty, S., Meel, K.S., Vardi, M.Y.: A scalable and nearly uniform generator of SAT witnesses. In: Proceedings of CAV’13. pp. 608–623 (2013) 7. Darwiche, A.: A compiler for deterministic, decomposable negation normal form. In: Pro-ceedings of AAAI’02. pp. 627–634 (2002) 8. Darwiche, A.: New advances in compiling CNF into decomposable negation normal form. In: Proceedings of ECAI’04. pp. 328–332 (2004) 9. Darwiche, A.: Logic for explainable AI. In: LICS’23. pp. 1–11 (2023) 10. Fargier, H., Marquis, P.: On the use of partially ordered decision graphs in knowledge com-pilation and quantified boolean formulae. In: Proceedings of AAAI’06. pp. 42–47 (2006) 11. Fikes, R., Nilsson, N.J.: STRIPS: A new approach to the application of theorem proving to problem solving. Artif. Intell. pp. 189–208 (1971) 12. Heule, M.J.H., Seidl, M., Biere, A.: Solution validation and extraction for QBF preprocess-ing. J. Autom. Reason. 58 (1), 97–125 (2017) 13. Järvisalo, M., Biere, A., Heule, M.: Blocked clause elimination. In: Proceedings of TACAS’10. vol. 6015, pp. 129–144 (2010) 14. Jerrum, M., Valiant, L.G., Vazirani, V.V.: Random generation of combinatorial structures from a uniform distribution. Theor. Comput. Sci. 43 , 169–188 (1986) 15. Jordan, M.I., Ghahramani, Z., Jaakkola, T.S., Saul, L.K.: An introduction to variational meth-ods for graphical models. Mach. Learn. 37 (2), 183–233 (1999) 16. Kiesel, R., Eiter, T.: Knowledge compilation and more with sharpsat-td. In: Proceedings of KR’23. pp. 406–416 (2023) 17. Lagniez, J., Lonca, E.: Leveraging decision-dnnf compilation for enumerating disjoint partial models. In: KR’24 (2024) 18. Lagniez, J., Lonca, E., Marquis, P.: Improving model counting by leveraging definability. In: Proceedings of IJCAI’16. pp. 751–757 (2016) 19. Lagniez, J., Lonca, E., Marquis, P.: Definability for model counting. Artif. Intell. 281 , 103229 (2020) 20. Lagniez, J., Marquis, P.: Preprocessing for propositional model counting. In: Proceedings of AAAI’14. pp. 2688–2694 (2014) 21. Lagniez, J., Marquis, P.: An improved decision-dnnf compiler. In: Proceedings of IJCAI’17. pp. 667–673 (2017) 16 Lagniez and Lonca 22. Lagniez, J., Marquis, P.: On preprocessing techniques and their impact on propositional model counting. J. Autom. Reason. 58 (4), 413–481 (2017) 23. Lagniez, J., Marquis, P.: Boosting definability bipartition computation using SAT witnesses. In: Proceedings of JELIA’23. pp. 697–711 (2023) 24. Muise, C.J., McIlraith, S.A., Beck, J.C., Hsu, E.I.: Dsharp: Fast d-dnnf compilation with sharpsat. In: Advances in Artificial Intelligence - 25th Canadian Conference on Artificial Intelligence, Canadian AI 2012, Toronto, ON, Canada, May 28-30, 2012. Proceedings. pp. 356–361 (2012) 25. Piette, C., Hamadi, Y., Sais, L.: Vivifying propositional clausal formulae. In: Proceedings of ECAI’08. pp. 525–529 (2008) 26. Sharma, S., Gupta, R., Roy, S., Meel, K.S.: Knowledge compilation meets uniform sampling. In: Proceedings of LPAR’22. vol. 57, pp. 620–636 (2018) 27. Sinclair, A., Jerrum, M.: Approximate counting, uniform generation and rapidly mixing markov chains. Inf. Comput. 82 (1), 93–133 (1989) 28. Soos, M., Meel, K.S.: Arjun: An efficient independent support computation technique and its applications to counting and sampling. In: Proceedings of ICCAD’22. pp. 71:1–71:9 (2022) 29. Soos, M., Meel, K.S.: Engineering an efficient preprocessor for model counting. In: DAC’24. pp. 108:1–108:6 (2024) 30. Subbarayan, S., Pradhan, D.K.: Niver: Non increasing variable elimination resolution for preprocessing SAT instances. In: Proceedings of SAT’04 (2004) 31. Zhang, L., Madigan, C.F., Moskewicz, M.W., Malik, S.: Efficient conflict driven learning in boolean satisfiability solver. In: Proceedings of ICCAD’01. pp. 279–285 (2001)

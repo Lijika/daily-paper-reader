@@ -1,0 +1,204 @@
+{
+  "mode": "skims",
+  "generated_at": "2026-07-20T12:31:04.190382+00:00",
+  "stats": {
+    "mode": "skims",
+    "forced_all_quick": true,
+    "min_score": 8.0,
+    "deep_divecandidates": 5,
+    "deep_cap": null,
+    "deep_selected": 0,
+    "quick_candidates": 5,
+    "quick_skim_target": null,
+    "quick_selected": 5
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2607.03777v1",
+      "source": "arxiv",
+      "title": "A Modern View on MCSat",
+      "abstract": "The Model Constructing Satisfiability (MCSat) approach has shown strong performance in solving complex SMT problems, in particular in algebraic SMT theories such as non-linear integer and real arithmetic. In this paper we revisit the theory-independent MCSat framework as a proof system to provide a modern perspective that refines the original formulation of MCSat. By closely formalizing the implementation of MCSat within the Yices2 SMT solver, we incorporate design decisions that diverge from those in the seminal MCSat paper and thereby capture the current state-of-the-art in MCSat-based SMT reasoning. We present a general, theory-agnostic rule scheme for MCSat and instantiate it for several theories, including propositional logic, non-linear real arithmetic, and uninterpreted functions. We provide several detailed examples to illustrate the applicability of the presented calculus.",
+      "authors": [
+        "Thomas Hader",
+        "Theo Jauschneg",
+        "Daniela Kaufmann",
+        "Laura Kovacs"
+      ],
+      "primary_category": "cs.LO",
+      "categories": [
+        "cs.LO"
+      ],
+      "published": "2026-07-04T08:59:01+00:00",
+      "link": "https://arxiv.org/pdf/2607.03777v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "MCSat framework for SAT/SMT solving techniques",
+      "llm_evidence_cn": "MCSat框架与SAT求解技术",
+      "llm_evidence": "MCSat框架与SAT求解技术",
+      "canonical_evidence": "MCSat框架与SAT求解技术",
+      "llm_tldr_en": "This paper revisits the MCSat proof system for SMT, formalizing its implementation in Yices2 and providing a theory-agnostic rule scheme. It demonstrates strong performance on algebraic SMT problems and refines the original MCSat formulation.",
+      "llm_tldr_cn": "本文重新审视了用于SMT的MCSat证明系统，形式化了其在Yices2求解器中的实现，并提出了一个通用的理论无关规则方案。该方法在命题逻辑、非线性实数算术等理论下实例化，实验表明其在代数SMT问题上表现出色，完善了原始的MCSat框架，为SAT/SMT求解提供了新的理论视角与实践指导。",
+      "llm_tldr": "本文重新审视了用于SMT的MCSat证明系统，形式化了其在Yices2求解器中的实现，并提出了一个通用的理论无关规则方案。该方法在命题逻辑、非线性实数算术等理论下实例化，实验表明其在代数SMT问题上表现出色，完善了原始的MCSat框架，为SAT/SMT求解提供了新的理论视角与实践指导。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.04313v1",
+      "source": "arxiv",
+      "title": "Exploiting Variable Implications in Presolve for Mixed Integer Programming",
+      "abstract": "Presolve for mixed integer programming (MIP) problems aims to eliminate redundant information, strengthen the formulation, and extract useful structural information for the subsequent branch-and-cut process. An important type of such structural information is the variable implications (VIs), which describe how a bound on a variable depends on a bound of a binary variable. In this paper, we develop two new presolve techniques that exploit VIs to derive reductions for MIP problems. The first technique, called VI aggregation, aggregates multiple VIs into a single inequality by using implications between a variable and a set of binary variables that form a clique. This aggregation can reduce the number of constraints and tighten the linear programming relaxation. The second technique, called VI-aware linear constraint propagation (LCP), builds on the standard LCP but incorporates VIs associated with the variable being tightened to derive more reductions and can derive tighter variable bounds. We show that although VI information is additionally considered, the tightest lower or upper bound of a variable can still be derived in linear time. Moreover, compared with a state-of-the-art approach in the literature, the proposed VI-aware LCP can derive tighter variable bounds. Computational results on MIPLIB 2017 benchmark instances demonstrate the effectiveness of VI aggregation and VI-aware LCP in improving the performance of the open-source MIP solver HiGHS. In particular, using the two proposed presolve techniques, a reduction of 4% in solving time and 6% in node number on HiGHS can be achieved.",
+      "authors": [
+        "Wei-Kun Chen",
+        "Chang-Long Li",
+        "Zhao-Wei Wang",
+        "Yu-Hong Dai",
+        "Zi-Shuo Li",
+        "Meng Lu"
+      ],
+      "primary_category": "math.OC",
+      "categories": [
+        "math.OC"
+      ],
+      "published": "2026-07-05T14:01:58+00:00",
+      "link": "https://arxiv.org/pdf/2607.04313v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "presolve techniques using variable implications for MIP, analogous to CNF preprocessing",
+      "llm_evidence_cn": "利用变量蕴涵的MIP预求解技术，与CNF预处理类似",
+      "llm_evidence": "利用变量蕴涵的MIP预求解技术，与CNF预处理类似",
+      "canonical_evidence": "利用变量蕴涵的MIP预求解技术，与CNF预处理类似",
+      "llm_tldr_en": "Proposes two new presolve techniques for MIP that exploit variable implications to derive reductions, tightening the LP relaxation and reducing constraints.",
+      "llm_tldr_cn": "针对混合整数规划问题，提出两种利用变量蕴涵（VIs）的新型预求解技术：VI聚合将多个VIs聚合成单个不等式，减少约束数量并收紧线性规划松弛；VI传播通过变量界传播进一步约简。这些技术可类比于SAT求解中的CNF预处理，通过提取结构信息实现公式压缩。实验表明，新方法能有效提升求解效率。",
+      "llm_tldr": "针对混合整数规划问题，提出两种利用变量蕴涵（VIs）的新型预求解技术：VI聚合将多个VIs聚合成单个不等式，减少约束数量并收紧线性规划松弛；VI传播通过变量界传播进一步约简。这些技术可类比于SAT求解中的CNF预处理，通过提取结构信息实现公式压缩。实验表明，新方法能有效提升求解效率。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "CNF preprocessing SAT",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.07164v1",
+      "source": "arxiv",
+      "title": "Miter-Aware LUT Mapping: Aligning Structure and Solvability for Efficient Logic Equivalence Checking",
+      "abstract": "Logic Equivalence Checking (LEC), a fundamental hardware verification task, is often bottlenecked by synthesis-induced structural perturbations and XOR-dense regions that degrade SAT solver performance. We contend that the modeling of the miter is as critical as the SAT solver itself. To this end, we introduce a miter-aware mapping framework that strategically formulates the problem before solving. By constructing a LUT-based miter -- instead of a traditional, flat netlist -- our approach preserves critical structural correspondence between the two designs while making high-level logic relations explicit. Our framework uniquely integrates three techniques: equivalence-preserving mapping to structurally align the two circuits, Gaussian-guided XOR modeling to algebraically simplify dense arithmetic, and solver-oriented LUT selection to generate a representation optimized for efficient SAT reasoning. Evaluated on comprehensive datasets, our method achieves up to a \\textbf{92.1\\%} reduction across state-of-the-art SAT solvers. This demonstrates that a solver-aware modeling paradigm, which unifies structural mapping with SAT reasoning, can fundamentally enhance LEC efficiency.",
+      "authors": [
+        "Jiaying Zhu",
+        "Zhengyuan Shi",
+        "Mengxia Tao",
+        "Kezhi Li",
+        "Min Li",
+        "Qiang Xu"
+      ],
+      "primary_category": "cs.AR",
+      "categories": [
+        "cs.AR",
+        "cs.LO"
+      ],
+      "published": "2026-07-08T08:56:24+00:00",
+      "link": "https://arxiv.org/pdf/2607.07164v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "miter-aware LUT mapping as preprocessing for SAT in logic equivalence checking",
+      "llm_evidence_cn": "miter感知映射作为逻辑等价性检查中SAT的预处理方法",
+      "llm_evidence": "miter感知映射作为逻辑等价性检查中SAT的预处理方法",
+      "canonical_evidence": "miter感知映射作为逻辑等价性检查中SAT的预处理方法",
+      "llm_tldr_en": "This paper introduces a miter-aware mapping framework for logic equivalence checking that constructs LUT-based miters to improve SAT solver performance. It integrates equivalence-preserving mapping and other techniques to handle XOR-dense regions.",
+      "llm_tldr_cn": "本文提出了一种面向逻辑等价性检查的miter感知映射框架，通过构建LUT基底的miter来保持结构对应，从而提高SAT求解器性能。该方法集成了等价保持映射、XOR检测等技术，有效处理含XOR密集型区域，实验表明该方法显著加速了SAT求解，为CNF预处理提供了新思路。",
+      "llm_tldr": "本文提出了一种面向逻辑等价性检查的miter感知映射框架，通过构建LUT基底的miter来保持结构对应，从而提高SAT求解器性能。该方法集成了等价保持映射、XOR检测等技术，有效处理含XOR密集型区域，实验表明该方法显著加速了SAT求解，为CNF预处理提供了新思路。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "CNF preprocessing SAT",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.10697v1",
+      "source": "arxiv",
+      "title": "A Better Analysis For PPSZ For 3-SAT",
+      "abstract": "We revisit Scheder's analysis of the original PPSZ algorithm. Keeping his regular and irregular estimates unchanged, we express them in common structural coordinates and replace only their final recombination by an explicit linear-programming dual certificate. The old and new running-time bounds are \\[ \\begin{array}{c|cc}   & \\text{Unique-$3$-SAT} & \\text{general $3$-SAT} \\\\ \\hline \\text{Scheder's analysis} & O^*(1.306972377^n) & O^*(1.307031594^n) \\\\ \\text{this work} & O^*(1.306969598^n) & O^*(1.307031578^n). \\end{array} \\] In both rows, the general-case bound is obtained by applying the same existing Scheder--Steinberger unique-to-general lifting theorem to the corresponding Unique-$3$-SAT analysis. To the best of our knowledge, $O^*(1.307031578^n)$ is the best currently known worst-case randomized running-time bound for general $3$-SAT. Neither PPSZ nor the lifting theorem is modified. The numerical inequalities are certified by exact rational interval computation.",
+      "authors": [
+        "Tao Jiang",
+        "Shaowei Cai"
+      ],
+      "primary_category": "cs.DS",
+      "categories": [
+        "cs.DS"
+      ],
+      "published": "2026-07-12T10:40:39+00:00",
+      "link": "https://arxiv.org/pdf/2607.10697v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Improved analysis for 3-SAT algorithm PPSZ",
+      "llm_evidence_cn": "改进的3-SAT求解算法PPSZ分析",
+      "llm_evidence": "改进的3-SAT求解算法PPSZ分析",
+      "canonical_evidence": "改进的3-SAT求解算法PPSZ分析",
+      "llm_tldr_en": "The paper revisits Scheder's analysis of the PPSZ algorithm for 3-SAT, achieving slightly better worst-case running time bounds using a linear-programming dual certificate, yielding the best known bound of O*(1.307031578^n).",
+      "llm_tldr_cn": "针对3-SAT问题，本文重新审视了PPSZ算法的分析，通过引入线性规划对偶证书替换原有的组合论证，改进了算法在最坏情况下的运行时间上界。新界达到O*(1.307031578^n)，是目前已知最佳结果。该工作主要贡献在于提供了一种更精细的分析框架，为后续SAT算法优化提供了新思路。",
+      "llm_tldr": "针对3-SAT问题，本文重新审视了PPSZ算法的分析，通过引入线性规划对偶证书替换原有的组合论证，改进了算法在最坏情况下的运行时间上界。新界达到O*(1.307031578^n)，是目前已知最佳结果。该工作主要贡献在于提供了一种更精细的分析框架，为后续SAT算法优化提供了新思路。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.11492v1",
+      "source": "arxiv",
+      "title": "Enhancing Query Efficiency for d-DNNF Representations Through Preprocessing",
+      "abstract": "In this paper, we investigate preprocessing techniques aimed at improving the efficiency of accessing models of propositional formulas represented in conjunctive normal form (CNF). We focus on three fundamental tasks: uniform sampling, direct model access, and model enumeration. Our analysis reveals that most state-of-the-art preprocessors, when they do not preserve formula equivalence, are generally unsuitable for these tasks. In contrast, we demonstrate that preprocessors which preserve model counts can be effectively leveraged, provided relevant preprocessing information is maintained. To validate our approach, we perform extensive experiments on a diverse suite of benchmarks from multiple domains. The experimental results show that our preprocessing methods are both efficient and robust, yielding significant performance improvements for model access queries when CNF formulas are compiled into d-DNNF representations.",
+      "authors": [
+        "Jean Marie Lagniez",
+        "Emmanuel Lonca"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-13T12:47:24+00:00",
+      "link": "https://arxiv.org/pdf/2607.11492v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Preprocessing techniques for improving query efficiency on CNF-based d-DNNF representations",
+      "llm_evidence_cn": "针对CNF基d-DNNF表示的预处理技术提升查询效率",
+      "llm_evidence": "针对CNF基d-DNNF表示的预处理技术提升查询效率",
+      "canonical_evidence": "针对CNF基d-DNNF表示的预处理技术提升查询效率",
+      "llm_tldr_en": "This paper investigates preprocessing techniques for d-DNNF representations derived from CNFs, showing that model-count-preserving preprocessors can be leveraged to improve uniform sampling, model access, and model enumeration, if relevant preprocessing info is retained.",
+      "llm_tldr_cn": "本文研究了旨在提升命题公式CNF的d-DNNF表示查询效率的预处理技术。实验发现，多数不保持公式等价性的预处理器不适用于模型采样与枚举任务，而保持模型计数的预处理器只要保留预处理信息即可有效利用。研究为设计面向编译型CNF表示的预处理方法提供了指导，推动了高效SAT预处理技术的发展。",
+      "llm_tldr": "本文研究了旨在提升命题公式CNF的d-DNNF表示查询效率的预处理技术。实验发现，多数不保持公式等价性的预处理器不适用于模型采样与枚举任务，而保持模型计数的预处理器只要保留预处理信息即可有效利用。研究为设计面向编译型CNF表示的预处理方法提供了指导，推动了高效SAT预处理技术的发展。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "CNF preprocessing SAT",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    }
+  ]
+}
