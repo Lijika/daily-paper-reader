@@ -1,0 +1,460 @@
+Title: LLM-Guided Quantified SMT Solving over Uninterpreted Functions
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/38445/42407
+
+Number of Pages: 9
+
+Markdown Content:
+# LLM-Guided Quantified SMT Solving over Uninterpreted Functions 
+
+# Kunhang Lv 1,3 , Yuhang Dong 2,3 , Rui Han 1,3 , Fuqi Jia 1,3 , Feifei Ma 2,3* , Jian Zhang 1,3* 
+
+> 1
+
+SKLCS and Key Laboratory of System Software, ISCAS, Beijing, China 
+
+> 2
+
+Laboratory of Parallel Software and Computational Science, ISCAS, Beijing, China 
+
+> 3
+
+University of Chinese Academy of Sciences, Beijing, China 
+
+{lvkh, maff, zj }@ios.ac.cn 
+
+Abstract 
+
+Quantified formulas with Uninterpreted Functions (UFs) over non-linear real arithmetic pose fundamental challenges for Satisfiability Modulo Theories (SMT) solving. Traditional quantifier instantiation methods struggle because they lack semantic understanding of UF constraints, forcing them to search through unbounded solution spaces with limited guid-ance. We present AquaForte, a framework that leverages Large Language Models to provide semantic guidance for UF instantiation by generating instantiated candidates for func-tion definitions that satisfy the constraints, thereby signifi-cantly reducing the search space and complexity for solvers. Our approach preprocesses formulas through constraint sep-aration, uses structured prompts to extract mathematical rea-soning from LLMs, and integrates the results with traditional SMT algorithms through adaptive instantiation. AquaForte maintains soundness through systematic validation: LLM-guided instantiations yielding SAT solve the original prob-lem, while UNSAT results generate exclusion clauses for it-erative refinement. Completeness is preserved by fallback to traditional solvers augmented with learned constraints. Ex-perimental evaluation on SMT-COMP benchmarks demon-strates that AquaForte solves numerous instances where state-of-the-art solvers like Z3 and CVC5 timeout, with particu-lar effectiveness on satisfiable formulas. Our work shows that LLMs can provide valuable mathematical intuition for sym-bolic reasoning, establishing a new paradigm for SMT con-straint solving. 
+
+Code — https://github.com/kylelv2000/Aqua-Forte 
+
+# Introduction 
+
+Satisfiability Modulo Theories (SMT) solving (Kroening and Strichman 2016; Barrett et al. 2021) has become an in-dispensable computational foundation for numerous appli-cations including software verification (Beyer, Dangl, and Wendler 2018), program analysis (Gavrilenko et al. 2019; Zhang and Wang 2001), model checking (Cordeiro, Fis-cher, and Marques-Silva 2009), and automated test gener-ation (Peleska, Vorobev, and Lapschies 2011; Zhang 2000). Among the various SMT theories, Quantified Uninterpreted Functions with Non-linear Integer and Real Arithmetic 
+
+> *
+
+Corresponding authors. Copyright © 2026, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 
+
+(QUFNIRA) poses particularly formidable computational challenges. This theory naturally emerges when modeling hybrid systems that combine discrete control logic with continuous dynamics (Cimatti, Mover, and Tonetta 2013; Cimatti et al. 2015), requiring reasoning about both integer and real-valued variables alongside abstract computational components represented as uninterpreted functions. The undecidability of QUFNIRA stems from the inter-action of quantifiers over infinite mixed integer-real do-mains, uninterpreted functions, and non-linear arithmetic constraints (Becker, M¨ uller, and Summers 2019; Bjørner and Nachmanson 2020). This forces practical solvers to rely on incomplete instantiation techniques, where success crit-ically depends on generating effective quantifier instantia-tions that can bridge discrete and continuous reasoning. Current state-of-the-art approaches for QUFNIRA pre-dominantly rely on syntactic instantiation techniques, most notably E-matching (De Moura and Bjørner 2007; Reynolds, Barbosa, and Fontaine 2018) and model-based quantifier instantiation (MBQI) (Ge and De Moura 2009). E-matching identifies instantiation opportunities through syn-tactic pattern matching within the solver’s congruence clo-sure, while MBQI iteratively constructs candidate models and verifies their consistency against quantified constraints. Leading solvers such as Z3 (de Moura and Bjørner 2008) and CVC5 (Barbosa et al. 2022) employ increasingly sophis-ticated heuristics to guide these processes, yet they remain fundamentally limited by their purely syntactic treatment of uninterpreted functions. This syntactic approach creates a profound disconnect be-tween the mathematical richness of real-world applications and the solver’s reasoning capabilities. In practice, uninter-preted functions often represent well-understood mathemat-ical concepts—distance metrics exhibiting triangle inequal-ity properties, cost functions with monotonicity constraints, or physical transformations preserving certain invariants. However, current solvers treat these functions as completely opaque symbols, constrained only by functional congruence. This semantic blindness forces solvers to explore enormous instantiation spaces without leveraging mathematical intu-ition that could dramatically reduce search complexity. The limitations of syntactic approaches manifest through two critical challenges that significantly impact solving per-formance. Semantic opacity prevents solvers from exploit-The Fortieth AAAI Conference on Artificial Intelligence (AAAI-26) 
+
+14304 ing inherent mathematical properties of uninterpreted func-tions, causing them to miss natural simplifications and struc-tural relationships that could lead to immediate proof dis-covery or efficient refutation. Instantiation inefficiency re-sults from the inability to generate semantically meaningful ground terms, leading to extensive exploration of irrelevant instantiation spaces that provide little useful information for the underlying decision procedures. To address these fundamental limitations, we propose AquaForte, a novel framework that integrates Large Lan-guage Models (LLMs) with traditional SMT solving to pro-vide semantic guidance for QUFNIRA. Our approach lever-ages LLMs’ extensive training on mathematical literature to analyze the contextual usage patterns of uninterpreted func-tions within constraint systems and generate semantically plausible concrete instantiations. Rather than treating unin-terpreted functions as purely syntactic objects, our method employs LLMs to infer concrete mathematical definitions that preserve the essential behavioral properties while pro-viding the algebraic structure necessary for efficient reason-ing over mixed integer-real arithmetic constraints. The key insight is that LLMs can identify semantic pat-terns in uninterpreted function usage that escape syntac-tic analysis, then generate concrete function instantiations preserving essential mathematical properties (Frieder et al. 2023). This semantic-guided instantiation enables solvers to work with structured mathematical expressions rather than opaque symbols, dramatically improving reasoning ef-ficiency over mixed arithmetic domains. Our contributions include: (1) the first systematic method-ology for leveraging LLM semantic understanding to guide quantifier instantiation in QUFNIRA, transcending the limitations of purely syntactic pattern matching; (2) asoundness-preserving integration framework that provides flexible compatibility with diverse solvers, maintaining for-mal verification guarantees while maximizing the benefits of LLM mathematical intuition; and (3) comprehensive experi-mental evaluation across 1,481 benchmark instances demon-strating substantial performance improvements: 80.0% in-crease in solved instances for Z3 and 183.6% improvement for CVC5, with particularly significant gains on satisfiable cases where semantic guidance proves most impactful. 
+
+# Preliminaries 
+
+We briefly review the mathematical foundations for SMT solving over uninterpreted functions with quantification, fo-cusing on the challenging combination that motivates our LLM-guided approach. 
+
+SMT Foundations 
+
+Satisfiability Modulo Theories (SMT) extends propositional satisfiability by incorporating first-order theories. An SMT instance consists of a quantifier-free first-order formula φ
+
+over a background theory T .
+
+Definition 1 (SMT Problem) . Given a theory T and a for-mula φ, the SMT problem asks whether there exists a T -model M such that M | = φ. If such a model exists, φ is 
+
+T -satisfiable ; otherwise, it is T -unsatisfiable .
+
+Modern SMT solvers such as Z3 and CVC5 employ the DPLL(T) framework (Nieuwenhuis, Oliveras, and Tinelli 2006). Our work focuses on the challenging combination of real arithmetic TR and uninterpreted functions TU F :
+
+Real Arithmetic Theory TR enables reasoning about polynomial constraints over real numbers: Terms: t ::= x | c | t1 + t2 | t1 · t2 | − t (1) Formulas: φ ::= t1 = t2 | ¬ φ | φ1 ∧ φ2 | φ1 ∨ φ2 (2) where x ranges over real variables and c ∈ Q.
+
+Uninterpreted Functions Theory TU F introduces func-tion symbols constrained solely by the congruence axiom: 
+
+∀f ∈ F , ∀x, y :
+
+> n
+
+^
+
+> i=1
+
+(xi = yi) → f (x) = f (y) (3) 
+
+Definition 2 (NIRA) . The theory of Non-linear Integer and Real Arithmetic (NIRA), denoted as TN IRA , combines non-linear arithmetic constraints over integer and real domains. 
+
+This theory represents one of the most challenging frag-ments in SMT solving. 
+
+Definition 3 (Quantified NIRA) . When extended with quan-tification, NIRA formulas take the form: 
+
+φ ::= QF-formula | (∀⃗x :⃗ S.φ ) | (∃⃗x :⃗ S.φ ) (4) 
+
+where ⃗x = ( x1, . . . , x n) are distinct variables with sorts ⃗S = ( S1, . . . , S n), and each Si ∈ { Z, R}, and QF-formula denotes the quantifier-free formulas defined previously. 
+
+The computational complexity critically depends on 
+
+quantifier alternation depth . For instance, in Presburger arithmetic, formulas with bounded quantifier alternation have lower complexity than the general 2EXPTIME-complete case (Fischer and Rabin 1998). 
+
+Solving Techniques for Quantified NIRA 
+
+Given the high computational complexity of quantified NIRA, practical SMT solvers employ quantifier instantia-tion techniques to reduce quantified formulas to ground in-stances (Reynolds et al. 2013). For universally quantified formula ∀x.φ (x) where x ranges over mixed integer-real do-mains, instantiation produces: 
+
+∀x.φ (x) ⇝ ^
+
+> t∈TZ∪TR
+
+φ(t) (5) where T = {t1, . . . , t n} is a strategically chosen set of ground terms from both integer and real domains. 
+
+E-matching with Trigger Patterns. The predominant instantiation approach in modern SMT solvers (de Moura and Bjørner 2008) uses trigger-based pattern matching. For quantified subformula ∀¯x.ψ (¯ x), a trigger pattern is a set of terms {t1(¯ x), . . . , t k(¯ x)} that appear in ψ(¯ x) and collec-tively mention all quantified variables. The solver instanti-ates the quantified formula only when ground terms match-ing these patterns appear during search. 
+
+Example 1 (E-matching Process) . Given ∀x.P (f (x)) ∧
+
+f (x) > 0 with trigger pattern f (x), and ground terms 
+
+{f (3) , f (a), 5} in the current context, E-matching instanti-ates the formula at x = 3 and x = a, producing P (f (3)) ∧
+
+f (3) > 0 ∧ P (f (a)) ∧ f (a) > 0.14305 Constraint Separation 
+
+SMT Formula                      
+
+> Formula Rewriting
+> SMT
+> Instruction Data
+> Format Tips
+> Instantiated Functions
+> 𝑓𝑓 𝑥𝑥 =2𝑥𝑥
+> Triggers
+> :𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝𝑝 (𝑓𝑓 𝑥𝑥 )
+> SMT
+> Functions
+> Triggers
+> Learned ⋁¬𝑓𝑓 𝑖𝑖 =𝐼𝐼 𝑖𝑖
+> UNSAT
+> Refinement Loop
+> Combine Learned-clauses with Original SMT Formula
+> SAT
+> 𝑝𝑝 𝑡𝑡𝑡𝑡 𝑝𝑝 >𝑇𝑇
+> 𝑜𝑜 𝑝𝑝
+> 𝑡𝑡 𝑝𝑝𝑝𝑝𝑝𝑝 >𝑁𝑁
+> ❶Preprocessing
+> ❷Prompt Construction ❸Post-processing
+> Normalization & Validation
+> Integration & Merge
+> SAT/UNSAT
+
+Figure 1: Overview of AquaForte. 
+
+Model-Based Quantifier Instantiation (MBQI). MBQI (Ge and De Moura 2009) constructs candidate models for quantifier-free portions, then validates quantified con-straints. When a quantified formula is violated in the candi-date model, the violating assignment provides witness terms for subsequent instantiation. This approach is more seman-tic than pure pattern matching but remains limited by the black-box treatment of uninterpreted functions. 
+
+Large Language Models and Prompt 
+
+Large Language Models (LLMs) are neural networks based on the Transformer architecture (Vaswani et al. 2017), trained on vast text corpora to predict the next token in a sequence. Modern LLMs like GPT-4 (Achiam et al. 2023) demonstrate emergent mathematical reasoning capabilities (Lewkowycz et al. 2022; Wei et al. 2022a) through scale and self-attention mechanisms that capture long-range de-pendencies, developing internal representations that encode semantic relationships and domain-specific knowledge. 
+
+Prompt Engineering. LLM performance critically de-pends on prompt design —the systematic construction of in-put prompts to elicit desired behaviors (Liu et al. 2023; Sa-hoo et al. 2024). Effective prompts include: (1) Task spec-ification with clear instructions; (2) Context provision with relevant background; (3) Output formatting specifying de-sired structure; (4) Few-shot examples demonstrating ex-pected patterns (Brown et al. 2020). Advanced techniques include chain-of-thought prompting (Wei et al. 2022b) for step-by-step reasoning and role-based prompting to invoke domain expertise. 
+
+Example 2 (Structured Prompt Design) . A mathematical prompt might follow: “You are a mathematics expert. Given constraints: [problem], analyze relationships and provide: [format]. Example: [demonstration]. Requirements: [con-straints].” 
+
+Integration with Formal Systems. The complementary nature of LLMs and formal systems enables hybrid architec-tures where LLMs provide semantic insights and hypothesis generation, while symbolic systems ensure logical correct-ness and verification. This synergy combines intuitive rea-soning with formal precision. 
+
+# Methodology 
+
+Figure 1 presents AquaForte , a novel framework that lever-ages Large Language Models to provide semantic guidance for uninterpreted functions in SMT solving. This section describes our approach through four main components: an overview with illustrative examples, uninterpreted function instantiation techniques, auxiliary strategies for trigger gen-eration, and integration with traditional SMT algorithms. 
+
+Overview 
+
+To illustrate our approach, consider the following SMT for-mula containing constraints on uninterpreted functions: 
+
+φ = ∀x ∈ R. f (2 x) = 2 x ∧ g(2 x) = 2 x (6) This formula defines both functions f and g to have iden-tical behavior at scaled inputs: f (2 x) = g(2 x) = 2 x for all x. From a mathematical perspective, it is intuitive that 
+
+f (x) = g(x) should hold universally. However, traditional SMT solvers struggle to derive this equivalence relationship and often timeout when queried about ∀x.f (x) = g(x).Traditional SMT solvers rely on axiomatization-based derivation methods, constructing proof processes through predefined inference rules and quantifier instantiation pat-terns. However, since the constraint only provides informa-tion about f and g at points of the form 2x, the solver cannot directly establish equivalence at arbitrary points x. The in-stantiation process becomes an infinite search that fails to find contradictions, leading to timeout. Our core insight is to leverage LLM’s mathematical in-tuition to recognize semantic relationships between func-tions. Based on this semantic understanding, the LLM sug-gests candidate function instantiations such as f (x) = x and 
+
+g(x) = x, which satisfy the original constraints and make the equivalence f (x) = g(x) immediately verifiable. We in-stantiate uninterpreted functions with concrete mathematical 14306 Algorithm 1: Formula Rewriting and Purification  
+
+> 1:
+
+Input: Formula φ, uninterpreted functions F =
+
+{f1, . . . , f k} 
+
+> 2:
+
+Output: Formula components C = {C1, . . . , C m} 
+
+> 3:
+
+φ′ ← REWRITE FORMULA (φ) {Apply simplifications and expansions } 
+
+> 4:
+
+Initialize union-find structure U F with functions F 
+
+> 5:
+
+constraints ← EXTRACT CONSTRAINTS (φ′) 
+
+> 6:
+
+for each constraint c ∈ constraints do  
+
+> 7:
+
+f uncs ← GET UNINTERPRETED FUNCTIONS (c) 
+
+> 8:
+
+for each pair (fi, f j ) ∈ f uncs × f uncs do  
+
+> 9:
+
+UNION (U F, f i, f j ) 
+
+> 10:
+
+end for  
+
+> 11:
+
+end for  
+
+> 12:
+
+Group constraints by their representatives in U F  
+
+> 13:
+
+return Connected components C
+
+expressions via semantic analysis, thereby eliminating quan-tified reasoning bottlenecks and accelerating SAT solving. 
+
+Uninterpreted Function Instantiation 
+
+This process comprises three stages: Preprocessing, LLM Instantiation, and Post-processing, transforming raw SMT formulas into semantically meaningful instantiations. 
+
+Preprocessing Algorithm 1 details the preprocessing stage that applies two techniques to reduce cognitive com-plexity while maintaining mathematical structure. 
+
+Formula Rewriting. We apply semantic-preserving transformations: (1) formula simplification through expres-sion normalization, redundant operation elimination, and tautology / contradiction reduction to Boolean constants; (2) interpreted function expansion to expose mathematical se-mantics. 
+
+Constraint Separation. Using union-find structures, we identify connected components of constraints sharing un-interpreted functions. Functions co-occurring in any con-straint merge into the same component, decomposing the formula into independent subproblems. This reduces indi-vidual query complexity from O(|F| 2) to O(|Ci|2) where 
+
+Ci denotes the i-th component, potentially achieving |Ci| ≪ |F| when constraints are well-separated. 
+
+LLM Instantiation For each connected component Ci,we use a Large Language Model to generate concrete in-stantiations I = {I1, I 2, . . . , I k} that materialize each unin-terpreted function fi ∈ F into explicit mathematical defini-tions such as polynomial functions, piecewise functions, or other computable constructs. We construct a structured prompt Pi as: 
+
+Pi = ⟨S instruction , Ddata , Of ormat , Ttips ⟩
+
+where Sinstruction establishes the mathematical interpre-tation task, Ddata provides the constraints from compo-nent Ci and uninterpreted function signatures, Of ormat de-fines a structured JSON output format requiring reasoning chains and confidence assessments, and Ttips specifies im-plementation constraints for valid SMT-LIB syntax (Barrett, Fontaine, and Tinelli 2025). The prompt instructs the LLM to “understand the math-ematical meaning of the SMT formula and reason from a mathematical perspective to derive the concrete form of the uninterpreted function.” This hierarchical approach ensures mathematically grounded instantiations while constraining the output space to valid SMT-LIB (Barrett et al. 2010) con-structs. The structured output format promotes transparency by requiring explicit justification for each proposed instanti-ation, enabling quality assessment and seamless integration with existing SMT solver infrastructure. 
+
+Post-processing The LLM output undergoes a systematic validation pipeline to ensure correctness and compatibility with SMT solvers. First, we normalize the raw response by extracting the structured JSON definitions while discarding any conversational text. Each proposed instantiation is then parsed and type-checked against SMT-LIB syntax require-ments; invalid expressions trigger a re-query to the LLM with corrective feedback. Finally, instantiations from all components are merged. During this crucial step, we maintain a global symbol ta-ble to detect and resolve potential issues such as variable name conflicts while verifying type consistency across func-tion signatures. This systematic pipeline transforms raw LLM output into validated, syntactically correct instantia-tions ready for integration into the original SMT formula. 
+
+Quantifier Elimination Strategies 
+
+Our trigger generation approach leverages large language models to automatically synthesize instantiation patterns from quantified formula constraints. Given a quantified for-mula φ, we directly present the logical constraints to the LLM and task it with generating effective trigger patterns. The LLM processes these quantified constraints and gen-erates candidate triggers T = {t1, t 2, . . . , t k} that cap-ture essential instantiation patterns. Each generated trigger 
+
+ti represents a heuristic rule that identifies when specific quantifier instantiations are likely to be productive for proof search. The key insight is that modern LLMs possess suf-ficient logical reasoning capabilities to recognize structural patterns within quantified formulas and translate them into actionable instantiation strategies. The generated triggers undergo systematic validation to ensure syntactic correctness and semantic consistency. We employ filtering mechanisms to remove malformed patterns and consolidate semantically equivalent triggers to prevent redundancy. The validated triggers are then directly inte-grated into the quantifier instantiation module, where they guide the selection of instantiation terms during automated proof search. 
+
+Integration with Traditional Algorithms 
+
+We present a hybrid framework that systematically inte-grates LLM guidance with traditional SMT solving through iterative refinement cycles, where failed instantiation at-tempts provide structured feedback for subsequent queries. Algorithm 2 queries the LLM with augmented informa-tion Q = ⟨φ, history , F⟩ (line 4), where φ is the original formula, history contains previous failures with contexts, 14307 Algorithm 2: Adaptive LLM-Guided SMT Solving  
+
+> 1:
+
+Input: Formula φ, max iterations N , time budget T 
+
+> 2:
+
+Output: SAT , UNSAT , or UNKNOWN  
+
+> 3:
+
+Initialize: history ← ∅ , learned ← ∅ , iter ← 0 
+
+> 4:
+
+start ← TIME ()  
+
+> 5:
+
+while iter < N and TIME () − start < T do  
+
+> 6:
+
+(I, T ) ← QUERY LLM (φ, history ) {Get instantia-tions } 
+
+> 7:
+
+φinst ← APPLY INSTANTIATIONS (φ, I) 
+
+> 8:
+
+φinst ← ADD TRIGGERS (φinst , T ) 
+
+> 9:
+
+result ← SMTS OLVER (φinst ) {Bounded solving } 
+
+> 10:
+
+if result = SAT then  
+
+> 11:
+
+return SAT  
+
+> 12:
+
+else if result = UNSAT then  
+
+> 13:
+
+ψ ← Wki=1 ¬(fi = Ii) {Exclusion clause } 
+
+> 14:
+
+history ← history ∪ { (I, refuted )} 
+
+> 15:
+
+learned ← learned ∪ { ψ} 
+
+> 16:
+
+else  
+
+> 17:
+
+history ← history ∪ { (I, timeout )} 
+
+> 18:
+
+end if  
+
+> 19:
+
+iter ← iter + 1  
+
+> 20:
+
+end while  
+
+> 21:
+
+Fallback:  
+
+> 22:
+
+return SMTS OLVER (φ ∧ V learned )
+
+and F specifies uninterpreted functions requiring instantia-tion. This enriched context enables the LLM to avoid unsuc-cessful interpretations and explore alternative mathematical relationships. The LLM response (I, T ) provides instantia-tions and trigger patterns, systematically applied to construct the modified formula φ′ (lines 5-6). The validation phase (lines 7-9) applies bounded SMT solving with time limit τ1. Upon satisfiability, the algorithm terminates with SAT. Otherwise, failure analysis records the failed instantiation I in history (line 12) and generates ex-clusion clause ψ = Wki=1 ¬(fi = Ii) to constrain future search (line 13). Upon reaching iteration threshold N or time budget T
+
+(line 20), systematic fallback consolidates all exclusion clauses into φaugmented = φ ∧ V learned clauses . The complete SMT solver operates on this constraint-enriched formula, where learned clauses eliminate previously ex-plored interpretation regions, often yielding improved per-formance over naive application. This fallback mechanism preserves the correctness and does not weaken the base solver: when LLM-guided instan-tiations expire within resource limits, the procedure reduces to the traditional SMT solving over the accumulated con-straints, matching the decision capability of the base solver in the worst case. 
+
+# Experimental Evaluation 
+
+We conduct a comprehensive empirical evaluation to assess the effectiveness of our proposed AquaForte (AF) frame-work for LLM-guided SMT solving. To facilitate repro-ducibility, our code and benchmarks are publicly available on GitHub. Our evaluation is designed to answer the follow-ing research questions: • RQ1: How effective is LLM-guided instantiation com-pared to state-of-the-art SMT solvers? • RQ2: Does increased computational time benefit tradi-tional solvers versus LLM-guided approaches? • RQ3: What is the effect of increasing LLM iteration counts on the number of problem instances solved? 
+
+Benchmark Suite 
+
+SMT-COMP 2025 Benchmarks We evaluated our ap-proach in the entire UFNIRA and UFLRA benchmark sets from SMT-LIB, comprising 281 instances in total. These categories combine uninterpreted functions with arithmetic constraints—UFNIRA includes non-linear integer and real arithmetic, while UFLRA focuses on linear real arithmetic. 
+
+Custom Benchmark Construction To assess specific al-gorithmic capabilities beyond standard benchmarks, we de-veloped two specialized datasets that will be released along-side our source code. 
+
+Sum-of-Squares (SOS) Verification Dataset: Inspired by Hilbert’s 17th problem, we created 600 instances for sum-of-squares decomposition. Each instance determines whether a polynomial F can be expressed as exactly three squares: 
+
+F (x) = g21 (x) + g22 (x) + g23 (x) (7) where x = ( x1, . . . , x n).We employ constructive generation by creating m source polynomials and computing F = Pmi=1 p2 
+
+> i
+
+. Problem com-plexity is controlled via variable dimension n ∈ { 1, 2, 3}
+
+and source count m ∈ { 1, 2, 3, 4}. The SMT encoding seeks uninterpreted functions fa, f b, f c satisfying: 
+
+∀x : f 2 
+
+> a
+
+(x) + f 2 
+
+> b
+
+(x) + f 2 
+
+> c
+
+(x) = F (x) (8) Instances with m ≤ 3 are satisfiable, while m = 4 cases re-quire “compressing” four squares into three, creating chal-lenging algebraic reasoning problems. The dataset provides 12 parameter configurations with 50 instances each. 
+
+Mathematical Functions Dataset (MFD): We con-structed 600 randomly generated UFNIRA instances across four categories (150 each): Rational function inequali-ties combine existential quantifiers with comparison opera-tors over function evaluations at randomly sampled domain points ( ∃x : f (x)̸ = f (0) ). Piecewise function inequal-ities partition the real domain into 2-4 intervals with ran-domly assigned linear expressions and inequality constraints at boundary points. Recursive function problems employ template instantiation of recurrence patterns with varying re-cursion depths ( g(x) = f (x)+ g(x−1) ), combined with ran-domly selected initial conditions and positivity constraints. 
+
+Function limit problems encode linear algebraic proper-ties (additivity: f (x + y) = f (x) + f (y), homogeneity: 
+
+f (kx ) = k · f (x)) with automatically generated existential boundary conditions that test contradictory inequalities. Our complete benchmark suite totals 1481 instances, spanning standard verification benchmarks and specialized mathematical reasoning problems. 14308 Method SMT-COMP (281 instances) MFD (600 instances) SOS (600 instances) 
+
+SAT Time(s) UNSAT Time(s) SAT Time(s) UNSAT Time(s) SAT Time(s) UNSAT Time(s) Z3 Solver 16 0.15 104 0.02 275 0.08 29 0.02 12 0.02 0 /
+
+AF+Z3 (GPT-4.1) 58 0.09* 107 0.10* 429 0.07* 29 0.08* 162 0.05* 0 /CVC5 Solver 0 / 91 0.70 108 0.01 27 0.01 0 / 0 /AF+CVC5 (GPT-4.1) 50 0.03* 95 0.94* 311 0.04* 26 0.06* 159 0.03* 0 /Table 1: Detailed performance breakdown across benchmark suites with 24-second timeout. Execution times shown exclude LLM inference latency (mean: 7.60s). 
+
+Experimental Setup 
+
+Hardware and Environment. All experiments were con-ducted on a server with AMD EPYC 7763 64-core processor (2.45 GHz) and 512 GB RAM, ensuring consistent experi-mental conditions. 
+
+SMT Solvers. We evaluate our approach using the two most prominent state-of-the-art SMT solvers: Z3 (v4.15.0) and CVC5 (v1.2.1), which represent the current mainstream solutions for quantified formula solving. 
+
+LLMs. We employ three widely used LLMs: GPT-4.1, DeepSeek-V3 (DeepSeek et al. 2024), and Claude-4-Sonnet, each configured with temperature 0.01 for deterministic re-sponses. 
+
+Timeout Configuration. We primarily use a 24-second timeout, following SMT-COMP’s standard for rapid evalua-tion. We also conduct experiments with 1200-second time-out to assess long-term scalability. 
+
+Iteration Strategy. Given the computational cost of LLM inference, we default to single-iteration calls (N=1) unless specified otherwise, making our approach practical for real-world deployment. 
+
+RQ1: Overall Performance Comparison 0200 400 600 800 1000 010 20 30 40 50 Solved Instances Inference Time (s) No-LLM GPT-4.1 DeepSeek-V3 Claude-4-Sonnet Z3 Virtual Best: 897 CVC5 Virtual Best: 763    
+
+> 436 226 785 641 757 623 831 704
+> Z3 CVC5 Virtual Best Inference Time
+
+Figure 2: Total solved instances across different LLM-solver combinations with 24s timeout. Virtual Best represents the union of all LLM-enhanced configurations. Figure 2 presents the overall performance compari-son across different LLM-solver combinations. The results demonstrate substantial improvements over baseline solvers: Z3 benefits from an 80.0% improvement with GPT-4.1 (785 vs. 436 instances), while CVC5 shows an even more dra-matic 183.6% improvement (641 vs. 226 instances). Claude-4-Sonnet achieves the best single-model performance with 831 solved instances for Z3, representing a 90.6% improve-ment over the baseline. The LLM inference times vary across models, with GPT-4.1 requiring 7.6 seconds, Claude-4-Sonnet 16.56 seconds, and DeepSeek-V3 20.66 seconds on average. The Virtual Best configuration solves 897 instances with Z3 and 763 with CVC5, demonstrating complementary strengths among different LLMs. The combined approach surpasses the baselines by 105.7% and 237.6%, respectively. 
+
+Detailed Benchmark Analysis 
+
+Table 1 presents a detailed breakdown of performance across individual benchmark suites. Our approach achieves partic-ularly notable improvements on satisfiable (SAT) instances. This superior performance indicates that LLMs are highly effective at proposing appropriate instantiations that lead to satisfying assignments, leveraging their semantic under-standing of underlying mathematical relationships. In addi-tion, the approach can effectively accelerate the solver’s per-formance. 
+
+Comparison of Different Synthesis Strategies 
+
+Method SAT UNSAT Total solved Improvement 
+
+Base 108 118 226 0.0% MBQI 256 108 364 +61.1% CEGQI 337 52 389 +72.1% ENUM 73 52 125 -44.7% 
+
+GPT-4.1(Ours) 520 121 641 +183.6% 
+
+Table 2: Comparison of cvc5 strategies with 24s timeout. Recent work in function synthesis also offers several methods that can address our task. Mainstream approaches include MBQI, counterexample-guided quantifier instan-tiation (CEGQI) (Reynolds et al. 2015), and enumera-tion (Reynolds et al. 2019) over SyGuS grammars. These methods are available in the state-of-the-art solver cvc5, so we compare our solver against the corresponding cvc5 strategies under a uniform 24s timeout per instance. As shown in Table 2, these recent methods yield solid gains, 14309 but still fall short of our approach by a clear margin. Just as important, these techniques do not conflict with our LLM-guided design. They are complementary: LLM proposals can seed or steer CEGQI and help prune or rank enumer-ations, suggesting a potential path to further improve solve rates. 
+
+RQ2: Efficiency Analysis: Rapid Solution Discovery                
+
+> Method (N=1) 24s 1200s Improvement
+> Z3 Solver 436 439 +0.7% AF+Z3 (GPT-4.1) 785 788 +0.4% CVC5 Solver 226 226 +0.0% AF+CVC5 (GPT-4.1) 641 641 +0.0%
+
+Table 3: Performance under different timeout constraints Table 3 shows that both traditional SMT solvers and LLM-guided approaches gain little from longer timeout (24s to 1200s), indicating more time alone helps little. For tradi-tional solvers, this reflects fundamental search strategy lim-itations; for LLM-guided methods, this confirms that single LLM calls either succeed rapidly or require additional itera-tions rather than extended runtime. 
+
+RQ3: Multi-Iteration Analysis 0 1 2 3 4 5 6 7 8 9 10 200 400 600 800 1000 
+
+> Iteration Count Solved Instances
+> Z3-Claude Z3-GPT Z3-DeepSeek CVC5-Claude CVC5-GPT CVC5-DeepSeek
+
+Figure 3: Performance across multiple iterations with 1200s timeout. Figure 3 evaluates the impact of iterative LLM guid-ance on solver performance. Starting from identical base-lines (Z3: 439, CVC5: 226), all combinations demonstrate consistent improvements with increased iterations. Compar-ing single iteration (N=1) to ten iterations (N=10), Claude achieves improvements of 14.4% for Z3 (833 →953) and 14.2% for CVC5 (704 →804). On average across all LLMs, Z3 improves by 15.5% and CVC5 by 17.6% from iteration 1 to 10. This demonstrates that iterative refinement signifi-cantly enhances performance, with diminishing returns ob-served after 5-7 iterations. 
+
+Discussion and Insights 
+
+Our evaluation reveals where LLM-guided SMT solving ex-cels. The approach shows striking asymmetric performance: 3.6× improvement on SAT instances versus minimal gains on UNSAT instances, indicating LLMs excel at proposing satisfying instantiations through semantic pattern recogni-tion but struggle with exhaustive unsatisfiability proofs. This makes the approach particularly valuable for model find-ing tasks. While individual LLMs exhibit varying reason-ing capabilities in solving different problem instances, they demonstrate certain complementarity. The Virtual Best con-figuration achieves +66 instances over the best single model, indicating that ensemble approaches can effectively com-bine different LLM reasoning patterns. When resources per-mit, multiple iterations consistently improve solving rates, though diminishing returns emerge after several iterations. Unlike traditional solvers, our approach provides substantial gains with increased computational budget. 
+
+# Related Work 
+
+Recent work has explored employing LLMs in constraint solving and logical reasoning. Logic LM (Pan et al. 2023) combines LLMs with logical forms for enhanced logi-cal reasoning, while others focus on problem formulation: Logic.py (Kesseli, O’Hearn, and Cabral 2025) for search problems, multi-agent systems for logic puzzles (Berman, McKeown, and Ray 2024), and LLM-Sym for symbolic exe-cution (Wang et al. 2024). However, these approaches target high-level formulation rather than instantiation mechanisms. Traditional instantiation methods rely on syntactic heuristics, but theory-specific approaches have emerged leveraging domain properties. Notable examples in-clude counterexample-guided instantiation for linear arith-metic (Reynolds, King, and Kuncak 2017), induction-based techniques for algebraic datatypes (Reynolds and Kun-cak 2015), and QSMA’s model interpolation with look-ahead strategies (Bonacina, Graham-Lengrand, and Vauthier 2023). These methods still provide limited guidance for un-interpreted functions, where semantic understanding could significantly improve instantiation effectiveness. 
+
+# Conclusion 
+
+We presented AquaForte, a novel framework that uses LLMs to guide quantified SMT solving over uninterpreted func-tions. By converting abstract function symbols into con-crete mathematical expressions, our approach addresses se-mantic opacity and instantiation inefficiency in traditional solvers. Results show significant improvements on satisfi-able instances but limited gains on unsatisfiable ones. Dif-ferent LLMs exhibit complementary strengths suggesting potential ensemble methods. Our work demonstrates how LLMs can provide valuable semantic insights for symbolic reasoning while maintaining formal guarantees. 14310 Acknowledgments 
+
+We are grateful to the anonymous reviewers for their com-ments and suggestions. This work has been supported by the National Natural Science Foundation of China (NSFC) un-der grant No.62132020 and grant No.62572461. 
+
+# References 
+
+Achiam, J.; Adler, S.; Agarwal, S.; Ahmad, L.; Akkaya, I.; Aleman, F. L.; Almeida, D.; Altenschmidt, J.; Altman, S.; Anadkat, S.; et al. 2023. Gpt-4 technical report. arXiv preprint arXiv:2303.08774 .Barbosa, H.; Barrett, C. W.; Brain, M.; Kremer, G.; Lachnitt, H.; Mann, M.; Mohamed, A.; Mohamed, M.; Niemetz, A.; N¨ otzli, A.; Ozdemir, A.; Preiner, M.; Reynolds, A.; Sheng, Y.; Tinelli, C.; and Zohar, Y. 2022. cvc5: A Versatile and Industrial-Strength SMT Solver. In Fisman, D.; and Rosu, G., eds., TACAS 2022 , volume 13243, 415–442. Barrett, C.; Fontaine, P.; and Tinelli, C. 2025. The SMT-LIB Standard: Version 2.7. Technical report, Department of Computer Science, The University of Iowa. Available at 
+
+www.SMT-LIB.org .Barrett, C.; Stump, A.; Tinelli, C.; et al. 2010. The smt-lib standard: Version 2.0. In Proceedings of the 8th inter-national workshop on satisfiability modulo theories (Edin-burgh, UK) , volume 13, 14. Barrett, C. W.; Sebastiani, R.; Seshia, S. A.; and Tinelli, C. 2021. Satisfiability Modulo Theories. In Handbook of Sat-isfiability - Second Edition , volume 336 of Frontiers in Arti-ficial Intelligence and Applications , 1267–1329. IOS Press. Becker, N.; M¨ uller, P.; and Summers, A. J. 2019. The ax-iom profiler: Understanding and debugging smt quantifier instantiations. In International Conference on Tools and Al-gorithms for the Construction and Analysis of Systems , 99– 116. Springer. Berman, S.; McKeown, K.; and Ray, B. 2024. Solving Ze-bra Puzzles Using Constraint-Guided Multi-Agent Systems. 
+
+arXiv preprint arXiv:2407.03956 .Beyer, D.; Dangl, M.; and Wendler, P. 2018. A Unifying View on SMT-Based Software Verification. J. Autom. Rea-son. , 60(3): 299–335. Bjørner, N.; and Nachmanson, L. 2020. Navigating the uni-verse of Z3 theory solvers. In Brazilian Symposium on For-mal Methods , 8–24. Springer. Bonacina, M. P.; Graham-Lengrand, S.; and Vauthier, C. 2023. QSMA: a new algorithm for quantified satisfiability modulo theory and assignment. In International Conference on Automated Deduction , 78–95. Springer. Brown, T.; Mann, B.; Ryder, N.; Subbiah, M.; Kaplan, J. D.; Dhariwal, P.; Neelakantan, A.; Shyam, P.; Sastry, G.; Askell, A.; et al. 2020. Language models are few-shot learners. Ad-vances in neural information processing systems , 33: 1877– 1901. Cimatti, A.; Griggio, A.; Mover, S.; and Tonetta, S. 2015. HyComp: An SMT-based model checker for hybrid systems. In International Conference on Tools and Algorithms for the Construction and Analysis of Systems , 52–67. Springer. Cimatti, A.; Mover, S.; and Tonetta, S. 2013. SMT-based scenario verification for hybrid systems. Formal Methods in System Design , 42(1): 46–66. Cordeiro, L. C.; Fischer, B.; and Marques-Silva, J. 2009. SMT-Based Bounded Model Checking for Embedded ANSI-C Software. In ASE 2009, 24th IEEE/ACM Inter-national Conference on Automated Software Engineering, Auckland, New Zealand, November 16-20, 2009 , 137–148. IEEE Computer Society. De Moura, L.; and Bjørner, N. 2007. Efficient E-matching for SMT solvers. In International Conference on Automated Deduction , 183–198. Springer. de Moura, L. M.; and Bjørner, N. 2008. Z3: An Efficient SMT Solver. In Ramakrishnan, C. R.; and Rehof, J., eds., 
+
+TACAS 2008 , volume 4963, 337–340. DeepSeek, A.; Liu, A.; Feng, B.; Xue, B.; Wang, B.; Wu, B.; Lu, C.; Zhao, C.; Deng, C.; Zhang, C.; Ruan, C.; et al. 2024. Deepseek-v3 technical report. arXiv preprint arXiv:2412.19437 .Fischer, M. J.; and Rabin, M. O. 1998. Super-exponential complexity of Presburger arithmetic. In Quantifier Elimi-nation and Cylindrical Algebraic Decomposition , 122–135. Springer. Frieder, S.; Pinchetti, L.; Griffiths, R.-R.; Salvatori, T.; Lukasiewicz, T.; Petersen, P.; and Berner, J. 2023. Math-ematical capabilities of chatgpt. Advances in neural infor-mation processing systems , 36: 27699–27744. Gavrilenko, N.; de Le´ on, H. P.; Furbach, F.; Heljanko, K.; and Meyer, R. 2019. BMC for Weak Memory Models: Re-lation Analysis for Compact SMT Encodings. In Dillig, I.; and Tasiran, S., eds., Computer Aided Verification - 31st In-ternational Conference, CAV 2019, New York City, NY, USA, July 15-18, 2019, Proceedings, Part I , volume 11561 of Lec-ture Notes in Computer Science , 355–365. Springer. Ge, C. 2025. SharpSMT: a scalable toolkit for measuring so-lution spaces of SMT (LA) formulas. Frontiers of Computer Science , 19(8): 198336. Ge, Y.; and De Moura, L. 2009. Complete instantiation for quantified formulas in satisfiabiliby modulo theories. In 
+
+International Conference on Computer Aided Verification ,306–320. Springer. Jia, F.; Dong, Y.; Han, R.; Huang, P.; Liu, M.; Ma, F.; and Zhang, J. 2025. A Complete Algorithm for Optimiza-tion Modulo Nonlinear Real Arithmetic. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 39, 11255–11263. Kesseli, P.; O’Hearn, P.; and Cabral, R. S. 2025. Logic.py: Bridging the Gap between LLMs and Constraint Solvers. 
+
+arXiv preprint arXiv:2502.15776 .Kroening, D.; and Strichman, O. 2016. Decision Procedures - An Algorithmic Point of View, Second Edition . Texts in Theoretical Computer Science. An EATCS Series. Springer. ISBN 978-3-662-50496-3. Lewkowycz, A.; Andreassen, A.; Dohan, D.; Dyer, E.; Michalewski, H.; Ramasesh, V.; Slone, A.; Anil, C.; Schlag, 14311 I.; Gutman-Solo, T.; et al. 2022. Solving quantitative rea-soning problems with language models. Advances in neural information processing systems , 35: 3843–3857. Liu, P.; Yuan, W.; Fu, J.; Jiang, Z.; Hayashi, H.; and Neubig, G. 2023. Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing. ACM computing surveys , 55(9): 1–35. Nieuwenhuis, R.; Oliveras, A.; and Tinelli, C. 2006. Solv-ing SAT and SAT modulo theories: From an abstract Davis–Putnam–Logemann–Loveland procedure to DPLL (T). Journal of the ACM (JACM) , 53(6): 937–977. Pan, L.; Albalak, A.; Wang, X.; and Wang, W. Y. 2023. Logic-lm: Empowering large language models with sym-bolic solvers for faithful logical reasoning. arXiv preprint arXiv:2305.12295 .Peleska, J.; Vorobev, E.; and Lapschies, F. 2011. Automated Test Case Generation with SMT-Solving and Abstract Inter-pretation. In Bobaru, M. G.; Havelund, K.; Holzmann, G. J.; and Joshi, R., eds., NASA Formal Methods - Third Interna-tional Symposium, NFM 2011, Pasadena, CA, USA, April 18-20, 2011. Proceedings , volume 6617 of Lecture Notes in Computer Science , 298–312. Springer. Reynolds, A.; Barbosa, H.; and Fontaine, P. 2018. Revisiting enumerative instantiation. In International Conference on Tools and Algorithms for the Construction and Analysis of Systems , 112–131. Springer. Reynolds, A.; Barbosa, H.; N¨ otzli, A.; Barrett, C.; and Tinelli, C. 2019. cvc4sy: Smart and fast term enumeration for syntax-guided synthesis. In International Conference on Computer Aided Verification , 74–83. Springer. Reynolds, A.; Deters, M.; Kuncak, V.; Tinelli, C.; and Bar-rett, C. 2015. Counterexample-guided quantifier instantia-tion for synthesis in SMT. In International Conference on Computer Aided Verification , 198–216. Springer. Reynolds, A.; King, T.; and Kuncak, V. 2017. Solving quan-tified linear arithmetic by counterexample-guided instantia-tion. Formal Methods in System Design , 51(3): 500–532. Reynolds, A.; and Kuncak, V. 2015. Induction for SMT solvers. In International Workshop on Verification, Model Checking, and Abstract Interpretation , 80–98. Springer. Reynolds, A.; Tinelli, C.; Goel, A.; Krsti´ c, S.; Deters, M.; and Barrett, C. 2013. Quantifier instantiation techniques for finite model finding in SMT. In International Conference on Automated Deduction , 377–391. Springer. Sahoo, P.; Singh, A. K.; Saha, S.; Jain, V.; Mondal, S.; and Chadha, A. 2024. A systematic survey of prompt engineer-ing in large language models: Techniques and applications. 
+
+arXiv preprint arXiv:2402.07927 .Shi, W.; Liu, M.; Zhang, W.; Shi, L.; Jia, F.; Ma, F.; and Zhang, J. 2025. ConstraintLLM: A Neuro-Symbolic Frame-work for Industrial-Level Constraint Programming. In Pro-ceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , 16010–16030. Vaswani, A.; Shazeer, N.; Parmar, N.; Uszkoreit, J.; Jones, L.; Gomez, A. N.; Kaiser, Ł.; and Polosukhin, I. 2017. At-tention is all you need. Advances in neural information pro-cessing systems , 30. Wang, W.; Liu, K.; Chen, A. R.; Li, G.; Jin, Z.; Huang, G.; and Ma, L. 2024. Python symbolic execution with llm-powered code generation. arXiv preprint arXiv:2409.09271 .Wei, J.; Tay, Y.; Bommasani, R.; Raffel, C.; Zoph, B.; Borgeaud, S.; Yogatama, D.; Bosma, M.; Zhou, D.; Metzler, D.; et al. 2022a. Emergent abilities of large language mod-els. arXiv preprint arXiv:2206.07682 .Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Xia, F.; Chi, E.; Le, Q. V.; Zhou, D.; et al. 2022b. Chain-of-thought prompting elicits reasoning in large language mod-els. Advances in neural information processing systems , 35: 24824–24837. Zhang, J. 2000. Specification analysis and test data gen-eration by solving Boolean combinations of numeric con-straints. In Proceedings First Asia-Pacific Conference on Quality Software , 267–274. IEEE. Zhang, J. 2008. Constraint solving and symbolic execu-tion. In Verified Software: Theories, Tools, and Experiments (VSTTE 2005) , volume 4171 of Lecture Notes in Computer Science , 539–544. Springer. Zhang, J.; and Wang, X. 2001. A constraint solver and its application to path feasibility analysis. International Jour-nal of Software Engineering and Knowledge Engineering ,11(02): 139–156. 14312

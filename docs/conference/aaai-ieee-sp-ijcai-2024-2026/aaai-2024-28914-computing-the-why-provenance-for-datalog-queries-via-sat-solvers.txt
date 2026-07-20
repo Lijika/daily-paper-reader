@@ -1,0 +1,536 @@
+Title: Computing the Why-Provenance for Datalog Queries via SAT Solvers
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/28914/29739
+
+Number of Pages: 8
+
+Markdown Content:
+# Computing the Why-Provenance for Datalog Queries via SAT Solvers 
+
+# Marco Calautti 1, Ester Livshits 2, Andreas Pieris 2,3 , Markus Schneider 2
+
+> 1
+
+Department of Computer Science, University of Milan 
+
+> 2
+
+School of Informatics, University of Edinburgh 
+
+> 3
+
+Department of Computer Science, University of Cyprus marco.calautti@unimi.it, ester.livshits@ed.ac.uk, apieris@inf.ed.ac.uk, m.schneider@ed.ac.uk 
+
+Abstract 
+
+> Explaining an answer to a Datalog query is an essential task towards Explainable AI, especially nowadays where Datalog plays a critical role in the development of ontology-based applications. A well-established approach for explaining a query answer is the so-called why-provenance, which essen-tially collects all the subsets of the input database that can be used to obtain that answer via some derivation process, typically represented as a proof tree. It is well known, how-ever, that computing the why-provenance for Datalog queries is computationally expensive, and thus, very few attempts can be found in the literature. The goal of this work is to demon-strate how off-the-shelf SAT solvers can be exploited towards an efficient computation of the why-provenance for Datalog queries. Interestingly, our SAT-based approach allows us to build the why-provenance in an incremental fashion, that is, one explanation at a time, which is much more useful in a practical context than the one-shot computation of the whole set of explanations as done by existing approaches.
+
+# 1 Introduction 
+
+Datalog has emerged in the 1980s as a logic-based query lan-guage from Logic Programming and has been extensively studied since then (Abiteboul, Hull, and Vianu 1995). The name Datalog reflects the intention of devising a counter-part of Prolog for data processing. It essentially extends the language of unions of conjunctive queries, which cor-responds to the select-project-join-union fragment of rela-tional algebra, with the important feature of recursion, much needed to express some natural queries. Among numerous applications, Datalog has been heavily used in the context of ontological query answering. In particular, for several important ontology languages based on description logics and existential rules, ontological query answering can be re-duced to the problem of evaluating a Datalog query (see, e.g., (Eiter et al. 2012; Benedikt et al. 2022)), which in turn enables the exploitation of efficient Datalog engines such as Souffl´ e (Jordan, Scholz, and Subotic 2016), VLog (Urbani, Jacobs, and Kr¨ otzsch 2016), RDFox (Nenov et al. 2015), and DLV (Leone et al. 2006), to name a few. As for any other query language, explaining why a result to a Datalog query is obtained is crucial towards transpar- 
+
+> Copyright c ©2024, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved.
+
+ent data-intensive applications. A well-established approach for providing such explanations to query answers is the so-called why-provenance (Buneman, Khanna, and Tan 2001). Its essence is to collect all the subsets of the input database that as a whole can be used to derive a certain answer. More precisely, for Datalog queries, the why-provenance of an an-swer tuple ¯t is obtained by considering all the possible proof trees T of the fact Ans(¯ t), with Ans being the answer pred-icate of the Datalog query in question, and then collecting all the database facts that label the leaves of T . Recall that a proof tree of a fact α w.r.t. a database D and a set Σ of Datalog rules forms a tree-like representation of a way for deriving α by starting from D and executing the rules oc-curring in Σ (Abiteboul, Hull, and Vianu 1995). Despite its wide acceptance, why-provenance for Dat-alog queries comes with two weaknesses: it is computa-tionally very expensive, and it may provide counterintuitive explanations. The first weakness is manifested by the fact that, although why-provenance for Datalog queries has been around for decades, only a couple of works have considered implementing it for recursive queries (Zhao, Subotic, and Scholz 2020; Esparza, Luttenberger, and Schlund 2014). An attempt to change this state of affairs was made in (Elha-lawati, Kr¨ otzsch, and Mennicke 2022) by focusing on the more practical setting of computing the why-provenance of a given query answer (a.k.a. on-demand why-provenance), instead of computing the why-provenance for all the query answers. Concerning the second weakness, it has been ob-served that there are proof trees that correspond to unnatu-ral derivation processes, e.g., derivations where an atom is derived from itself (Bourgaux et al. 2022). Now, an expla-nation witnessed via such an unnatural proof tree, might be classified as a counterintuitive one as it does not correspond to an intuitive derivation process that can be extracted from the proof tree; this is further discussed in Section 3. The main goal of this work is to tackle the two weaknesses of why-provenance for Datalog queries discussed above. In particular, we place our work in the more practical setting of on-demand why-provenance, and target an efficient im-plementation that provides conceptually meaningful expla-nations for the given query answer. To this end, we intro-duce the novel class of unambiguous proof trees that corre-spond to conceptually meaningful derivation processes, un-like arbitrary proof trees, which in turn ensures the concep-The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 10459
+
+tual relevance of the obtained explanations. We then show that unambiguous proof trees, besides their conceptual ad-vantage, also help to exploit off-the-shelf SAT solvers to-wards an efficient computation of the why-provenance for Datalog queries. Moreover, our SAT-based approach allows us to build the why-provenance of a query answer in an in-cremental fashion, i.e., one explanation at a time, which is much more useful in practice than the one-shot computa-tion of the whole set as done in (Elhalawati, Kr¨ otzsch, and Mennicke 2022). Finally, we experimentally confirm the ef-ficiency of our approach with a dedicated benchmark, and we further show that, in general, it outperforms the machin-ery proposed in (Elhalawati, Kr¨ otzsch, and Mennicke 2022). 
+
+The experimental scenarios and the source code are given at https://gitlab.com/aaai24whyprov/datalog-why-provenance. 
+
+# 2 Preliminaries 
+
+We consider the disjoint countably infinite sets C and V of 
+
+constants and variables , respectively. We may refer to con-stants and variables as terms . For brevity, given an integer 
+
+n > 0, we may write [n] for the set of integers {1, . . . , n }.
+
+Relational Databases. A schema S is a finite set of relation names (or predicates) with associated arity. We write R/n 
+
+to say that R has arity n ≥ 0; we may write ar (R) for n.A (relational) atom α over S is an expression of the form 
+
+R(¯ t), where R/n ∈ S and ¯t is an n-tuple of terms. By abuse of notation, we may treat tuples as the set of their elements. A fact is an atom that mentions only constants. A database 
+
+over S is a finite set of facts over S. The active domain of a database D, denoted dom (D), is the set of constants in D.
+
+Syntax and Semantics of Datalog Programs. A (Datalog) rule σ over a schema S is an expression of the form 
+
+R0(¯ x0) :– R1(¯ x1), . . . , R n(¯ xn)
+
+for n ≥ 1, where Ri(¯ xi) is a (constant-free) relational atom over S for i ∈ { 0, . . . , n }, and each variable in ¯x0 occurs in 
+
+¯xk for some k ∈ [n]. We refer to R0(¯ x0) as the head of σ,denoted head (σ), and to the expression that appears on the right of the :– symbol as the body of σ, denoted body (σ),which we may treat as the set of its atoms. A Datalog program over a schema S is defined as a finite set Σ of Datalog rules over S. A predicate R occurring in 
+
+Σ is called extensional if there is no rule in Σ having R in its head, and intensional if there exists at least one rule in 
+
+Σ with R in its head. The extensional (database) schema of 
+
+Σ, denoted edb (Σ) , is the set of all extensional predicates in 
+
+Σ, while the intensional schema of Σ, denoted idb (Σ) , is the set of all intensional predicates in Σ. Note that, by definition, 
+
+edb (Σ) ∩ idb (Σ) = ∅. The schema of Σ, denoted sch (Σ) , is the set edb (Σ) ∪ idb (Σ) , which is in general a subset of S
+
+since some predicates of S may not appear in Σ.An elegant property of Datalog programs is that they have three equivalent semantics: model-theoretic, fixpoint, and proof-theoretic (Abiteboul, Hull, and Vianu 1995). We re-call the proof-theoretic semantics of Datalog programs since it is closer to the notion of why-provenance. To this end, we need the key notion of proof tree of a fact. For a database D
+
+and a Datalog program Σ, let base (D, Σ) = {R(¯ t) | R ∈
+
+sch (Σ) and ¯t ∈ dom (D)ar (R)}, the facts that can be formed using predicates of sch (Σ) and constants of dom (D).
+
+Definition 2.1. (Proof Tree ) Consider a Datalog program 
+
+Σ, a database D over edb (Σ) , and a fact α over sch (Σ) . A 
+
+proof tree of α w.r.t. D and Σ is a finite labeled rooted tree 
+
+T = ( V, E, λ ), with λ : V → base (D, Σ) , such that: 1. If v ∈ V is the root, then λ(v) = α.2. If v ∈ V is a leaf, then λ(v) ∈ D.3. If v ∈ V is a node with n ≥ 1 children u1, . . . , u n,then there is a rule R0(¯ x0) :– R1(¯ x1), . . . , R n(¯ xn) ∈ Σ
+
+and a function h : ⋃ 
+
+> i∈[n]
+
+¯xi → C such that λ(v) = 
+
+R0(h(¯ x0)) , and λ(ui) = Ri(h(¯ xi)) for each i ∈ [n].Essentially, a proof tree of a fact α w.r.t. D and Σ indicates that we can derive α starting from D end executing the rules of Σ. Now, given a Datalog program Σ and a database D
+
+over sch (Σ) , the semantics of Σ on D, denoted Σ( D), is 
+
+{α | there is a proof tree of α w.r.t. D and Σ},
+
+that is, the set of facts that can be proven using D and Σ.
+
+Datalog Queries. It is now straightforward to recall the syn-tax and the semantics of Datalog queries. A Datalog query 
+
+is a pair Q = (Σ , R ), where Σ is a Datalog program and R
+
+a predicate of idb (Σ) . Now, for a database D over edb (Σ) ,the answer to Q over D is defined as the set 
+
+Q(D) = 
+
+{¯t ∈ dom (D)ar (R) | R(¯ t) ∈ Σ( D)
+
+}
+
+,
+
+that is, the set of tuples ¯t of dom (D)ar (R) such that the fact 
+
+R(¯ t) can be derived using D and Σ.
+
+Why-Provenance for Datalog Queries. As discussed in the introduction, why-provenance is a standard way of explain-ing query results. It essentially collects all the subsets of the database (without unnecessary atoms) that allow to prove (or derive) a query result. We now formalize this simple idea. Given a proof tree T = ( V, E, λ ) (of some fact w.r.t. some database and Datalog program), the support of T is the set 
+
+support (T ) = {λ(v) | v ∈ V is a leaf of T } ,
+
+which is essentially the set of facts that label the leaves of the proof tree T . Note that support (T ) is a subset of the un-derlying database since, by definition, the leaves of a proof tree are labeled with database atoms. The formal definition of why-provenance for Datalog queries follows. 
+
+Definition 2.2. (Why-Provenance for Datalog ) Consider a Datalog query Q = (Σ , R ), a database D over edb (Σ) , and a tuple ¯t ∈ dom (D)ar (R). The why-provenance of ¯t w.r.t. D
+
+and Q is defined as the family of sets of facts 
+
+{support (T ) | T is a proof tree of R(¯ t) w.r.t. D and Σ},
+
+which we denote by why (¯ t, D, Q ).Intuitively speaking, a set of facts D′ ⊆ D that belongs to 
+
+why (¯ t, D, Q ) should be understood as a “real” reason why the tuple ¯t is an answer to the query Q over the database D,i.e., D′ explains why ¯t ∈ Q(D). By “real” we mean that all the facts of D′ are used in order to derive ¯t as an answer. The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 10460
+
+# 3 Unambiguous Proof Trees 
+
+The standard notion of why-provenance defined above relies on arbitrary proof trees. However, as discussed in (Bourgaux et al. 2022), there are proof trees that are counterintuitive. For example, such a proof tree is one where a fact is derived from itself, that is, it contains two nodes labeled with the same fact and one is a descendant of the other. Now, a mem-ber of why (¯ t, D, Q ), witnessed via such an unnatural proof tree, might be classified as a counterintuitive explanation of 
+
+¯t as it does not correspond to a natural derivation process that can be extracted from the proof tree. Therefore, we need refined classes of proof trees that overcome the conceptual limitations of arbitrary proof trees. Some refined classes of proof trees have been recently discussed in (Bourgaux et al. 2022): non-recursive proof trees , minimal-depth proof trees ,and hereditary minimal-depth proof trees . Roughly speak-ing, a non-recursive proof tree is a proof tree that does not contain two nodes labeled with the same fact and one is a de-scendant of the other, a minimal-depth proof tree is a proof tree that has the minimum depth among all the proof trees of the same fact, and a hereditary minimal-depth proof tree is minimizing the depth of each of its subtrees. Although non-recursive and (hereditary) minimal-depth proof trees form well-justified notions that deserve our attention, there are still proof trees from those classes that can be classified as counterintuitive. In fact, there are proof trees that are non-recursive and (hereditary) minimal-depth, but they are am-biguous in the way some facts are derived. Here is a simple example that illustrates this phenomenon. 
+
+Example 3.1. Consider the Datalog program Σ
+
+A(x) :– S(x)
+
+A(x) :– A(y), A (z), T (y, z, x )
+
+that encodes the path accessibility problem (Cook 1974). The predicate S represents source nodes, A represents nodes that are accessible from the source nodes, and T represents accessibility conditions, that is, T (y, z, x ) means that if both 
+
+y and z are accessible from the source nodes, then so is x.We further consider the database 
+
+D = {S(a), S (b), T (a, a, c ), T (b, b, c ), T (c, c, d )}.
+
+The following is a proof tree of the fact A(d) w.r.t. D and Σ
+
+that is non-recursive and (hereditary) minimal-depth, but it suffers from the ambiguity issue described above: 𝐴 (𝑑 )
+
+𝐴 (𝑐 )
+
+𝐴 (𝑎 )
+
+𝑆 (𝑎 )
+
+𝐴 (𝑎 )
+
+𝑆 (𝑎 )
+
+𝑇 (𝑎, 𝑎, 𝑐 )
+
+𝐴 (𝑐 )
+
+𝐴 (𝑏 )
+
+𝑆 (𝑏 )
+
+𝐴 (𝑏 )
+
+𝑆 (𝑏 )
+
+𝑇 (𝑏, 𝑏, 𝑐 )
+
+𝑇 (𝑐, 𝑐, 𝑑 )
+
+Indeed, there are two nodes labeled with the fact A(c), but their subtrees differ, and thus, it is ambiguous how A(c) is derived. Hence, the database D, which belongs to the why-provenance of (d) w.r.t. D and Q due to the above proof tree, might be classified as a counterintuitive explanation since it does not correspond to an intuitive derivation pro-cess where each fact is derived once due to a unique rea-son. Indeed, the intuitive explanations that one expects are the following: d is accessible from a via c (i.e., the subset 
+
+{S(a), T (a, a, c ), T (c, c, d )} of D), or d is accessible from 
+
+b via c (i.e., the subset {S(b), T (b, b, c ), T (c, c, d )} of D). This leads to the class of unambiguous proof trees, where all occurrences of a fact must be proved via the same deriva-tion. Two rooted trees T = ( V, E, λ ) and T ′ = ( V ′, E ′, λ ′)
+
+are isomorphic , denoted T ≈ T ′, if there exists a bijection 
+
+h : V → V ′ such that, for each v ∈ V , λ(v) = λ′(h(v)) ,and for each u, v ∈ V , (u, v ) ∈ E iff (h(u), h (v)) ∈ E′.Let T [v] be the subtree of the proof tree T rooted at node v.The formal definition of unambiguous proof trees follows. 
+
+Definition 3.2. (Unambiguous Proof Tree ) Consider a Datalog program Σ, a database D over edb (Σ) , and a fact 
+
+α over sch (Σ) . An unambiguous proof tree of α w.r.t. D and 
+
+Σ is a proof tree T = ( V, E, λ ) of α w.r.t. D and Σ such that, for all v, u ∈ V , λ(v) = λ(u) implies T [v] ≈ T [u].Why-provenance relative to unambiguous proof trees is defined in the obvious way: for a Datalog query Q = (Σ , R ),a database D over edb (Σ) , and a tuple ¯t ∈ dom (D)ar (R), the 
+
+why-provenance of ¯t w.r.t. D and Q relative to unambiguous proof trees is the family of sets of facts 
+
+{support (T ) | T is an unambiguous proof tree of 
+
+R(¯ t) w.r.t. D and Σ},
+
+denoted why UN (¯ t, D, Q ). The main concern of this work is to efficiently compute the why-provenance of a tuple rela-tive to unambiguous proof trees. To this end, we are going to exploit off-the-shelf SAT solvers and report encouraging results; this is the subject of the next two sections. To the best of our knowledge, this is the first time that SAT solvers are used for computing the why-provenance. Let us stress that focusing on unambiguous proof trees, apart from their con-ceptual advantage discussed above, was crucial towards our encouraging results as it is unclear how a SAT-based imple-mentation can be made practical for ambiguous proof trees. 
+
+# 4 From Why-Provenance to SAT 
+
+In this section, we show that the why-provenance of a tuple relative to unambiguous proof trees can be extracted from the satisfying truth assignments of a Boolean formula. 
+
+Compactly Representing Unambiguous Proof Trees 
+
+The construction of the Boolean formula relies on a charac-terization of the existence of an unambiguous proof tree of a fact α w.r.t. D and Σ via the existence of a so-called com-pressed directed acyclic graph (DAG) of α w.r.t. D and Σ,which, intuitively speaking, is a compact representation of an unambiguous proof tree of α w.r.t. D and Σ. We proceed to formalize the notion of compressed DAG and give the characterization in question. Recall that a DAG G is rooted 
+
+if it has exactly one node, the root , with no incoming edges. A node of G is a leaf if it has no outgoing edges. The defini-tion of compressed DAG follows. The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 10461
+
+Definition 4.1. (Compressed DAG ) Consider a Datalog program Σ, a database D over edb (Σ) , and a fact α over 
+
+sch (Σ) . A compressed DAG of α w.r.t. D and Σ is a rooted DAG G = ( V, E ), with V ⊆ base (D, Σ) , such that: 1. The root of G is α.2. If β ∈ V is a leaf node, then β ∈ D.3. If β ∈ V has n ≥ 1 outgoing edges (β, γ 1), . . . , (β, γ n),then there is a rule R0(¯ x0) :– R1(¯ x1), . . . , R m(¯ xm) ∈
+
+Σ and a function h : ⋃ 
+
+> i∈[m]
+
+¯xi → C such that β =
+
+R0(h(¯ x0)) and {γi}i∈[n] = {Ri(h(¯ xi)) | i ∈ [m]}.For a compressed DAG G = ( V, E ), the support of G is defined analogously to the support of a proof tree, that is, 
+
+support (G) = {v ∈ V | v is a leaf of G}.
+
+The desired characterization follows. 
+
+Proposition 4.2. For a Datalog program Σ, a database D
+
+over edb (Σ) , a fact α over sch (Σ) , and a database D′ ⊆ D,the following are equivalent: 1. There exists an unambiguous proof tree T of α w.r.t. D
+
+and Σ such that support (T ) = D′.2. There exists a compressed DAG G of α w.r.t. D and Σ
+
+such that support (G) = D′.
+
+Note that the above characterization relies on the fact that we focus on unambiguous proof trees. More precisely, un-ambiguity allows us to use a single node in the compressed DAG as a representative for all the (possibly exponentially many) nodes in the proof tree labelled with the same fact. 
+
+Constructing the Boolean Formula 
+
+We start by introducing the so-called downward closure of a fact w.r.t. a database and a Datalog program, taken from (El-halawati, Kr¨ otzsch, and Mennicke 2022), that will play a key role in the construction of the Boolean formula. 
+
+Downward Closure. Roughly, the downward closure of a fact α w.r.t. a database D and a Datalog program Σ is a hy-pergraph that encodes all possible compressed DAGs of α
+
+w.r.t. D and Σ. For our purposes, a (directed) hypergraph 
+
+H is a pair (V, E ), where V is the set of its nodes and E is the set of its hyperedges , i.e., pairs of the form (u, T ), where 
+
+u ∈ V and T is a non-empty subset of V . For u, v ∈ V , we say that u reaches v in H if either u = v, or there exists a se-quence of hyperedges (u1, T 1), . . . , (un, T n) with u1 = u,
+
+v ∈ Tn, and ui ∈ Ti−1 for each i ∈ { 2, . . . , n }. For a node 
+
+u, we write H↓u for the hypergraph (V ′, E ′) obtained from 
+
+H where V ′ contains u and all nodes reachable from u, and 
+
+E′ collects all the hyperedges mentioning only nodes of V ′.For a Datalog program Σ and a database D over edb (Σ) ,the graph of rule instances (GRI) of D and Σ is the hyper-graph gri (D, Σ) = ( V, E ), with V ⊆ base (D, Σ) , such that 1. D ⊆ V , and 2. if there exists a rule R0(¯ x0) :– R1(¯ x1), . . . , R n(¯ xn) in 
+
+Σ and a function h : ⋃ 
+
+> i∈[n]
+
+¯xi → C such that αi =
+
+Ri(h(¯ xi)) ∈ V , for i ∈ [n], then α0 = R0(h(¯ x0)) ∈ V
+
+and (α0, {α1, . . . , α n}) ∈ E.Intuitively, gri (D, Σ) encodes all compressed DAGs of all facts α w.r.t. D and Σ. Since we are interested in finding only compressed DAGs of a specific fact α, we do not need to consider gri (D, Σ) in its entirety, but only the subhypergraph of gri (D, Σ) containing α and all nodes reachable from it. This leads to the notion of downward closure. 
+
+Definition 4.3. (Downward Closure ) Consider a Datalog program Σ, a database D over edb (Σ) , and a fact α occur-ring in gri (D, Σ) . The downward closure of α w.r.t. D and 
+
+Σ, denoted down (α, D, Σ) , is the hypergraph gri (D, Σ) ↓α.The downward closure simply keeps from gri (D, Σ) the part that is relevant to derive the fact in question. The key property of the downward closure, which is easy to verify, is summarized by the following technical lemma. 
+
+Lemma 4.4. Consider a Datalog program Σ, a database D
+
+over edb (Σ) , a fact α over sch (Σ) , and a compressed DAG 
+
+G = ( V, E ) of α w.r.t. D and Σ. Then, for every node β ∈ V
+
+with outgoing edges (β, γ 1), . . . , (β, γ n) in G, we have that 
+
+(β, {γ1, . . . , γ n}) is a hyperedge of down (α, D, Σ) .
+
+The Boolean Formula. Fix a Datalog query Q = (Σ , R ),a database D over edb (Σ) , and a tuple ¯t ∈ dom (D)ar (R).We construct in polynomial time in D a Boolean formula 
+
+φ(¯ t,D,Q ) such that the why-provenance of ¯t w.r.t. D and Q
+
+relative to unambiguous proof trees can be computed from the truth assignments that make φ(¯ t,D,Q ) true. In what fol-lows, assume that down (R(¯ t), D, Q ) = ( V, E ).The set of variables of φ(¯ t,D,Q ) is the union of three dis-joint sets VN , VH , and VE of variables. Each variable in 
+
+VN corresponds to a node of down (R(¯ t), D, Q ), i.e., VN =
+
+{xα | α ∈ V }, each variable in VH corresponds to a hyper-edge of down (R(¯ t), D, Q ), i.e., VH = {ye | e ∈ E}, and each variable in VE corresponds to a “standard edge” that can be extracted from a hyperedge of down (R(¯ t), D, Q ),i.e., VE = {z(α,β ) | (α, T ) ∈ E with β ∈ T }.The key idea is that the variables of VN and VE that be-come true via a satisfying truth assignment of φ(¯ t,D,Q ), in-duce the nodes and the edges of a compressed DAG G for 
+
+R(¯ t) w.r.t. D and Q, which, by Proposition 4.2, implies that support (G) ∈ why UN (¯ t, D, Q ). The Boolean formula 
+
+φ(¯ t,D,Q ) is a conjunction of the form 
+
+φgraph ∧ φroot ∧ φproof ∧ φacyclic .
+
+We proceed to discuss each of the subformulas. In the fol-lowing, we use A ⇒ B as a shorthand for ¬A ∨ B.The formula φgraph is in charge of guaranteeing consis-tency between the truth assignments of the variables in VN
+
+and the variables in VE , i.e., if an edge between two nodes is part of G, then the two nodes must belong to G as well: 
+
+φgraph = ∧
+
+> z(α,β )∈VE
+
+(z(α,β ) ⇒ xα) ∧ (z(α,β ) ⇒ xβ ).
+
+The formula φroot guarantees that the atom R(¯ t) is a node of G, is the root of G, and no other node v of G can be the The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 10462
+
+root (i.e., v must have at least one incoming edge): 
+
+φroot = xR(¯ t) ∧
+
+ ∧
+
+> z(α,R (¯ t)) ∈VE
+
+¬z(α,R (¯ t)) 
+
+ ∧
+
+∧  
+
+> xα∈VN
+> with α6=R(¯ t)
+
+xα ⇒ ∨
+
+> z(β,α )∈VE
+
+z(β,α )
+
+ .
+
+We now discuss φproof . Roughly, this formula is in charge of guaranteeing that, whenever an intensional atom α is a node of G, then it must have the correct children in G, i.e., its children are the ones coming from some hyperedge of 
+
+down (R(¯ t), D, Q ) and no other nodes are its children (this is needed to guarantee that G is a compressed DAG). This is achieved with two subformulas. The first part is in charge of choosing some hyperedge (α, T ) of down (R(¯ t), D, Q ),for each intensional atom α, while the second guarantees that for each selected hyperedge (α, T ) (one per intensional atom α), all and only the nodes in T are children of α in G:
+
+φproof = ∧  
+
+> xα∈VNwith
+> αintensional
+
+xα ⇒ ∨ 
+
+> y(α,T )∈VH
+
+y(α,T )
+
+ ∧
+
+∧  
+
+> ye∈VH
+> with e=( α,T )
+
+ ∧
+
+> z(α,β )∈VE
+
+ye ⇒ `e,β 
+
+ ,
+
+where, for a hyperedge e = ( α, T ), `e,β denotes z(α,β ) if 
+
+β ∈ T , and ¬z(α,β ) otherwise. Let us clarify that, although we are interested in choosing exactly one hyperedge (α, T )
+
+for each intensional atom α, the above formula uses a dis-junction rather than an exclusive or. This is not a problem since a truth assignment that makes two variables y(α,T 1)
+
+and y(α,T 2) true is not a satisfying assignment. This is be-cause the second conjunct of φproof , e.g., requires that the variables z(α,β ) with β ∈ T1 are true, while all others must be false. Hence, since T1 6 = T2, when considering the hy-peredge (α, T 2), this subformula will not be satisfied. We finally discuss φacyclic , which is in charge of check-ing that G, namely the graph whose edges correspond to the true variables in VE , is acyclic. Checking the acyclicity of a graph via a Boolean formula is a well-studied problem in the SAT literature with a plethora of encodings. For our con-struction, we employ an encoding based on vertex elimina-tion (Rankooh and Rintanen 2022). This completes the construction of our Boolean formula, which is in CNF, and we can prove it can be constructed in polynomial time in D; the latter relies on the fact that the hypergraph down (R(¯ t), D, Σ) can be constructed in poly-nomial time in D. Now, a truth assignment τ to the vari-ables of φ(¯ t,D,Q ) naturally gives rise to a database denoted 
+
+db (τ ). Formally, for a truth assignment τ from the vari-ables of φ(¯ t,D,Q ) to {0, 1}, we write db (τ ) for the database 
+
+{α ∈ D | xα ∈ VN and τ (xα) = 1 }, i.e., the database collecting all facts in D having a corresponding variable in 
+
+φ(¯ t,D,Q ) that is true w.r.t. τ . Let [[ φ(¯ t,D,Q )]] be the family 
+
+{db (τ ) | τ is a satisfying assignment of φ(¯ t,D,Q )
+
+} .
+
+We can then show the correctness of our formula: 
+
+Proposition 4.5. Consider a Datalog query Q = (Σ , R ), a database D over edb (Σ) , and a tuple ¯t ∈ dom (D)ar (R). It holds that why UN (¯ t, D, Q ) = [[ φ(¯ t,D,Q )]] .
+
+# 5 Why-Provenance via SAT Solvers 
+
+Proposition 4.5 provides a way for computing the why-provenance of a tuple relative to unambiguous proof trees via off-the-shelf SAT solvers. But how does this machinery behave when applied in a practical context? In particular, we are interested in the incremental computation of the why-provenance by enumerating its members. The goal of this section is to provide an answer to this question. 
+
+Implementation Details 
+
+Before presenting our experimental results, let us first briefly discuss some interesting aspects of the implementation. In what follows, fix a Datalog query Q = (Σ , R ), a database D
+
+over edb (Σ) , and a tuple ¯t ∈ dom (D)ar (R).
+
+Constructing the Downward Closure. Recall that the con-struction of φ(¯ t,D,Q ) relies on the downward closure of R(¯ t)
+
+w.r.t. D and Σ. It turns out that the hyperedges of the down-ward closure can be computed by executing a slightly modi-fied Datalog query Q↓ over a slightly modified database D↓.In other words, the answers to Q↓ over D↓ coincide with the hyperedges of the downward closure. To construct the downward closure we can exploit a state-of-the-art Datalog engine, that is, version 2.1.1 of DLV (Adrian et al. 2018). Note that our approach differs form the one in (Elhalawati, Kr¨ otzsch, and Mennicke 2022), which uses existential rules. The advantage of using a pure Datalog query to build the downward closure is that we can use the same Datalog en-gine to both answer and explain queries. 
+
+Constructing the Formula. Recall that φ(¯ t,D,Q ) is ex-pressed as a conjunction of four formulas, where each for-mula is responsible for a certain task. As it might be ex-pected, the heavy task is to verify that the graph in ques-tion is acyclic (performed by the formula φacyclic ). Check-ing the acyclicity of a directed graph via a Boolean formula is a well-studied problem in the SAT literature. For our im-plementation, we employ the technique of vertex elimina-tion (Rankooh and Rintanen 2022). The advantage of this approach is that the number of Boolean variables needed to encode φacyclic is generally orders of magnitude smaller than other standard encodings, such as plain transitive clo-sure. In paricular, the number of variables is O(n · δ), where 
+
+n is the number of nodes of the graph, and δ is the so-called 
+
+elimination width of the graph, which, intuitively speaking, is related to how connected the graph is. 
+
+Incrementally Constructing the Why-Provenance. Recall that we are interested in the incremental computation of the why-provenance, which is more useful in practice than com-puting the whole set at once. To this end, we need a way The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+10463 Scenario Databases #Rules 
+
+TClosure Dbitcoin (235K) , D facebook (88.2K) 2
+
+Doctors -i, D1(100K) 6
+
+i ∈ [7] 
+
+Galen D1(26.5K) , D 2(30.5K), 14 
+
+D3(67K) , D 4(82K) 
+
+Andersen D1(68K) , D 2(340K) , D 3(680K), 2
+
+D4(3.4M) , D 5(6.8M) 
+
+CSDA Dhttpd (10M) , D postgresql (34.8M), 2
+
+Dlinux (44M) Table 1: Experimental scenarios. For each database D, we give in parenthesis the number of tuples occurring in D.to enumerate all the members of the why-provenance with-out repetitions. This is achieved by adapting a standard tech-nique from the SAT literature for enumerating the satisfying assignments of a Boolean formula, called blocking clause .We initially collect in a set S all the facts of D occurring in the downward closure of R(¯ t) w.r.t. D and Σ. Then, af-ter asking the SAT solver for an arbitrary satisfying assign-ment τ of φ(¯ t,D,Q ), we output the database db (τ ), and then construct the “blocking” clause ∨α∈S `α, where `α = ¬xα
+
+if α ∈ db (τ ), and `α = xα otherwise. We then add this clause to the formula, which expresses that no other satisfy-ing assignment τ ′ should give rise to the same member of the why-provenance. This will exclude the previously com-puted explanations from the computation. We keep adding such blocking clauses each time we get a new member of the why-provenance until the formula is unsatisfiable. 
+
+Experimental Evaluation 
+
+We now proceed to experimentally evaluate the SAT-based approach discussed above. To this end, we consider a variety of scenarios from the Datalog literature consisting of a query 
+
+Q = (Σ , R ) and a family of databases D over edb (Σ) . All the considered scenarios are summarized in Table 1. 
+
+Experimental Setup. For each scenario s consisting of the query Q = (Σ , R ) and the family of databases D, and for each D ∈ D , we have computed Q(D) using DLV and selected 100 tuples ¯t1 
+
+> s,D
+
+, . . . , ¯t100  
+
+> s,D
+
+from Q(D) uniformly at random. Then, for each i ∈ [100] , we constructed the down-ward closure of R(¯ tis,D ) w.r.t. D and Σ by first comput-ing the adapted query Q↓ and database D↓ via a Python 3 implementation and then using DLV for the actual com-putation of the downward closure. Then, we constructed the Boolean formula φ(¯ tis,D ,D,Q ) via a C++ implementa-tion. Finally, we ran the state-of-the-art SAT solver Glu-cose (see, e.g., (Audemard and Simon 2018)), version 4.2.1, with the above formula as input, to enumerate the members of why UN (¯ tis,D , D, Q ). All the experiments have been con-ducted on a laptop with an Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz, and 32GB of RAM, running Fedora Linux 37. We used Python 3.11.2, and the C++ code has been com-piled with g++ 12.2.1, using the -O3 optimization flag. bitcoin D
+
+> 10 0Time (s)
+> facebook D
+> 10 -1
+
+(a) TClosure 10 010 -1 1D 2D 3D 4D (b) Galen 1D 2D 3D 4D 5D
+
+> 10 010 110 2Time (s)
+
+(c) Andersen httpd D postgresql D linux D 
+
+> 10 210 3
+
+(d) CSDA Doc-1 0.66 0.64 0.62 0.60 0.56 0.54 0.58 0.52 Doc-2 Doc-3 Doc-4 Doc-5 Doc-6 Doc-7 Time (s) 
+
+(e) Doctors -i, i ∈ [7] 
+
+Figure 1: Building the downward closure and the formula. 
+
+Experimental Results. Concerning the construction of the downward closure and the formula, each plot in Figure 1 cor-responds to one of our scenarios, where, for each database of the scenario, we report a box-plot collecting all the runtimes relative to the 100 tuples associated to that database. An ex-ception to this are the Doctors scenarios, which, for the sake of presentation, have been grouped in a single plot, where the database is implicitly the only one available (i.e., D1). In each box-plot, the bottom and the top borders represent the first and third quartile, i.e., the runtime under which 25% and 75% of all the runtimes occur, respectively, and the orange line represents the median runtime. Moreover, the bottom and the top whisker represent the minimum and maximum runtime, respectively, while the triangle denotes the average runtime. All times are expressed in seconds, and we use log-arithmic or linear scale, depending on the scenario. We can see that in most of the scenarios, the runtime is in the order of some seconds, and we have observed that almost all the time is spent for computing the downward closure. Considering Andersen , for the databases having size up to half a million facts, the total time is in the order of some sec-onds, whereas for the very large databases (3.4M and 6.8M facts), the total time is between half a minute and a minute. This is quite encouraging considering the complexity of the query, the large size of the databases, and the limited power The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+10464 bitcoin Time (ms)  
+
+> DDfacebook 10 -2 10 010 210 4
+
+(a) TClosure 10 3   
+
+> 2D3D4D1D
+> 10 -1 10 -2 10 -3 10 010 110 2
+
+(b) Galen 10 -2    
+
+> 2D3D4D5D1D
+> 10 -3 Time (ms)
+
+(c) Andersen httpd D postgresql D linux D 
+
+> 10 310 -1 10 -2 10 -3 10 010 110 2
+
+(d) CSDA Doc-1 Time (ms) 10 10 10 10 10 Doc-2 Doc-3 Doc-4 Doc-5 Doc-6 Doc-7 -2 -1 012
+
+(e) Doctors -i, i ∈ [7] 
+
+Figure 2: Incremental computation of the why-provenance. of our machine. The CSDA scenario is the most demanding one due to the extremely large databases. Note, however, that it would be similarly demanding even for query answering. For the incremental computation of the why-provenance, we give in Figure 2 the times required to build an expla-nation, that is, the time between the current member of the why-provenance and the next one (the delay). Each plot is associated with a scenario where, for each database of the scenario, a box-plot collects the delays of constructing the members of the why-provenance for all the 100 randomly chosen tuples for that database; for each tuple, we let the ex-ecution stop at 10K explanations or at a 5 minutes timeout. The box-plots have the same meaning as in Figure 1. Note that the Doctors -based scenarios are grouped in one plot. Most of the delays are below 1 millisecond, with most of the medians in the order of microseconds. Therefore, once we have the formula in place, incrementally computing the members of the why-provenance is extremely fast. 
+
+Comparative Evaluation. We conclude by comparing our approach with the one of (Elhalawati, Kr¨ otzsch, and Men-nicke 2022), which, to the best of our knowledge, is the only one in the literature for constructing the why-provenance of D  
+
+> Time (s) 2D3D4D
+> SAT-based 10 10 10 -1 10 Rule-based 110 0123
+
+(a) Galen Doc-1 Doc-2 Doc-6 Doc-3 Doc-4 Doc-5 Doc-7 SAT-based Rule-based 10 10 01 (b) Doctors -i, i ∈ [7] 
+
+Figure 3: Comparison between SAT-based and rule-based. a given tuple. 1 We point out that for a query Q, a database 
+
+D, and a tuple ¯t ∈ Q(D), the technique of (Elhalawati, Kr¨ otzsch, and Mennicke 2022), which we call rule-based ,constructs the set why (¯ t, D, Q ) via a rewriting of Q into a set of existential rules, unlike our approach that incre-mentally constructs why UN (¯ t, D, Q ) via a SAT solver. Since 
+
+why UN (¯ t, D, Q ) ⊆ why (¯ t, D, Q ), one may think that com-puting why (¯ t, D, Q ) is more demanding. However, com-puting why UN (¯ t, D, Q ) requires checking for unambiguity. Hence, a comparison will help us to clarify whether unam-biguous proof trees provide any computational advantage. We use VLog 0.9.0 for the rule-based implementation, and we perform the comparison over the Galen and Doctors -based scenarios as these are the only ones considered in (El-halawati, Kr¨ otzsch, and Mennicke 2022), and thus, we have access to the rewritten set of existential rules; the authors did not release the tools needed to perform the rewriting. The comparison is shown in Figure 3 where we consider, for each scenario consisting of Q and D, database D ∈ D ,and tuple ¯t from the 100 randomly selected ones in Q(D),the end-to-end runtime for constructing why UN (¯ t, D, Q ) and 
+
+why (¯ t, D, Q ) using the SAT-based and the rule-based imple-mentation, respectively; we set a 5 minutes timeout for both approaches, and we use box-plots as usual. Our SAT-based implementation consistently outperforms the rule-based one. In particular, for the Galen scenario, in most cases, the rule-based implementation does not finish in less than 5 minutes, with the worst case occurring with the largest database, where 41 out of the 100 runs time out. Inter-estingly, the time for building the downward closure in both approaches is comparable. Thus, the performance difference is indeed due to the combination of relying on unambiguous proof trees and exploiting a SAT solver. 
+
+# 6 Future Steps 
+
+From our analysis, it is clear that our future efforts should focus on improving the construction of the downward clo-sure. It will be also interesting to understand whether our SAT-based approach can be used for more expressive query languages such as ontology-mediated queries. 
+
+> 1
+
+Note that (Elhalawati, Kr¨ otzsch, and Mennicke 2022) proposes an alternative approach based on systems of equations. However, it is outperformed or on par with the one based on existential rules. The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+10465 Acknowledgements 
+
+We thank the anonymous referees for their feedback. This work was funded by the European Union - Next Generation EU under the MUR PRIN-PNRR grant P2022KHTX7 “DIS-TORT”, and by the EPSRC grant EP/S003800/1 “EQUID”. 
+
+# References 
+
+Abiteboul, S.; Hull, R.; and Vianu, V. 1995. Foundations of Databases . Addison-Wesley. Adrian, W. T.; Alviano, M.; Calimeri, F.; Cuteri, B.; Dodaro, C.; Faber, W.; Fusc` a, D.; Leone, N.; Manna, M.; Perri, S.; Ricca, F.; Veltri, P.; and Zangari, J. 2018. The ASP System DLV: Advancements and Applications. K¨ unstliche Intell. ,32(2-3): 177–179. Audemard, G.; and Simon, L. 2018. On the Glucose SAT Solver. Int. J. Artif. Intell. Tools , 27(1): 1840001:1– 1840001:25. Benedikt, M.; Buron, M.; Germano, S.; Kappelmann, K.; and Motik, B. 2022. Rewriting the Infinite Chase. PVLDB ,15(11): 3045–3057. Bourgaux, C.; Bourhis, P.; Peterfreund, L.; and Thomazo, M. 2022. Revisiting Semiring Provenance for Datalog. In 
+
+KR .Buneman, P.; Khanna, S.; and Tan, W. C. 2001. Why and Where: A Characterization of Data Provenance. In ICDT ,316–330. Cook, S. A. 1974. An Observation on Time-Storage Trade Off. J. Comput. Syst. Sci. , 9(3): 308–316. Eiter, T.; Ortiz, M.; Simkus, M.; Tran, T.; and Xiao, G. 2012. Query Rewriting for Horn-SHIQ Plus Rules. In AAAI .Elhalawati, A.; Kr¨ otzsch, M.; and Mennicke, S. 2022. An Existential Rule Framework for Computing Why-Provenance On-Demand for Datalog. In RuleML+RR .Esparza, J.; Luttenberger, M.; and Schlund, M. 2014. FP-solve: A Generic Solver for Fixpoint Equations over Semir-ings. In CIAA , 1–15. Jordan, H.; Scholz, B.; and Subotic, P. 2016. Souffl´ e: On Synthesis of Program Analyzers. In CAV , 422–430. Leone, N.; Pfeifer, G.; Faber, W.; Eiter, T.; Gottlob, G.; Perri, S.; and Scarcello, F. 2006. The DLV system for knowledge representation and reasoning. ACM Trans. Comput. Log. ,7(3): 499–562. Nenov, Y.; Piro, R.; Motik, B.; Horrocks, I.; Wu, Z.; and Banerjee, J. 2015. RDFox: A Highly-Scalable RDF Store. In ISWC , 3–20. Rankooh, M. F.; and Rintanen, J. 2022. Propositional En-codings of Acyclicity and Reachability by Using Vertex Elimination. In AAAI , 5861–5868. Urbani, J.; Jacobs, C.; and Kr¨ otzsch, M. 2016. Column-Oriented Datalog Materialization for Large Knowledge Graphs. In AAAI , 258–264. Zhao, D.; Subotic, P.; and Scholz, B. 2020. Debugging Large-scale Datalog: A Scalable Provenance Evaluation Strategy. ACM Trans. Program. Lang. Syst. , 42(2): 7:1–7:35. The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24)

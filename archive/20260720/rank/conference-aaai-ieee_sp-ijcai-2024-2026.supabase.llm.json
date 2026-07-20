@@ -1,0 +1,1462 @@
+{
+  "top_k": 200,
+  "generated_at": "2026-07-20T12:36:20.405918+00:00",
+  "papers": [
+    {
+      "id": "aaai-2024-28628",
+      "source": "AAAI-2024-Accepted",
+      "title": "Parameterization of (Partial) Maximum Satisfiability above Matching in a Variable-Clause Graph",
+      "abstract": "In the paper, we study the Maximum Satisfiability and the Partial Maximum Satisfiability problems. Using Gallai–Edmonds decomposition, we significantly improve the upper bound for the Maximum Satisfiability problem parameterized above maximum matching in the variable-clause graph. Our algorithm operates with a runtime of O*(2.83^k'), a substantial improvement compared to the previous approach requiring O*(4^k' ), where k' denotes the relevant parameter. Moreover, this result immediately implies O*(1.14977^m) and O*(1.27895^m) time algorithms for the (n, 3)-MaxSAT and (n, 4)-MaxSAT where m is the overall number of clauses. These upper bounds improve prior-known upper bounds equal to O*(1.1554^m) and O*(1.2872^m). We also adapt the algorithm so that it can handle instances of Partial Maximum Satisfiability without losing performance in some cases. Note that this is somewhat surprising, as the existence of even one hard clause can significantly increase the hardness of a problem.",
+      "authors": [
+        "Vasily Alferov",
+        "Ivan Bliznets",
+        "Kirill Brilliantov"
+      ],
+      "primary_category": "AAAI-24 Technical Tracks 8",
+      "categories": [
+        "AAAI-2024",
+        "AAAI-24 Technical Tracks 8"
+      ],
+      "published": "2024-03-25T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/28628",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/28628/29220",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "ijcai-2024-214",
+      "source": "IJCAI-2024-Accepted",
+      "title": "A Fast Algorithm for MaxSAT above Half Number of Clauses",
+      "abstract": "",
+      "authors": [
+        "(PDF |   Details)"
+      ],
+      "primary_category": "IJCAI-2024",
+      "categories": [
+        "IJCAI-2024"
+      ],
+      "published": "2024-08-01T00:00:00+00:00",
+      "link": "https://www.ijcai.org/proceedings/2024/214",
+      "pdf_url": "https://www.ijcai.org/proceedings/2024/0214.pdf",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "ijcai-2025-292",
+      "source": "IJCAI-2025-Accepted",
+      "title": "Verified Certificates via SAT and Computer Algebra Systems for the Ramsey R(3,8) and R(3,9) Problems",
+      "abstract": "",
+      "authors": [
+        "(PDF |   Details)"
+      ],
+      "primary_category": "IJCAI-2025",
+      "categories": [
+        "IJCAI-2025"
+      ],
+      "published": "2025-08-01T00:00:00+00:00",
+      "link": "https://www.ijcai.org/proceedings/2025/292",
+      "pdf_url": "https://www.ijcai.org/proceedings/2025/0292.pdf",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "ijcai-2025-295",
+      "source": "IJCAI-2025-Accepted",
+      "title": "An Efficient Core-Guided Solver for Weighted Partial MaxSAT",
+      "abstract": "",
+      "authors": [
+        "(PDF |   Details)"
+      ],
+      "primary_category": "IJCAI-2025",
+      "categories": [
+        "IJCAI-2025"
+      ],
+      "published": "2025-08-01T00:00:00+00:00",
+      "link": "https://www.ijcai.org/proceedings/2025/295",
+      "pdf_url": "https://www.ijcai.org/proceedings/2025/0295.pdf",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2026-38429",
+      "source": "AAAI-2026-Accepted",
+      "title": "Ordered Objectives in Maximum Satisfiability",
+      "abstract": "Maximum satisfiability (MaxSAT) is a viable approach to solving NP-hard combinatorial optimization problems through propositional encodings. Understanding how problem structure and encodings impact the behaviour of different MaxSAT solving algorithms is an important challenge. In this work, we identify MaxSAT instances in which the constraints entail an ordering of the objective variables as an interesting instance class from the perspectives of problem structure and MaxSAT solving. From the problem structure perspective, we show that a non-negligible percentage of instances in commonly used MaxSAT benchmark sets have ordered objectives and further identify various examples of such problem domains to which MaxSAT solvers have been successfully applied. From the algorithmic perspective, we argue that MaxSAT instances with ordered objectives, provided an ordering, can be solved (at least) as efficiently with a very simplistic algorithmic approach as with modern core-based MaxSAT solving algorithms. We show empirically that state-of-the-art MaxSAT solvers suffer from overheads and are outperformed by the simplistic  approach on real-world optimization problems with ordered objectives.",
+      "authors": [
+        "Jeremias Berg",
+        "André Schidler",
+        "Matti Järvisalo"
+      ],
+      "primary_category": "AAAI-26 Technical Tracks 17",
+      "categories": [
+        "AAAI-2026",
+        "AAAI-26 Technical Tracks 17"
+      ],
+      "published": "2026-03-17T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/38429",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/38429/42391",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2024-28659",
+      "source": "AAAI-2024-Accepted",
+      "title": "SAT-Based Tree Decomposition with Iterative Cascading Policy Selection",
+      "abstract": "Solvers for propositional satisfiability (SAT) effectively tackle hard optimization problems. However, translating to SAT can cause a significant size increase, restricting its use to smaller instances. To mitigate this, frameworks using multiple local SAT calls for gradually improving a heuristic solution have been proposed. The performance of such algorithmic frameworks heavily relies on critical parameters, including the size of selected local instances and the time allocated per SAT call.\n\nThis paper examines the automated configuration of the treewidth SAT-based local improvement method (TW-SLIM) framework, which uses multiple SAT calls for computing tree decompositions of small width, a fundamental problem in combinatorial optimization. We explore various TW-SLIM configuration methods, including offline learning and real-time adjustments, significantly outperforming default settings in multi-SAT scenarios with changing problems.\n\nBuilding upon insights gained from offline training and real-time configurations for TW-SLIM, we propose the iterative cascading policy—a novel hybrid technique that uniquely combines both. The iterative cascading policy employs a pool of 30 configurations obtained through clustering-based offline methods, deploying them in dynamic cascades across multiple rounds. In each round, the 30 configurations are tested according to the cascading ordering, and the best tree decomposition is retained for further improvement, with the option to adjust the following ordering of cascades. This iterative approach significantly enhances the performance of TW-SLIM beyond baseline results, even within varying global timeouts. This highlights the effectiveness of the proposed iterative cascading policy in enhancing the efficiency and efficacy of complex algorithmic frameworks like TW-SLIM.",
+      "authors": [
+        "Hai Xia",
+        "Stefan Szeider"
+      ],
+      "primary_category": "AAAI-24 Technical Tracks 8",
+      "categories": [
+        "AAAI-2024",
+        "AAAI-24 Technical Tracks 8"
+      ],
+      "published": "2024-03-25T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/28659",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/28659/29280",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2026-38449",
+      "source": "AAAI-2026-Accepted",
+      "title": "Certified Branch-and-Bound MaxSAT Solving",
+      "abstract": "Over the past few decades, combinatorial solvers have seen remarkable performance improvements, enabling their practical use in real-world applications.\nIn some of these applications, ensuring the correctness of the solver's output is critical.\nHowever, the complexity of modern solvers makes them susceptible to bugs in their source code.\nIn the domain of satisfiability checking (SAT), this issue has been addressed through proof logging, where the solver generates a formal proof of the correctness of its answer.\nFor more expressive problems like MaxSAT, the optimization variant of SAT, proof logging had not seen a comparable breakthrough until recently. \n\nIn this paper, we show how to achieve proof logging for state-of-the-art techniques in Branch-and-Bound MaxSAT solving. \nThis includes certifying look-ahead methods used in such algorithms as well as advanced clausal encodings of pseudo-Boolean constraints based on so-called Multi-Valued Decision Diagrams (MDDs).\nWe implement these ideas in MaxCDCL, the dominant branch-and-bound solver, and experimentally demonstrate that proof logging is feasible with limited overhead, while proof checking remains a challenge.",
+      "authors": [
+        "Dieter Vandesande",
+        "Jordi Coll",
+        "Bart Bogaerts"
+      ],
+      "primary_category": "AAAI-26 Technical Tracks 17",
+      "categories": [
+        "AAAI-2026",
+        "AAAI-26 Technical Tracks 17"
+      ],
+      "published": "2026-03-17T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/38449",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/38449/42411",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2025-33237",
+      "source": "AAAI-2025-Accepted",
+      "title": "Solving Higher-Order Quantified Boolean Satisfiability via Higher-Order Model Checking",
+      "abstract": "The satisfiability (SAT) problem of higher-order quantified Boolean formula (HOQBF) emerged as a natural generalization of SAT, quantified SAT, and second-order quantified SAT. \n It allows succinct encoding of k-EXPTIME problems beyond the reach of prior Boolean satisfiability formulations, but its application was hampered by the lack of solvers.  In this paper, we present the first HOQBF solver that leverages techniques from the model-checking community.  Our HOQBF solver is based on reduction to higher-order model checking, which is a generalization from model checking of while-programs to that of higher-order functional programs.  The ability of a higher-order model checker to deal with higher-order functions in a program is used to reason about higher-order quantifiers in HOQBF.",
+      "authors": [
+        "Hiroshi Unno",
+        "Takeshi Tsukada",
+        "Jie-Hong Roland Jiang"
+      ],
+      "primary_category": "AAAI-25 Technical Tracks 11",
+      "categories": [
+        "AAAI-2025",
+        "AAAI-25 Technical Tracks 11"
+      ],
+      "published": "2025-04-11T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/33237",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/33237/35392",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2025-33232",
+      "source": "AAAI-2025-Accepted",
+      "title": "The Impact of Literal Sorting on Cardinality Constraint Encodings",
+      "abstract": "The effectiveness of satisfiability solvers strongly depends on the quality of the encoding of a given problem into conjunctive normal form. Cardinality constraints are prevalent in numerous problems, prompting the development and study of various types of encoding. We present a novel approach to optimizing cardinality constraint encodings by exploring the impact of literal orderings within the constraints. By strategically placing related literals nearby each other, the encoding generates auxiliary variables in a hierarchical structure, enabling the solver to reason more abstractly about groups of related literals. Unlike conventional metrics such as formula size or propagation strength, our method leverages structural properties of the formula to redefine the roles of auxiliary variables to enhance the solver's learning capabilities. The experimental evaluation on benchmarks from the maximum satisfiability competition demonstrates that literal orderings can be more influential than the choice of the encoding type. Our literal ordering technique improves solver performance across various encoding techniques, underscoring the robustness of our approach.",
+      "authors": [
+        "Joseph E. Reeves",
+        "João Filipe",
+        "Min-Chien Hsu",
+        "Ruben Martins",
+        "Marijn J. H. Heule"
+      ],
+      "primary_category": "AAAI-25 Technical Tracks 11",
+      "categories": [
+        "AAAI-2025",
+        "AAAI-25 Technical Tracks 11"
+      ],
+      "published": "2025-04-11T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/33232",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/33232/35387",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2026-39005",
+      "source": "AAAI-2026-Accepted",
+      "title": "Structure-Aware Encodings of Argumentation Properties for Clique-width",
+      "abstract": "Structural measures of graphs, such as treewidth, are central tools in computational complexity resulting in efficient algorithms when exploiting the parameter. It is even known that modern SAT solvers work efficiently on instances of small treewidth. Since these solvers are widely applied, research interests in compact encodings into (Q)SAT for solving and to understand encoding limitations. Even more general is the graph parameter clique-width, which unlike treewidth can be small for dense graphs. Although algorithms are available for clique-width, little is known about encodings. \nWe initiate the quest to understand encoding capabilities with clique-width by considering abstract argumentation, which is a robust framework for reasoning with conflicting arguments. It is based on directed graphs and asks for computationally challenging properties, making it a natural candidate to study computational properties. We design novel reductions from argumentation problems to (Q)SAT. Our reductions linearly preserve the clique-width, resulting in directed decomposition-guided (DDG) reductions. We establish novel results for all argumentation semantics, including counting. Notably, the overhead caused by our DDG reductions cannot be significantly improved under reasonable assumptions.",
+      "authors": [
+        "Yasir Mahmood",
+        "Markus Hecher",
+        "Johanna Groven",
+        "Johannes K. Fichte"
+      ],
+      "primary_category": "AAAI-26 Technical Tracks 23",
+      "categories": [
+        "AAAI-2026",
+        "AAAI-26 Technical Tracks 23"
+      ],
+      "published": "2026-03-17T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/39005",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/39005/42967",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2026-38445",
+      "source": "AAAI-2026-Accepted",
+      "title": "LLM-Guided Quantified SMT Solving over Uninterpreted Functions",
+      "abstract": "Quantified formulas with Uninterpreted Functions (UFs) over non-linear real arithmetic pose fundamental challenges for Satisfiability Modulo Theories (SMT) solving. Traditional quantifier instantiation methods struggle because they lack semantic understanding of UF constraints, forcing them to search through unbounded solution spaces with limited guidance. We present AquaForte, a framework that leverages Large Language Models to provide semantic guidance for UF instantiation by generating instantiated candidates for function definitions that satisfy the constraints, thereby significantly reducing the search space and complexity for solvers. Our approach preprocesses formulas through constraint separation, uses structured prompts to extract mathematical reasoning from LLMs, and integrates the results with traditional SMT algorithms through adaptive instantiation. AquaForte maintains soundness through systematic validation: LLM-guided instantiations yielding SAT solve the original problem, while UNSAT results generate exclusion clauses for iterative refinement. Completeness is preserved by fallback to traditional solvers augmented with learned constraints. Experimental evaluation on SMT-COMP benchmarks demonstrates that AquaForte solves numerous instances where state-of-the-art solvers like Z3 and CVC5 timeout, with particular effectiveness on satisfiable formulas. Our work shows that LLMs can provide valuable mathematical intuition for symbolic reasoning, establishing a new paradigm for SMT constraint solving.",
+      "authors": [
+        "Kunhang Lv",
+        "Yuhang Dong",
+        "Rui Han",
+        "Fuqi Jia",
+        "Feifei Ma",
+        "Jian Zhang"
+      ],
+      "primary_category": "AAAI-26 Technical Tracks 17",
+      "categories": [
+        "AAAI-2026",
+        "AAAI-26 Technical Tracks 17"
+      ],
+      "published": "2026-03-17T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/38445",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/38445/42407",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2025-33211",
+      "source": "AAAI-2025-Accepted",
+      "title": "Massively Parallel Continuous Local Search for Hybrid SAT Solving on GPUs",
+      "abstract": "Although state-of-the-art (SOTA) SAT solvers based on conflict-driven clause learning (CDCL) have achieved remarkable engineering success, their sequential nature limits the parallelism that may be extracted for acceleration on platforms such as the graphics processing unit (GPU). In this work, we propose FastFourierSAT, a highly parallel hybrid SAT solver based on gradient-driven continuous local search (CLS). This is achieved by a parallel algorithm inspired by the fast Fourier transform (FFT)-based convolution for computing the elementary symmetric polynomials (ESPs), which is the major computational task in previous CLS methods. The complexity of our algorithm matches the best previous result. Furthermore, the substantial parallelism inherent in our algorithm can leverage the GPU for acceleration, demonstrating significant improvement over the previous CLS approaches. FastFourierSAT is compared with a wide set of SOTA parallel SAT solvers on extensive benchmarks including combinatorial and industrial problems. Results show that FastFourierSAT computes the gradient 100+ times faster than previous prototypes on CPU. Moreover, FastFourierSAT solves most instances and demonstrates promising performance on larger-size instances.",
+      "authors": [
+        "Yunuo Cen",
+        "Zhiwei Zhang",
+        "Xuanyao Fong"
+      ],
+      "primary_category": "AAAI-25 Technical Tracks 11",
+      "categories": [
+        "AAAI-2025",
+        "AAAI-25 Technical Tracks 11"
+      ],
+      "published": "2025-04-11T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/33211",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/33211/35366",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2025-33228",
+      "source": "AAAI-2025-Accepted",
+      "title": "DiverSAT: A Novel and Effective Local Search Algorithm for Diverse SAT Problem",
+      "abstract": "For many real-world problems, users are often interested not only in finding a single solution but in obtaining a sufficiently diverse collection of solutions. In this work, we consider the Diverse SAT problem, aiming to find a set of diverse satisfying assignments for a given propositional formula. We propose a novel and effective local search algorithm, DiverSAT, to solve the problem. To cope with diversity, we introduce three heuristics and a perturbation strategy based on some relevant information. We conduct extensive experiments on a large number of public benchmarks, collected from semiformal hardware verification, logistics planning,  and other domains. The results show that DiverSAT outperforms the existing algorithms on most of these benchmarks.",
+      "authors": [
+        "Jiaxin Liang",
+        "Junping Zhou",
+        "Minghao Yin"
+      ],
+      "primary_category": "AAAI-25 Technical Tracks 11",
+      "categories": [
+        "AAAI-2025",
+        "AAAI-25 Technical Tracks 11"
+      ],
+      "published": "2025-04-11T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/33228",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/33228/35383",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2024-28914",
+      "source": "AAAI-2024-Accepted",
+      "title": "Computing the Why-Provenance for Datalog Queries via SAT Solvers",
+      "abstract": "Explaining an answer to a Datalog query is an essential task towards Explainable AI, especially nowadays where Datalog plays a critical role in the development of ontology-based applications. A well-established approach for explaining a query answer is the so-called why-provenance, which essentially collects all the subsets of the input database that can be used to obtain that answer via some derivation process, typically represented as a proof tree. It is well known, however, that computing the why-provenance for Datalog queries is computationally expensive, and thus, very few attempts can be found in the literature. The goal of this work is to demonstrate how off-the-shelf SAT solvers can be exploited towards an efficient computation of the why-provenance for Datalog queries. Interestingly, our SAT-based approach allows us to build the why-provenance in an incremental fashion, that is, one explanation at a time, which is much more useful in a practical context than the one-shot computation of the whole set of explanations as done by existing approaches.",
+      "authors": [
+        "Marco Calautti",
+        "Ester Livshits",
+        "Andreas Pieris",
+        "Markus Schneider"
+      ],
+      "primary_category": "AAAI-24 Technical Tracks 9",
+      "categories": [
+        "AAAI-2024",
+        "AAAI-24 Technical Tracks 9"
+      ],
+      "published": "2024-03-25T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/28914",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/28914/29739",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2024-28643",
+      "source": "AAAI-2024-Accepted",
+      "title": "SAT-Based Techniques for Lexicographically Smallest Finite Models",
+      "abstract": "This paper proposes SAT-based techniques to calculate a specific normal form of a given finite mathematical structure (model). The normal form is obtained by permuting the domain elements so that the representation of the structure is lexicographically smallest possible. Such a normal form is of interest to mathematicians as it enables easy cataloging of algebraic structures. In particular, two structures are isomorphic precisely when their normal forms are the same. This form is also natural to inspect as mathematicians have been using it routinely for many decades.\n\nWe develop a novel approach where a SAT solver is used in a black-box fashion to compute the smallest representative. The approach constructs the representative gradually and searches the space of possible isomorphisms, requiring a small number of variables. However, the approach may lead to a large number of SAT calls and therefore we devise propagation techniques to reduce this number. The paper focuses on finite structures with a single binary operation (encompassing groups, semigroups, etc.). However, the approach is generalizable to arbitrary finite structures. We provide an implementation of the proposed algorithm and evaluate it on a variety of algebraic structures.",
+      "authors": [
+        "Mikoláš Janota",
+        "Choiwah Chow",
+        "João Araújo",
+        "Michael Codish",
+        "Petr Vojtěchovský"
+      ],
+      "primary_category": "AAAI-24 Technical Tracks 8",
+      "categories": [
+        "AAAI-2024",
+        "AAAI-24 Technical Tracks 8"
+      ],
+      "published": "2024-03-25T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/28643",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/28643/29248",
+      "tags": [
+        "keyword:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2024-28652",
+      "source": "AAAI-2024-Accepted",
+      "title": "Disjoint Partial Enumeration without Blocking Clauses",
+      "abstract": "A basic algorithm for enumerating disjoint propositional models (disjoint AllSAT) is based on adding blocking clauses incrementally, ruling out previously found models. On the one hand, blocking clauses have the potential to reduce the number of generated models exponentially, as they can handle partial models. On the other hand, the introduction of a large number of blocking clauses affects memory consumption and drastically slows down unit propagation. \n We propose a new approach that allows for enumerating disjoint partial models with no need for blocking clauses by integrating: Conflict-Driven Clause-Learning (CDCL), Chronological Backtracking (CB), and methods for shrinking models (Implicant Shrinking). Experiments clearly show the benefits of our novel approach.",
+      "authors": [
+        "Giuseppe Spallitta",
+        "Roberto Sebastiani",
+        "Armin Biere"
+      ],
+      "primary_category": "AAAI-24 Technical Tracks 8",
+      "categories": [
+        "AAAI-2024",
+        "AAAI-24 Technical Tracks 8"
+      ],
+      "published": "2024-03-25T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/28652",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/28652/29266",
+      "tags": [
+        "keyword:sat-bva-cnf"
+      ]
+    },
+    {
+      "id": "aaai-2025-33231",
+      "source": "AAAI-2025-Accepted",
+      "title": "Towards Real-Time Approximate Counting",
+      "abstract": "Model counting is the task of counting the number of satisfying assignments of a Boolean formula. Since counting is intractable in general, most applications use (ε, δ)-approximations, where the output is within a (1+ε)-factor of the count with probability at least 1-δ. \nMany demanding applications make thousands of counting queries, and the state-of-the-art approximate counter, ApproxMC, makes hundreds of calls to SAT solvers to answer a single approximate counting query.\nThe sheer number of SAT calls, poses a significant challenge to the existing approaches. \n\nIn this work, we propose an approximation scheme, ApproxMC7, that is tailored to such demanding applications with low time limits. Compared to ApproxMC, ApproxMC7 makes 14× fewer SAT calls while providing the same guarantees as ApproxMC in the constant-factor regime. In an evaluation over 2,247 instances, ApproxMC7 solved 271 more and achieved a 2× speedup against ApproxMC.",
+      "authors": [
+        "Yash Pote",
+        "Kuldeep S. Meel",
+        "Jiong Yang"
+      ],
+      "primary_category": "AAAI-25 Technical Tracks 11",
+      "categories": [
+        "AAAI-2025",
+        "AAAI-25 Technical Tracks 11"
+      ],
+      "published": "2025-04-11T00:00:00+00:00",
+      "link": "https://ojs.aaai.org/index.php/AAAI/article/view/33231",
+      "pdf_url": "https://ojs.aaai.org/index.php/AAAI/article/download/33231/35386",
+      "tags": [
+        "keyword:sat-bva-cnf"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "type": "intent_query",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "query:sat-bva-cnf",
+      "query_text": "Identify limitations of BVA and explore novel SAT preprocessing techniques",
+      "sim_scores": {
+        "ijcai-2024-214": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "aaai-2024-28628": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "aaai-2026-38429": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "aaai-2024-28659": {
+          "score": 0.014492753623188406,
+          "rank": 9
+        },
+        "ijcai-2025-295": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "aaai-2025-33228": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "aaai-2025-33211": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "aaai-2026-38449": {
+          "score": 0.01282051282051282,
+          "rank": 18
+        },
+        "aaai-2025-33237": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "aaai-2024-28914": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "aaai-2025-33232": {
+          "score": 0.012048192771084338,
+          "rank": 23
+        },
+        "ijcai-2025-292": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "aaai-2026-38445": {
+          "score": 0.009345794392523364,
+          "rank": 47
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "ijcai-2024-214",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "aaai-2024-28659",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "aaai-2025-33231",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "ijcai-2025-295",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2025-33228",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "ijcai-2025-292",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2025-33211",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-38429",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2024-28643",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2024-28628",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-39005",
+          "score": 0.702712746191007,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2024-28652",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2025-33237",
+          "score": 0.6388587937883712,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-38449",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2024-28914",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-38445",
+          "score": 0.0319204604918889,
+          "star_rating": 2
+        },
+        {
+          "paper_id": "aaai-2025-33232",
+          "score": 0.0,
+          "star_rating": 1
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "query:sat-bva-cnf",
+      "query_text": "auxiliary variable introduction techniques and challenges",
+      "sim_scores": {},
+      "ranked": [
+        {
+          "paper_id": "aaai-2025-33232",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "ijcai-2024-214",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-38429",
+          "score": 0.49392712550607265,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2024-28628",
+          "score": 0.3433395872420263,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2024-28652",
+          "score": 0.2760180995475112,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "ijcai-2025-295",
+          "score": 0.23371647509578536,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2026-38445",
+          "score": 0.1933160472486314,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2025-33231",
+          "score": 0.15469146238377016,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2025-33237",
+          "score": 0.06517094017094004,
+          "star_rating": 2
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "query:sat-bva-cnf",
+      "query_text": "limitations of bounded variable addition in SAT solving",
+      "sim_scores": {
+        "aaai-2024-28628": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "aaai-2026-38429": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "ijcai-2024-214": {
+          "score": 0.014492753623188406,
+          "rank": 9
+        },
+        "ijcai-2025-295": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "ijcai-2025-292": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "aaai-2024-28659": {
+          "score": 0.013333333333333334,
+          "rank": 15
+        },
+        "aaai-2025-33232": {
+          "score": 0.01282051282051282,
+          "rank": 18
+        },
+        "aaai-2025-33237": {
+          "score": 0.012048192771084338,
+          "rank": 23
+        },
+        "aaai-2026-38449": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "aaai-2026-39005": {
+          "score": 0.010416666666666666,
+          "rank": 36
+        },
+        "aaai-2026-38445": {
+          "score": 0.010309278350515464,
+          "rank": 37
+        },
+        "aaai-2025-33228": {
+          "score": 0.009900990099009901,
+          "rank": 41
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "aaai-2024-28628",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "ijcai-2025-295",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "ijcai-2024-214",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2025-33237",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "ijcai-2025-292",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2025-33211",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2024-28652",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2024-28643",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-38429",
+          "score": 0.5213675213675214,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2026-38445",
+          "score": 0.5213675213675214,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "aaai-2025-33231",
+          "score": 0.49392712550607265,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2024-28914",
+          "score": 0.49392712550607265,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2026-38449",
+          "score": 0.46719946719946726,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2025-33228",
+          "score": 0.4411571334648256,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2024-28659",
+          "score": 0.41577409931840303,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2026-39005",
+          "score": 0.29792429792429775,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "aaai-2025-33232",
+          "score": 0.1360089186176142,
+          "star_rating": 3
+        }
+      ]
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "CNF formula reduction methods",
+      "sim_scores": {
+        "aaai-2026-38445": {
+          "score": 0.01282051282051282,
+          "rank": 18
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "CNF preprocessing SAT",
+      "sim_scores": {
+        "ijcai-2024-214": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "ijcai-2025-295": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "aaai-2024-28628": {
+          "score": 0.014492753623188406,
+          "rank": 9
+        },
+        "aaai-2026-38429": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "aaai-2025-33211": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "ijcai-2025-292": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "aaai-2025-33228": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "aaai-2024-28659": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "aaai-2026-38449": {
+          "score": 0.012195121951219513,
+          "rank": 22
+        },
+        "aaai-2025-33232": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "aaai-2024-28914": {
+          "score": 0.011494252873563218,
+          "rank": 27
+        },
+        "aaai-2025-33237": {
+          "score": 0.010101010101010102,
+          "rank": 39
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "SAT solving techniques",
+      "sim_scores": {
+        "aaai-2024-28628": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "ijcai-2024-214": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "ijcai-2025-292": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "aaai-2026-38429": {
+          "score": 0.014492753623188406,
+          "rank": 9
+        },
+        "ijcai-2025-295": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "aaai-2025-33228": {
+          "score": 0.013333333333333334,
+          "rank": 15
+        },
+        "aaai-2024-28659": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "aaai-2026-38449": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "aaai-2025-33211": {
+          "score": 0.012048192771084338,
+          "rank": 23
+        },
+        "aaai-2025-33237": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "aaai-2025-33232": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "aaai-2024-28914": {
+          "score": 0.010416666666666666,
+          "rank": 36
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "auxiliary variable introduction SAT",
+      "sim_scores": {
+        "ijcai-2024-214": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "aaai-2024-28628": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "ijcai-2025-292": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "aaai-2025-33228": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "aaai-2026-38429": {
+          "score": 0.013333333333333334,
+          "rank": 15
+        },
+        "aaai-2025-33232": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "aaai-2024-28914": {
+          "score": 0.012195121951219513,
+          "rank": 22
+        },
+        "ijcai-2025-295": {
+          "score": 0.010526315789473684,
+          "rank": 35
+        },
+        "aaai-2024-28643": {
+          "score": 0.009708737864077669,
+          "rank": 43
+        },
+        "aaai-2024-28652": {
+          "score": 0.009174311926605505,
+          "rank": 49
+        },
+        "aaai-2025-33237": {
+          "score": 0.00909090909090909,
+          "rank": 50
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "bounded variable addition",
+      "sim_scores": {}
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "bounded variable addition SAT solving",
+      "sim_scores": {
+        "aaai-2024-28628": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "ijcai-2024-214": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "ijcai-2025-292": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "ijcai-2025-295": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "aaai-2026-38429": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "aaai-2024-28659": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "aaai-2026-38449": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "aaai-2025-33237": {
+          "score": 0.011494252873563218,
+          "rank": 27
+        },
+        "aaai-2025-33232": {
+          "score": 0.010638297872340425,
+          "rank": 34
+        },
+        "aaai-2026-39005": {
+          "score": 0.009615384615384616,
+          "rank": 44
+        },
+        "aaai-2026-38445": {
+          "score": 0.009523809523809525,
+          "rank": 45
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "conjunctive normal form preprocessing",
+      "sim_scores": {}
+    },
+    {
+      "type": "keyword",
+      "tag": "sat-bva-cnf",
+      "paper_tag": "keyword:sat-bva-cnf",
+      "query_text": "formula compression SAT",
+      "sim_scores": {
+        "ijcai-2024-214": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "aaai-2024-28628": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "ijcai-2025-292": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "aaai-2025-33232": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "aaai-2024-28652": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "aaai-2025-33231": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "aaai-2026-38429": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "aaai-2025-33211": {
+          "score": 0.012195121951219513,
+          "rank": 22
+        },
+        "aaai-2024-28659": {
+          "score": 0.010869565217391304,
+          "rank": 32
+        },
+        "ijcai-2025-295": {
+          "score": 0.010638297872340425,
+          "rank": 34
+        },
+        "aaai-2024-28643": {
+          "score": 0.010526315789473684,
+          "rank": 35
+        },
+        "aaai-2026-38449": {
+          "score": 0.01020408163265306,
+          "rank": 38
+        },
+        "aaai-2025-33228": {
+          "score": 0.009708737864077669,
+          "rank": 43
+        }
+      }
+    }
+  ],
+  "global_candidate_ids": [
+    "ijcai-2025-297",
+    "aaai-2025-33226",
+    "ijcai-2024-212",
+    "ijcai-2024-366",
+    "aaai-2024-28628",
+    "ijcai-2024-210",
+    "aaai-2024-28641",
+    "ijcai-2024-367",
+    "ijcai-2024-214",
+    "aaai-2025-33230",
+    "aaai-2024-28980",
+    "aaai-2024-28660",
+    "ijcai-2024-209",
+    "ijcai-2024-220",
+    "ijcai-2024-206",
+    "ijcai-2024-205",
+    "aaai-2026-38429",
+    "ijcai-2025-292",
+    "aaai-2024-28635",
+    "ijcai-2025-999",
+    "ijcai-2025-285",
+    "ijcai-2025-295",
+    "aaai-2024-28637",
+    "aaai-2025-33232",
+    "aaai-2024-28659",
+    "ijcai-2024-356",
+    "ijcai-2025-290",
+    "aaai-2025-33228",
+    "ijcai-2025-413",
+    "aaai-2026-38449",
+    "aaai-2026-38437",
+    "aaai-2025-33237",
+    "ijcai-2025-508",
+    "ijcai-2024-747",
+    "aaai-2025-33223",
+    "aaai-2024-30022",
+    "ijcai-2025-558",
+    "aaai-2025-33211",
+    "ijcai-2025-1002",
+    "ijcai-2025-42",
+    "ijcai-2024-336",
+    "aaai-2024-28914",
+    "ijcai-2024-373",
+    "aaai-2025-34198",
+    "aaai-2024-28633",
+    "aaai-2024-30032",
+    "ijcai-2025-299",
+    "aaai-2026-38445",
+    "ijcai-2024-779",
+    "aaai-2024-28631",
+    "ijcai-2024-382",
+    "ijcai-2025-1208",
+    "ijcai-2024-944",
+    "ijcai-2024-777",
+    "ijcai-2025-339",
+    "aaai-2024-29197",
+    "ijcai-2025-523",
+    "ijcai-2024-471",
+    "ijcai-2025-899",
+    "ijcai-2024-249",
+    "ijcai-2024-717",
+    "aaai-2026-40706",
+    "ijcai-2025-293",
+    "aaai-2024-28652",
+    "aaai-2026-39187",
+    "ijcai-2025-946",
+    "ijcai-2025-961",
+    "aaai-2026-39192",
+    "aaai-2024-28947",
+    "aaai-2025-34779",
+    "ijcai-2025-939",
+    "aaai-2024-28643",
+    "ijcai-2025-438",
+    "aaai-2026-39005",
+    "aaai-2026-38439",
+    "ijcai-2025-448",
+    "ijcai-2024-630",
+    "aaai-2025-33654",
+    "ijcai-2025-493",
+    "ijcai-2025-984",
+    "aaai-2026-38430",
+    "ijcai-2025-439",
+    "aaai-2026-38443",
+    "ijcai-2025-113",
+    "aaai-2026-39511",
+    "ijcai-2025-370",
+    "aaai-2025-34066",
+    "aaai-2026-38742",
+    "ijcai-2025-924",
+    "aaai-2025-33224",
+    "ijcai-2024-736",
+    "aaai-2024-28926",
+    "ijcai-2025-229",
+    "aaai-2025-33643",
+    "ijcai-2024-242",
+    "ijcai-2024-704",
+    "aaai-2025-33947",
+    "ijcai-2025-550",
+    "ijcai-2024-47",
+    "aaai-2025-33233",
+    "ijcai-2025-355",
+    "aaai-2025-33213",
+    "ijcai-2025-207",
+    "ijcai-2024-726",
+    "ijcai-2024-1002",
+    "ijcai-2024-891",
+    "aaai-2025-33231",
+    "aaai-2026-38994",
+    "ijcai-2025-944",
+    "ijcai-2024-398",
+    "aaai-2026-41020",
+    "ijcai-2025-799",
+    "aaai-2026-39806",
+    "aaai-2026-38975",
+    "ijcai-2025-910",
+    "aaai-2024-30049",
+    "ijcai-2024-450",
+    "ijcai-2025-429",
+    "ijcai-2025-1005",
+    "ijcai-2025-587"
+  ],
+  "global_pool_lane_top_k": 30,
+  "global_pool_limit": 120,
+  "global_pool_guaranteed_per_lane": 2,
+  "global_pool_effective_size": 120,
+  "reranked_at": "2026-07-20T12:37:08.249497+00:00",
+  "llm_ranked": [
+    {
+      "paper_id": "aaai-2025-33232",
+      "score": 9.0,
+      "evidence_en": "Literal sorting generates auxiliary variables in cardinality encodings",
+      "evidence_cn": "文字排序在基数约束编码中生成辅助变量",
+      "canonical_evidence": "文字排序在基数约束编码中生成辅助变量",
+      "tldr_en": "Shows that literal sorting in cardinality constraint encodings generates auxiliary variables hierarchically, improving solver reasoning.",
+      "tldr_cn": "本文研究文字排序对基数约束CNF编码的影响，发现通过将相关文字相邻放置，编码会生成层级结构的辅助变量，使求解器能更抽象地推理。该方法优化了编码结构，与CNF预处理和辅助变量引入密切相关，为SAT公式压缩提供了新思路。",
+      "title_zh": "文字排序对基数约束编码的影响",
+      "motivation_cn": "现有基数约束编码优化聚焦于公式大小或传播强度，忽略了文字顺序。",
+      "method_cn": "通过分析文字顺序对编码结构的影响，提出将相关文字相邻排列以生成层级辅助变量。",
+      "result_cn": "实验表明该方法改善了求解器性能，优于传统指标。",
+      "conclusion_cn": "文字排序是CNF编码优化的重要手段，与BVA中的辅助变量引入有共通之处。",
+      "matched_requirement_id": "req-3",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "auxiliary variable introduction SAT"
+    },
+    {
+      "paper_id": "aaai-2025-33228",
+      "score": 8.0,
+      "evidence_en": "SAT solving techniques, local search",
+      "evidence_cn": "SAT求解技术、局部搜索",
+      "canonical_evidence": "SAT求解技术、局部搜索",
+      "tldr_en": "DiverSAT is a local search algorithm for diverse SAT, outperforming existing algorithms on public benchmarks.",
+      "tldr_cn": "本文提出DiverSAT局部搜索算法求解多样性SAT问题，引入三种启发式策略和扰动机制，在硬件验证、物流规划等公开基准上优于现有算法，为SAT求解技术提供了新的多样性导向方法。",
+      "title_zh": "DiverSAT:一种新颖有效的多样性SAT问题局部搜索算法",
+      "motivation_cn": "实际应用中用户常需要一组多样性的可满足赋值，而不仅仅是单个解。",
+      "method_cn": "基于局部搜索框架，设计三种启发式和一种扰动策略以增强多样性。",
+      "result_cn": "在多个领域的公开基准上优于现有算法。",
+      "conclusion_cn": "DiverSAT是解决多样性SAT问题的有效方法。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2025-33211",
+      "score": 8.0,
+      "evidence_en": "proposes a massively parallel hybrid SAT solver using continuous local search on GPUs, a novel SAT solving technique",
+      "evidence_cn": "提出了在GPU上使用连续局部搜索的大规模并行混合SAT求解器，是一种新颖的SAT求解技术",
+      "canonical_evidence": "提出了在GPU上使用连续局部搜索的大规模并行混合SAT求解器，是一种新颖的SAT求解技术",
+      "tldr_en": "FastFourierSAT introduces a highly parallel hybrid SAT solver based on gradient-driven continuous local search and FFT, achieving significant speedups on GPU.",
+      "tldr_cn": "本文针对传统CDCL SAT求解器并行性受限的问题，提出了FastFourierSAT求解器。该求解器基于梯度驱动的连续局部搜索，并利用FFT算法高效计算对称多项式，从而在GPU上实现大规模并行。实验表明，该求解器在大量实例上取得了数量级的加速，为SAT求解开辟了新的并行化途径。",
+      "title_zh": "面向GPU上混合SAT求解的大规模并行连续局部搜索",
+      "motivation_cn": "传统CDCL求解器本质顺序，难以利用GPU并行计算能力。",
+      "method_cn": "采用连续局部搜索框架，设计基于FFT的并行算法计算基本对称多项式。",
+      "result_cn": "在GPU上实现了高度并行，求解速度相比CDCL求解器有显著提升。",
+      "conclusion_cn": "混合连续局部搜索是高效并行SAT求解的有前景方向。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2026-39005",
+      "score": 8.0,
+      "evidence_en": "compact encodings into (Q)SAT for solving",
+      "evidence_cn": "紧凑的(Q)SAT编码用于求解",
+      "canonical_evidence": "紧凑的(Q)SAT编码用于求解",
+      "tldr_en": "Exploits clique-width to design compact SAT encodings for argumentation, addressing encoding limitations and enabling efficient solving of dense graph instances.",
+      "tldr_cn": "SAT求解器在小树宽实例上高效，但对于稠密图树宽可能很大。本文利用更一般的图参数团宽度提出结构感知的SAT编码方法，用于抽象论证推理。该编码相比传统树宽编码更加紧凑，能够有效处理稠密图结构的SAT实例，为理解编码局限性提供了新视角，并拓展了SAT求解器在稠密领域的应用。",
+      "title_zh": "结构感知的团宽度论证性质编码",
+      "motivation_cn": "现有SAT编码多依赖树宽，但稠密图的树宽较大，限制了编码效率，因此需要更通用的图参数团宽度来设计紧凑编码。",
+      "method_cn": "引入团宽度作为图结构参数，设计了结构感知的SAT编码方法，将抽象论证性质编码为紧凑的命题公式。",
+      "result_cn": "该编码方案能够在团宽度较小的稠密图上产生紧凑的SAT实例，并且通过实验验证了编码的有效性。",
+      "conclusion_cn": "工作表明团宽度是设计SAT紧凑编码的有力工具，为未来SAT预处理和公式压缩提供了新思路。",
+      "matched_requirement_id": "req-4",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "formula compression SAT"
+    },
+    {
+      "paper_id": "aaai-2024-28628",
+      "score": 7.0,
+      "evidence_en": "SAT solving techniques, parameterized MaxSAT",
+      "evidence_cn": "SAT求解技术、参数化MaxSAT",
+      "canonical_evidence": "SAT求解技术、参数化MaxSAT",
+      "tldr_en": "This paper improves parameterized MaxSAT above maximum matching in variable-clause graph, achieving O*(2.83^k') runtime and better exponential bounds for (n,3)- and (n,4)-MaxSAT.",
+      "tldr_cn": "本文利用Gallai-Edmonds分解改进了变量-子句图中最大匹配参数化的MaxSAT上界，将运行时间从O*(4^k')降至O*(2.83^k')，并由此得到了(n,3)-MaxSAT和(n,4)-MaxSAT更优的指数时间上界，推动了MaxSAT算法的理论进展。",
+      "title_zh": "变量-子句图中匹配之上的(部分)最大可满足性问题参数化",
+      "motivation_cn": "提高MaxSAT问题的参数化算法效率。",
+      "method_cn": "使用Gallai-Edmonds分解改进上界，结合变量-子句图结构参数化。",
+      "result_cn": "显著改进运行时间，并导出更优的指数时间算法。",
+      "conclusion_cn": "证明了图论工具在MaxSAT算法设计中的有效性。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2024-28652",
+      "score": 7.0,
+      "evidence_en": "Novel SAT enumeration without blocking clauses",
+      "evidence_cn": "无需阻塞子句的SAT枚举新方法",
+      "canonical_evidence": "无需阻塞子句的SAT枚举新方法",
+      "tldr_en": "Proposes a SAT enumeration method without blocking clauses by integrating CDCL, chronological backtracking, and implicant shrinking, improving efficiency.",
+      "tldr_cn": "本文提出了一种无需添加阻塞子句即可枚举不相交部分模型的新方法。通过集成冲突驱动子句学习（CDCL）、时间回溯（CB）和模型收缩（Implicant Shrinking），解决了阻塞子句导致的内存消耗和传播减慢问题。实验证明了该方法的优势，它属于SAT求解技术的创新，但与BVA或CNF预处理无直接关系。",
+      "title_zh": "无阻塞子句的不相交部分枚举",
+      "motivation_cn": "传统使用阻塞子句的模型枚举方法会消耗大量内存并减慢单元传播，需要更高效的枚举方式。",
+      "method_cn": "结合CDCL、时间回溯和模型收缩技术，在不引入阻塞子句的情况下枚举不相交部分模型。",
+      "result_cn": "实验表明新方法在内存和速度上均优于传统方法。",
+      "conclusion_cn": "该工作为SAT模型枚举提供了高效新途径，可推广到其他SAT应用。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2026-38449",
+      "score": 7.0,
+      "evidence_en": "proposes certified proof logging for Branch-and-Bound MaxSAT solving, a state-of-the-art SAT solving technique",
+      "evidence_cn": "提出了分支定界MaxSAT求解的认证证明记录，属于先进的SAT求解技术",
+      "canonical_evidence": "提出了分支定界MaxSAT求解的认证证明记录，属于先进的SAT求解技术",
+      "tldr_en": "This paper introduces proof logging for MaxSAT solving, enabling verification of solver correctness, advancing SAT solving techniques.",
+      "tldr_cn": "本文针对MaxSAT求解器，提出了在分支定界框架下的证明记录方法，使得求解结果的正确性可以被形式化验证。该方法填补了MaxSAT领域证明记录的空白，提升了SAT求解器的可信度。实验表明该方法对性能影响较小。",
+      "title_zh": "认证的分支定界MaxSAT求解",
+      "motivation_cn": "MaxSAT求解器可能存在软件错误，需要可验证的证明日志。",
+      "method_cn": "在分支定界MaxSAT求解过程中添加证明日志生成和验证步骤。",
+      "result_cn": "成功为多种MaxSAT技术生成证明，且运行时开销可接受。",
+      "conclusion_cn": "为MaxSAT求解提供了必要的正确性保证。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "ijcai-2025-295",
+      "score": 7.0,
+      "evidence_en": "proposes an efficient core-guided solver for weighted partial MaxSAT, advancing MaxSAT solving",
+      "evidence_cn": "提出了一种高效的核心引导加权部分MaxSAT求解器，推进了MaxSAT求解技术",
+      "canonical_evidence": "提出了一种高效的核心引导加权部分MaxSAT求解器，推进了MaxSAT求解技术",
+      "tldr_en": "This paper presents a core-guided algorithm for weighted partial MaxSAT, improving solver efficiency.",
+      "tldr_cn": "本文针对加权部分MaxSAT问题，提出了一种新的核心引导求解算法。该算法通过迭代识别并利用核心约束来引导搜索，显著提升了求解效率。在标准基准测试上，该求解器超越了现有最优算法。",
+      "title_zh": "一种高效的加权部分MaxSAT核心引导求解器",
+      "motivation_cn": "加权部分MaxSAT求解效率仍有提升空间，核心引导方法是一种有效范式。",
+      "method_cn": "设计了一种新的核心提取和再利用策略，结合了基于核心的unsat核心分析和分支定界。",
+      "result_cn": "在多个基准上取得了比现有求解器更快的求解时间和更好的求解质量。",
+      "conclusion_cn": "核心引导方法在加权部分MaxSAT上具有显著优势。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2026-38429",
+      "score": 6.0,
+      "evidence_en": "MaxSAT solving techniques",
+      "evidence_cn": "最大可满足性求解技术",
+      "canonical_evidence": "最大可满足性求解技术",
+      "tldr_en": "This work identifies ordered objectives in MaxSAT instances and analyzes their impact on solver performance, contributing to SAT solving methodology.",
+      "tldr_cn": "本文识别了最大可满足性问题中存在有序目标变量的实例类别，分析了问题结构对求解算法的影响，揭示了有序目标在常见基准测试中的普遍性，为改进MaxSAT求解器提供了新的视角。",
+      "title_zh": "最大可满足性问题中的有序目标",
+      "motivation_cn": "理解问题结构和编码如何影响MaxSAT求解算法的行为是一个重要挑战。",
+      "method_cn": "通过分析实例中的约束条件对目标变量施加的顺序，定义有序目标类，并统计基准测试中该类实例的比例。",
+      "result_cn": "发现大量常见MaxSAT基准实例具有有序目标，并识别了多个应用领域。",
+      "conclusion_cn": "有序目标类为MaxSAT求解算法的设计与评估提供了新的视角。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2024-28643",
+      "score": 6.0,
+      "evidence_en": "SAT-based techniques",
+      "evidence_cn": "基于SAT的技术",
+      "canonical_evidence": "基于SAT的技术",
+      "tldr_en": "This paper proposes SAT-based techniques to compute lexicographically smallest finite models, using SAT solvers in a black-box fashion.",
+      "tldr_cn": "本文提出基于SAT的技术来计算有限数学结构的字典序最小正规形，通过迭代构造和SAT求解器黑盒搜索，为代数结构的编目提供了自动化工具，展示了SAT在模型归约中的应用。",
+      "title_zh": "基于SAT的字典序最小有限模型计算技术",
+      "motivation_cn": "为代数结构的编目提供一种自动化的正规形计算方法。",
+      "method_cn": "将问题编码为SAT，逐步构造最小代表元并利用SAT求解器搜索。",
+      "result_cn": "成功计算出多种有限结构的字典序最小表示。",
+      "conclusion_cn": "SAT求解器可有效用于计算数学结构的正规形。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "ijcai-2024-214",
+      "score": 6.0,
+      "evidence_en": "MaxSAT solving algorithm",
+      "evidence_cn": "MaxSAT求解算法",
+      "canonical_evidence": "MaxSAT求解算法",
+      "tldr_en": "This paper presents a fast algorithm for MaxSAT above half number of clauses, improving theoretical bounds.",
+      "tldr_cn": "本文提出一种针对超过半数子句可满足的MaxSAT问题的快速算法，通过参数化方法改进上界，为MaxSAT求解提供了更高效的算法基础。",
+      "title_zh": "超过半数子句的最大可满足性问题的快速算法",
+      "motivation_cn": "提高MaxSAT问题在特定条件下的求解效率。",
+      "method_cn": "设计参数化算法，利用子句数边界。",
+      "result_cn": "实现了更优的算法复杂度上界。",
+      "conclusion_cn": "该算法在理论上推进了MaxSAT的求解效率。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2024-28659",
+      "score": 6.0,
+      "evidence_en": "mitigating size increase in SAT translation via local improvement",
+      "evidence_cn": "通过局部改进缓解SAT翻译中的规模增长",
+      "canonical_evidence": "通过局部改进缓解SAT翻译中的规模增长",
+      "tldr_en": "TW-SLIM framework uses multiple SAT calls to iteratively improve tree decompositions, addressing formula size blow-up by optimizing local instance selection.",
+      "tldr_cn": "将问题翻译为SAT常导致公式规模剧增，限制其应用。本文针对树分解问题，提出基于SAT的迭代局部改进框架TW-SLIM，通过自动配置局部实例大小和SAT调用时间等参数，有效控制翻译后的公式规模。实验表明该方法能够在保证分解质量的同时显著减小SAT编码大小，为CNF公式压缩提供了实用方法。",
+      "title_zh": "基于SAT的树分解与迭代级联策略选择",
+      "motivation_cn": "SAT翻译方法会显著增加公式规模，限制了其在大型实例上的应用，需要优化翻译过程以减少冗余。",
+      "method_cn": "提出TW-SLIM框架，利用多次局部SAT调用来逐步改进树分解的启发式解，并通过自动配置关键参数来平衡效率和质量。",
+      "result_cn": "经过自动配置后，TW-SLIM能够生成更小的SAT编码，同时在树宽质量上保持竞争力。",
+      "conclusion_cn": "该工作展示了通过迭代局部改进和参数自动配置来降低SAT编码规模的可行性，对CNF公式压缩有参考价值。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "CNF formula reduction methods"
+    },
+    {
+      "paper_id": "aaai-2026-38445",
+      "score": 4.0,
+      "evidence_en": "SMT solving techniques",
+      "evidence_cn": "SMT求解技术",
+      "canonical_evidence": "SMT求解技术",
+      "tldr_en": "AquaForte uses LLMs to guide quantifier instantiation for quantified SMT with uninterpreted functions, reducing search space.",
+      "tldr_cn": "本文提出AquaForte框架，利用大型语言模型为带未解释函数的量化SMT公式的实例化提供语义指导，通过约束分离和结构化提示生成满足约束的候选函数定义，显著缩小求解器的搜索空间，提高了求解效率。",
+      "title_zh": "大语言模型引导的带未解释函数的量化SMT求解",
+      "motivation_cn": "传统量化实例化方法缺乏对未解释函数约束的语义理解，搜索空间过大。",
+      "method_cn": "使用LLM生成语义指导的候选实例，并采用约束分离和结构化提示。",
+      "result_cn": "有效减少搜索空间，提升求解器性能。",
+      "conclusion_cn": "LLM可以为SMT求解提供有效的语义引导。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "ijcai-2025-292",
+      "score": 4.0,
+      "evidence_en": "Uses SAT solving for Ramsey verification",
+      "evidence_cn": "使用SAT求解验证拉姆齐问题",
+      "canonical_evidence": "使用SAT求解验证拉姆齐问题",
+      "tldr_en": "Applies SAT and computer algebra to verify Ramsey R(3,8) and R(3,9) problems, demonstrating practical SAT solving techniques.",
+      "tldr_cn": "本文利用SAT求解器和计算机代数系统验证了拉姆齐数R(3,8)和R(3,9)问题，通过生成可验证的证书来证明结果。该方法展示了SAT求解技术在组合数学问题中的强大应用，但并未涉及BVA或CNF预处理等核心主题。",
+      "title_zh": "通过SAT和计算机代数系统验证拉姆齐R(3,8)和R(3,9)问题的可验证证书",
+      "motivation_cn": "验证拉姆齐数问题的精确结果需要强大的计算工具，SAT求解器被用于生成和检查证书。",
+      "method_cn": "结合SAT求解器和计算机代数系统，生成R(3,8)和R(3,9)问题的可验证证书。",
+      "result_cn": "成功验证了R(3,8)和R(3,9)的已知结果，并提供了可重用的证书。",
+      "conclusion_cn": "SAT和计算机代数系统的结合为解决经典组合问题提供了有效途径。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2024-28914",
+      "score": 4.0,
+      "evidence_en": "Exploits SAT solvers for Datalog provenance",
+      "evidence_cn": "利用SAT求解器计算Datalog查询的why-provenance",
+      "canonical_evidence": "利用SAT求解器计算Datalog查询的why-provenance",
+      "tldr_en": "Demonstrates efficient computation of Datalog why-provenance using off-the-shelf SAT solvers, showcasing SAT application.",
+      "tldr_cn": "本文展示了如何利用现成的SAT求解器高效计算Datalog查询的why-provenance。该方法将SAT求解技术应用于数据库溯源领域，但与BVA或CNF预处理无关。",
+      "title_zh": "通过SAT求解器计算Datalog查询的why-provenance",
+      "motivation_cn": "Datalog查询的why-provenance计算开销大，需要高效方法。",
+      "method_cn": "将why-provenance问题编码为SAT实例，使用现成求解器求解。",
+      "result_cn": "比传统方法更高效地计算why-provenance。",
+      "conclusion_cn": "SAT求解器可有效用于数据库溯源任务。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2025-33231",
+      "score": 4.0,
+      "evidence_en": "reducing SAT solver calls for approximate counting",
+      "evidence_cn": "减少近似计数中的SAT求解器调用次数",
+      "canonical_evidence": "减少近似计数中的SAT求解器调用次数",
+      "tldr_en": "ApproxMC7 reduces SAT call count by 14x for approximate model counting, enabling real-time applications with same guarantees.",
+      "tldr_cn": "模型计数在许多应用中需要大量SAT求解器调用，限制了其效率。本文提出ApproxMC7近似计数方案，相比现有方法减少了14倍的SAT调用次数，同时保持相同的理论保证。该算法通过优化采样和缓存技术，显著降低了计数查询的求解时间，适用于对时间敏感的计数应用。",
+      "title_zh": "迈向实时近似计数",
+      "motivation_cn": "现有近似计数方法需要数百次SAT求解器调用，难以满足需要大量计数查询的实时应用。",
+      "method_cn": "提出ApproxMC7方案，通过改进的哈希函数和更少的SAT求解器调用来实现高效近似计数。",
+      "result_cn": "ApproxMC7相比ApproxMC减少了14倍的SAT求解器调用，同时提供相同的概率保证。",
+      "conclusion_cn": "该工作使得近似计数能够在低时间限制下高效运行，拓宽了模型计数在实时场景中的应用。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    },
+    {
+      "paper_id": "aaai-2025-33237",
+      "score": 4.0,
+      "evidence_en": "Higher-order QBF solving via model checking",
+      "evidence_cn": "通过模型检查求解高阶QBF",
+      "canonical_evidence": "通过模型检查求解高阶QBF",
+      "tldr_en": "Presents the first HOQBF solver by reducing to higher-order model checking, enabling solving of k-EXPTIME problems.",
+      "tldr_cn": "本文提出了首个高阶量化布尔公式（HOQBF）求解器，通过归约到高阶模型检查来求解k-EXPTIME问题。这是SAT求解技术的重大进步，但未直接关注BVA或CNF预处理。",
+      "title_zh": "通过高阶模型检查求解高阶量化布尔可满足性",
+      "motivation_cn": "缺乏高阶QBF求解器，限制了对k-EXPTIME问题的处理。",
+      "method_cn": "将HOQBF归约到高阶模型检查问题。",
+      "result_cn": "实现了首个HOQBF求解器，能处理高复杂度问题。",
+      "conclusion_cn": "拓展了布尔可满足性的范畴，但与BVA等技术方向不同。",
+      "matched_requirement_id": "req-5",
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques"
+    }
+  ],
+  "llm_ranked_at": "2026-07-20T12:38:23.766283+00:00",
+  "display_min_score": 4.0,
+  "pruned_at": "2026-07-20T12:38:23.797628+00:00"
+}

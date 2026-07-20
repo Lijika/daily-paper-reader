@@ -1,0 +1,733 @@
+Title: Massively Parallel Continuous Local Search for Hybrid SAT Solving on GPUs
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/33211/35366
+
+Number of Pages: 10
+
+Markdown Content:
+# Massively Parallel Continuous Local Search for Hybrid SAT Solving on GPUs 
+
+# Yunuo Cen 1, Zhiwei Zhang 2, Xuanyao Fong 1* 
+
+> 1
+
+National University of Singapore 
+
+> 2
+
+Rice University cenyunuo@u.nus.edu, zhiwei@rice.edu, kelvin.xy.fong@nus.edu.sg 
+
+Abstract 
+
+Although state-of-the-art (SOTA) SAT solvers based on conflict-driven clause learning (CDCL) have achieved re-markable engineering success, their sequential nature limits the parallelism that may be extracted for acceleration on plat-forms such as the graphics processing unit (GPU). In this work, we propose FastFourierSAT, a highly parallel hybrid SAT solver based on gradient-driven continuous local search (CLS). This is achieved by a parallel algorithm inspired by the fast Fourier transform (FFT)-based convolution for com-puting the elementary symmetric polynomials (ESPs), which is the major computational task in previous CLS methods. The complexity of our algorithm matches the best previous result. Furthermore, the substantial parallelism inherent in our algorithm can leverage the GPU for acceleration, demon-strating significant improvement over the previous CLS ap-proaches. FastFourierSAT is compared with a wide set of SOTA parallel SAT solvers on extensive benchmarks in-cluding combinatorial and industrial problems. Results show that FastFourierSAT computes the gradient 100+ times faster than previous prototypes on CPU. Moreover, FastFourierSAT solves most instances and demonstrates promising perfor-mance on larger-size instances. 
+
+# 1 Introduction 
+
+Constraint-satisfaction problems (CSPs) are fundamental in mathematics, physics, and computer science. The Boolean satisfiability (SAT) problem is a paradigmatic class of CSPs, where each variable takes values from the bi-nary set {True, False }. Solving SAT efficiently is of utmost significance in computer science, both from a theoretical and a practical perspective (Kyrillidis et al. 2020). The dominating technique of SAT has evolved from local search (Mitchell, Selman, and Leveque 1992) to DPLL (Davis and Putnam 1960; Davis, Logemann, and Loveland 1962) and CDCL (Marques-Silva and Sakallah 1999). CDCL (Marques-Silva and Sakallah 1999) SAT solvers have been highly successful, constantly solving in-dustrial benchmarks with millions of variables. Numerous problems in various domains are encoded and tackled by SAT solving, e.g., information theory (Golia, Juba, and Meel 
+
+> *
+
+Corresponding Author: Xuanyao Fong. Copyright © 2025, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 
+
+2022), VLSI design (Wang, Liu, and Young 2023), and quantum computing (Vardi and Zhang 2023), etc. Despite the domination of CDCL SAT solvers, most of them rely on a sequential process, where each decision and propagation step depends on the history (Hamadi and Win-tersteiger 2013). The sequential nature of CDCL solvers makes it challenging to natively parallelize them and lever-age advanced computational resources such as multicore CPU, GPU, and TPU (Jouppi et al. 2017). Most parallel SAT solvers are based on divide-and-conquer and portfolio prin-ciples, which only exploit thread-level parallelism (Martins, Manquinho, and Lynce 2012). A guiding path is usually used to divide the search space into disjoint subspaces, which are individually searched in parallel for a solution using multi-ple threads (Zhang, Bonacina, and Hsiang 1996). Different single-thread solvers use different search configurations to diversify the search trajectories (Hamadi, Jabbour, and Sais 2010). In modern SAT solvers, threads may communicate with each other to exchange information (Le Frioux et al. 2017). However, the sequential dependency limits the op-portunities for instruction-level parallelism. Some SAT solvers achieve instruction-level parallelism to some extent by incorporating data structures that allow for efficient clause database management, or conflict analysis. CUD@SAT (Dal Pal` u et al. 2015) proposed a parallel unit propagation algorithm on GPU but gained limited accelera-tion. GPUShareSat (Prevot, Soos, and Meel 2021) uses GPU for parallel clause checking, thereby minimizing the shared database of a portfolio approach. ParaFROST (Osama, Wijs, and Biere 2021) uses GPU to implement the parallel inpro-cessing to simplify the clause database. Motivated by the success in efficiently training neu-ral networks, it is promising to exploit the potential of hardware advancement in machine learning (ML), such as GPU, in SAT solving at thread, instruction, and data-level . In this paper, we propose a highly parallelized SAT solver based on continuous local search (CLS). Initiated by FourierSAT (Kyrillidis et al. 2020) and followed by Grad-SAT (Kyrillidis, Vardi, and Zhang 2021), CLS-based SAT solvers have been recently actively studied as a novel line of SAT framework. These solvers transform SAT into a poly-nomial optimization problem over the real domain and apply gradient-based optimizers. Compared with Discrete local search (DLS) approaches, CLS has the advantages of high The Thirty-Ninth AAAI Conference on Artificial Intelligence (AAAI-25) 
+
+11140 convergence quality and native support for non-CNF, i.e., 
+
+hybrid constraints (Kyrillidis et al. 2020). The main perfor-mance bottleneck of FourierSAT and GradSAT is, however, the slow gradient computation on the real domain. Fourier-SAT needs O(k3) to compute the gradient for a constraint of length k. GradSAT improves this complexity to O(k2).The computational nature of CLS, especially gradient com-putation, seems amenable to parallelization, which makes combining CLS and ML-motivated hardware a promising direction. Nevertheless, we reveal that the ideal parallel ex-ecution time of FourierSAT and GradSAT is still linear w.r.t the length of constraints, i.e., O∗(k), which is unsatisfactory. 
+
+Contributions The theoretical contribution of this paper is a highly parallel algorithm for computing the elementary symmetric polynomials (ESPs), which is the major compu-tation task in CLS approaches. Given a Boolean formula as the conjunction of Boolean constraints, FourierSAT needs to evaluate the Walsh expansion (WE) of the constraint. If the constraints are symmetric, their WEs can be represented by ESPs. Our algorithm is inspired by the FFT-based con-volution. We show that the evaluation of WEs of hybrid Boolean constraints can be vectorized. Hence, the gradient computation in FourierSAT can be efficiently implemented by packages frequently used in ML, e.g., JAX (Bradbury et al. 2018). More specifically, we construct the evaluation of the WE as an evaluation trace. By reverse traversal of the trace, the gradient can be obtained due to the chain rule, yielding an algorithm for gradient computation with com-plexity O(k2), which matches the best-known complexity in GradSAT. Moreover, our algorithm can be efficiently im-plemented with parallel computing, with sublinear ideal ex-ecution time 1 O∗(log k) due to the data-level parallelism. By further leveraging the instruction- and thread-level par-allelism, the WEs of different constraints can be evalu-ated on different assignments concurrently. The three-level parallelism maps to the GPU hierarchy of threads (data-level), warps (instruction-level), and streaming multiproces-sors (thread-level), enabling ease of GPU acceleration. We implemented our approach as FastFourierSAT, with massively parallel computation on the GPU platform. The benchmark instances include a variety of combinatorial op-timization problems encoded by hybrid (Max)SAT formu-las, including parity learning with errors , graph problem ,and instances from SAT competition, MaxSAT evaluation 2023. FastFourierSAT with GPU implementation computes the gradient 100+ times faster than previous CLS algorithms implemented with CPUs, including FourierSAT and Grad-SAT. We also compare FastFourierSAT with SOTA (parallel) SAT solvers. Results indicate that FastFourierSAT solves most instances and demonstrates promising scalability.                 
+
+> 1Let T=Ts+Tp/N be the execution time, where Ts,Tp
+> are the serial and parallel components, Nis the computational re-sources. We denote the ideal execution time for N=∞as O∗(T).
+
+# 2 Preliminaries 
+
+## 2.1 Boolean Constraints and Formulas 
+
+A Boolean constraint c maps all assignments of a set of 
+
+n Boolean variables to a truth value, i.e., c : Bn →{True , False }. Boolean constraints are often represented by variables and Boolean connectives, e.g., ∧, ∨, ¬, and ⊕.A Boolean formula f : Bn → B is defined by the con-junction of a set of Boolean constraints C = {ci}mi=1 , i.e., 
+
+f = Vmi=1 cm. A formula is in conjunctive normal form (CNF) when each constraint is a disjunction of literals. Oth-erwise, the formula is said to be hybrid , which may contain non-CNF constraints, e.g., XOR and cardinality constraint. 
+
+## 2.2 Walsh Expansions of Boolean Constraints 
+
+We define a Boolean function by f : {± 1}n → {± 1} (with an overload to f ) where −1 represents True and +1 for 
+
+False . WE transforms a Boolean function into a multilin-ear polynomial, such that the polynomial agrees with the Boolean function on all Boolean assignments (O’Donnell 2014). The following theorem shows that every function de-fined on a Boolean hypercube has an equivalent WE. 
+
+Theorem 1 ((O’Donnell 2014), Walsh Transform) Given a function f : {± 1}n → [−1, 1] , there is a unique way of expressing f as a multilinear polynomial, called the WE, with at most 2n terms in S, where each term corresponds to one subset of [n] according to: 
+
+f (x) = X
+
+> S⊆[n]
+
+ˆf (S) · Y
+
+> i∈S
+
+xi
+
+!
+
+,
+
+where ˆf (S) ∈ R2n
+
+is called Walsh coefficient, given S, and computed as: 
+
+ˆf (S) = 12n
+
+X
+
+> x∈{± 1}n
+
+f (x) · Y
+
+> i∈S
+
+xi
+
+!
+
+.
+
+Example 1 (Walsh Expansion, WE) Given a cardinality constraint c : x1 + x2 + x3 + x4 ≥ 2, its WE is 
+
+W E c(x) = − 3x1x2x3x4
+
+8 − x1x2x3
+
+8 − x1x2x4
+
+8 − x1x3x4
+
+8
+
+− x2x3x4
+
+8 + x1x2
+
+8 + x1x3
+
+8 + x1x4
+
+8 + x2x3
+
+8 + x2x4
+
+8+ x3x4
+
+8 + 3x1
+
+8 + 3x2
+
+8 + 3x3
+
+8 + 3x4
+
+8 − 38 . (1) All literals in the constraint in Example 1 have the same coefficient. Such a constraint is called symmetric , where the Walsh coefficient ˆf (S) only depends on |S|. Hence the WE can be compactly represented by ESPs. 
+
+Definition 1 (Elementary Symmetric Polynomials, ESPs) The ESPs in n variables x1, · · · , x n, denoted by esp (x) = [en(x), · · · , e 0(x)] , where e0(x) = 1 . For 1 ≤ j ≤ n,
+
+ej (x) = X 
+
+> 1≤i1<··· <i j≤n
+
+xi1 · · · xij .11141 Therefore, the WE in Example 1 can be concisely ex-pressed as: 
+
+W E c(x) = ˆfc · esp (x)T , (2) where ˆfc ∈ Rn+1 is the vector of Fourier coefficients of the constraint c, with the i-th element as ˆf (S), |S| = i.
+
+## 2.3 Convolution and Fourier Transform 
+
+Definition 2 (Linear Convolution) With g ∈ Rn and h ∈
+
+Rm as two one-dimension sequences. The linear convolution of g and h is a one-dimension sequence (g ∗ h) ∈ Rn+m−1.Each entry in sequence (g ∗ h) is defined as: 
+
+(g ∗ h)[ i] = 
+
+> i
+
+X
+
+> j=0
+
+g[i − j] · h[j].
+
+Definition 3 (Fourier Transform) Let ω = e(−2π√−1/n ).
+
+W ∈ Cn×n is the discrete Fourier transform (DFT) matrix, with each element as W [i, j ] = ωi·j . Fourier transform, de-noted by F(·), converts x ∈ Rn into X ∈ Cn in frequency domain: 
+
+X = F(x) = W · x. 
+
+Conversely, the inverse Fourier transform is defined by: 
+
+x = F−1(X) = W −1 · X. 
+
+Theorem 2 and Corollary 1 state that the linear convolu-tion ( ∗) in the time domain is equivalent to the Hadamard product ( ◦) in the frequency domain. 
+
+Theorem 2 (Convolution Theorem) With g and h as two one-dimension sequences, 
+
+g ∗ h = F−1 (F(g) ◦ F (h)) .
+
+Corollary 1 With g1, · · · , g k as k one-dimension se-quences, and γi = F(gi) for 1 ≤ i ≤ k, we have 
+
+g1 ∗ g2 ∗ · · · ∗ gk = F−1 (γ1 ◦ γ2 ◦ · · · ◦ γk) . (3) 
+
+# 3 Theoretical Framework 
+
+In this section, we first recap two CPU implementations of 
+
+Continuous Local Search (CLS) for hybrid SAT solving and discuss why they are limited for parallelization. We then show how our proposed solver, named FastFourierSAT, can exploit GPU to accelerate gradient computation. FastFourierSAT consists of three steps: i. Fourier trans-form, ii. multiplications in the frequency domain, iii. inverse Fourier transform. The complexity of our approach is O(k2)
+
+for computing the gradient of a constraint with length k,which matches previous works. Our algorithm is, moreover, highly parallelizable and the ideal execution time with un-limited resources can be reduced to O∗(log k). Due to the space limit, we delay most of the proofs to the supplemental materials 2.
+
+> 2Supplemental materials including code, data, and appendix are available on (https://github.com/seeder-research/FastFourierSAT).
+
+Algorithm 1: The CLS Framework for Hybrid SAT Solving 
+
+Input : Boolean formula f with a hybrid constraint set C
+
+Output : An discrete assignment x ∈ {− 1, 1}n 
+
+> 1:
+
+Sample x from [−1, 1] n and initialize weight w = w0 
+
+> 2:
+
+for j = 1 , · · · , max iter do  
+
+> 3:
+
+Search for a local optimum x∗ of Ff (x, w ) 
+
+> 4:
+
+if Ff (sgn (x∗), w ) = − P 
+
+> c∈C
+
+wc then  
+
+> 5:
+
+return sgn (x∗) 
+
+> 6:
+
+x, w←Restart (x∗, w) 
+
+> 7:
+
+return sgn (x∗) with lowest Ff (sgn (x∗), w 0)
+
+## 3.1 Recap of CLS-Based SAT Solving 
+
+CLS-based SAT solvers define a continuous objective func-tion, the minima of which encode the solutions to the origi-nal Boolean formula. 
+
+Definition 4 (Objective) For a formula f with constraint set 
+
+C, the objective function associated with f is defined as: 
+
+Ff (x, w ) = X
+
+> c∈C
+
+wc · W E c(x), (4) 
+
+where wc is the weight of c assigned by the CLS algorithm. 
+
+Theorem 3 (Reduction) Given variables x ∈ [−1, 1] n, a Boolean formula f with constraint set C is satisfiable iff 
+
+min Ff (x) = − P 
+
+> c∈C
+
+wc.
+
+Based on Definition 4 and Theorem 3, previous CLS frameworks can be described in Algorithm 1, which searches for the ground state of the objective function Ff .Global optimization on non-convex functions is, however, NP-hard (Jain, Kar et al. 2017). Since global optima can be identified efficiently by Theorem 3, it is usually more prac-tical to converge to local optima and check if any of them is global as in line 4 of Algorithm 1 (Gu 1994). FourierSAT and GradSAT (Kyrillidis et al. 2020; Kyril-lidis, Vardi, and Zhang 2021) are two gradient-based CLS variants of Algorithm 1. The majority of the computational workload in CLS approaches is line 3 of Algorithm 1. Hence, the performance heavily relies on the speed of gradi-ent computation. 
+
+FourierSAT computes the explicit gradient of WE (Eq. 2). Computing the partial derivatives for one literal needs k − 2
+
+convolutions , with complexity O(k2). Repeating for all lit-erals leads to the following fact. 
+
+Fact 1 (Kyrillidis et al. 2020) For a symmetric Boolean con-straint with k literals, FourierSAT computes the gradient via the WE with a time complexity of O(k3).
+
+GradSAT encodes the Boolean constraint with binary de-cision diagram (BDD) (Bryant 1995). By performing the be-lief propagation on BDDs, the messages can be used to com-pute the gradient (Pearl 1988; Shafer and Shenoy 1990). The complexity depends on the BDD size (Thornton and Nair 1994). The BDD size of a symmetric Boolean constraint is 
+
+O(k2) (Sasao, Fujita et al. 1996). 
+
+Fact 2 (Kyrillidis, Vardi, and Zhang 2021) For a symmetric Boolean constraint with k literals, GradSAT computes the gradient via BDD with a time complexity of O(k2).11142 Algorithm 2: Forward Evaluation with FFT method 
+
+Input : The current assignment x
+
+Parameter : Conjugated Fourier coefficient ˜fc’s ∀c ∈ C
+
+Output : Value Ff 
+
+> 1:
+
+Initialize Ff = 0  
+
+> 2:
+
+for c ∈ C, parallel do  
+
+> 3:
+
+γc1 · · · γc|c|
+
+ = 1 · · · ω|c|T + xc ▷step 1/3: ADD  
+
+> 4:
+
+γc = γ1 ◦ · · · ◦ γc|c| ▷step 2/3: MUL  
+
+> 5:
+
+WE c = ˜fc · γc ▷step 3/3: MUL  
+
+> 6:
+
+atomicAdd (&Ff , WE c) 
+
+> 7:
+
+return Ff
+
+Limited Parallelism of Previous Approaches Consider the ideal parallel execution time, denoted by O∗(·), as the minimum required time for executing an algorithm, given unlimited computational resources. FourierSAT needs to convolve the literal sequentially, while GradSAT needs to traverse the BDD layer by layer. Thereafter, the computa-tion from the preceding literal needs to wait until the com-putation of the previous literal is completed. As a result, the ideal execution time with unlimited resources of the two ap-proaches above is O∗(k) for a constraint with k literals. 
+
+## 3.2 FastFourierSAT 
+
+In this subsection, we describe our approach, named Fast-FourierSAT. We first propose a Fourier-transform-based ap-proach to convert the polynomial computation into a vec-torized form, in which the evaluation trace enables efficient parallelization on GPUs. Subsequently, the gradient can be computed by traversing the evaluation trace backward. This approach is also known as Autodiff , a fundamental technique that plays a crucial role in ML (Baydin et al. 2018). We re-veal that the complexity of the proposed approach is O(k2).Moreover, our approach runs in the best theoretical execu-tion time of O∗(log k) with parallel computing. 
+
+Fourier Transform-based Evaluation The most expen-sive operations in FourierSAT are the ESPs. Given a con-straint c with a literal set {x1, · · · , x k}, we observe that the ESPs can be obtained by convolutions of k sequences. 
+
+esp (x) = [ x1, 1] ∗ [x2, 1] ∗ · · · ∗ [xk, 1] (5) By Corollary 1, the convolution operations in Eq. 5 can be computed by 1) pointwise multiplications of sequences in the frequency domain; followed by 2) inverse FFT of this result. In the following, we describe the details of the three main steps of FastFourierSAT as Lines 3-5 in Algorithm 2. 
+
+Step 1 of 3. Fourier Transform by ADD : Given a Boolean constraint c with k literals, esp (x) is a one-dimension se-quence with k + 1 entries. Prior to performing batched Fourier transform on sequences [xi, 1] for all 1 ≤ i ≤ k,it is necessary to extend them with 0’s, resulting in a se-quence with a length of k + 1 , i.e., gi = [ xi 1 0 · · · 0] . By Definition 3, the sequences in the frequency domain can be obtained by: 
+
+γTi = W · gTi =  1 + xi ω + xi · · · ωk + xi
+
+T .
+
+Hence, by eliminating the trivial operations, the batched Fourier transform of k sequences can be described as an 
+
+outer addition of a column vector and a row vector: 
+
+[γc1 γc2 · · · γck ] = 1 ω · · · ωkT +[ xc1 xc2 · · · xck ] . (6) 
+
+Step 2 of 3. MUL in the Frequency Domain: By perform-ing row-wise reduce product for the left-hand-side of Eq. 6, the elements encoding different variables but with the same frequencies are accumulated. The resulting column vector γc
+
+is the ESPs in the frequency domain of due to Corollary 1. 
+
+γc = γc1 ◦ γc2 ◦ · · · ◦ γck (7) 
+
+=
+
+" kY
+
+> i=1
+
+(1 + xci )
+
+> k
+
+Y
+
+> i=1
+
+(ω + xci ) · · · 
+
+> k
+
+Y
+
+> i=1
+
+(ωk + xci )
+
+#T
+
+Step 3 of 3. Inverse Transform as Vector MUL : By ap-plying the inverse Fourier transform, γc can be converted back to the ESPs. The WE is then obtained by multiplying the Fourier coefficients with the ESPs. Thereafter, Eq. 2 can be written as: 
+
+W E c(x) = 
+
+> ˜fc
+
+z }| {
+
+ˆfc · W −1 · γc(x)
+
+| {z }
+
+> esp (x)
+
+. (8) However, given a constraint c, ˆfc and W −1 are fixed dur-ing the computation time. So ˜fc ∈ Ck+1 = ˆfc · W −1 can be computed in preprocessing, and we denote the resulting row vector as conjugated Walsh coefficient. 
+
+Theorem 4 (Evaluation) Lines 3-5 in Algorithm 2 compute the WE based on FFT. For a symmetric Boolean constraint with k literals, this algorithm runs in O(k2) time. 
+
+Chain Rule-based Differentiation Given a function f , a computation graph can be constructed with the input and output nodes corresponding to the variables x and the value 
+
+W E (x). In the forward phase, the function is computed for-ward with the original operator and recording the intermedi-ate variables γi. In the backward phase, derivatives are cal-culated by the differential operators, and local gradients γ′
+
+> i
+
+are propagated in reverse. The differential operators are de-rived based on: 
+
+Proposition 1 (Chain rule) Given x and composite func-tions W E c (γc(x)) , which is differentiable, then we have: 
+
+∂W E c
+
+∂x ci x
+
+= ∂W E c
+
+∂γ c γc(x)
+
+· ∂γ c
+
+∂x ci x
+
+.
+
+Theorem 5 (Differentiation) The differential operators de-rived from Proposition 1 can compute the local gradients with the intermediate variables in Algorithm 2. It runs in 
+
+O(k2) time for a symmetric Boolean constraint with k liter-als. 
+
+In the following, we give an example of how FastFourier-SAT evaluates and differentiates the WEs. 11143 Example 2 (Fourier Transform-based Implicit Gradient) Given a constraint x1+x2+x3+x4 ≥ 2, and base frequency 
+
+ω = exp  −2π√−1/5, the conjugated Walsh coefficient is 
+
+˜f Tc = − 140 
+
+
+
+3
+
+ω4 − ω3 − 3ω2 + 3 ω + 3 
+
+−3ω4 + ω3 + 3 ω2 − ω + 3 
+
+−ω4 + 3 ω3 + ω2 − 3ω + 3 3ω4 − 3ω3 − ω2 + ω + 3 
+
+ .
+
+i. Consider x = (1 /2, 1/2, −1/2, −1/2) , we construct the corresponding column vector [1 /2, 1/2, −1/2, −1/2] T .By performing outer addition with [1 , ω, ω 2, ω 3, ω 4], the se-quences in frequency domain are: 
+
+γ1 = γ2 =
+
+ 32 , ω + 12 , ω 2 + 12 , ω 3 + 12 , ω 4 + 12
+
+T
+
+,γ3 = γ4 =
+
+ 12 , ω − 12 , ω 2 − 12 , ω 3 − 12 , ω 4 − 12
+
+T
+
+.
+
+ii. By multiplying in the frequency domain along the bi-nary tree, we can have: 
+
+γl = γ1 ◦ γ2 =
+
+"
+
+32 ,
+
+
+
+ω + 12
+
+2
+
+, · · · ,
+
+
+
+ω4 + 12
+
+2#T
+
+,γr = γ3 ◦ γ4 =
+
+"
+
+12 ,
+
+
+
+ω − 12
+
+2
+
+, · · · ,
+
+
+
+ω4 − 12
+
+2#T
+
+,γc = γl ◦ γr =
+
+"
+
+34 ,
+
+
+
+ω2 − 14
+
+2
+
+, · · · ,
+
+
+
+ω8 − 14
+
+2#T
+
+.
+
+iii. As in Eq. 8, the WE of c can be evaluated as 
+
+W E c(x) = − 263 640 + ω + ω2 + ω3 + ω4
+
+20 = − 59 128 .
+
+From Proposition 1 we can derive: 
+
+x′ 
+
+> 1
+
+= 1·
+
+ ˜fc ◦ γr
+
+
+
+◦ γ2
+
+
+
+,
+
+... (9) 
+
+x′ 
+
+> 4
+
+= 1·
+
+ ˜fc ◦ γl
+
+
+
+◦ γ3
+
+
+
+.
+
+where 1 is a row vector with all elements as 1. By traversing the evaluation trace backward, i.e., solving Eq. 9 from inner parentheses to outside, we have 
+
+x′ =
+
+ 19 64 , 19 64 , 33 64 , 33 64 
+
+
+
+.
+
+In the supplemental material, we showed that FourierSAT and GradSAT can achieve the same result. 
+
+Acceleration with GPU The majority of the computations in Algorithm 2 are in Lines 3-5. With the multi-threaded computation scheme, the execution can be parallelized. The details are included in the proof of the following proposition. 
+
+Proposition 2 (Parallelism) With unbounded computa-tional resources, the ideal execution time with unlimited re-sources of Autodiff for Algorithm 2 scales at O∗(log k).
+
+Parallel SAT solving refers to the process of solving a SAT formula using multiple computational resources simul-taneously. It is motivated by the desire to exploit the com-putational power of modern multi-core processors to speed up the solving process. We leverage massive parallelism to achieve the ideal execution time in Proposition 2. 
+
+i. Data-level Parallelism The majority of computations of FastFourierSAT are matrix operations, which are highly op-timized for GPUs. The elementary operations are mainly ad-ditions and multiplications, which are simple instructions. Due to the single instruction multiple data (SIMD) scheme, concurrent execution of these simple instructions can be ef-ficiently handled by a warp with a group of threads .
+
+ii. Instruction-level Parallelism The differentiation of the objective function (Eq. 4) can be subdivided into the dif-ferentiation of WEs (Eq. 2) of all Boolean constraints. Since these computations are data independent, they can be instruction-level parallelized, and distributed to identical 
+
+warps in a streaming multiprocessor. 
+
+iii. Thread-level Parallelism In CLS solvers, different initialization can be assigned to identical optimizers for par-allel search. The search trajectory becomes diversified as optimizers might converge to different local optima. It in-creases the chance of finding a local optimum being globally optimal. The parallel search can be partitioned and executed by many streaming multiprocessors .
+
+Implementation Techniques The essence of CLS is using continuous optimization to find the minima of a non-convex but smooth function. The results depend heavily on the ini-tialization (Jain, Netrapalli, and Sanghavi 2013). To system-atically search the continuous domain, we use the following two techniques. 
+
+i. Weight Adaptation for Hybrid SAT Solving To lever-age the information along the search history, we propose to model the adaptive weight with exponential recency weighted average , a lightweight method for progressively approximating a moving average (Liang et al. 2016). Each constraint c maintains an integer Uc ∈ [0 , p t], which is the number of tasks where c appears to be unsatisfied among the 
+
+pt parallel tasks. The unsatisfaction score is 
+
+rc = Uc
+
+max c∈Cf (Uc) .
+
+If a constraint c is more on the SAT (resp. UNSAT) side, rc
+
+is closer to 0 (resp. 1). Consider the unsatisfaction scores along the search his-tory rc[1] , · · · , r c[t]. We model the adaptive weight wc us-ing the exponential recency weighted average (Liang et al. 2016) of rc[i]’s, i.e, 
+
+wc[i] = 
+
+> t
+
+X
+
+> i=1
+
+βirc[I],11144 Algorithm 3: Integrating CLS for Hybrid MaxSAT Solving 
+
+Input : A hybrid constraint set ϕ = ϕhard ∪ ϕsof t 
+
+Output : An discrete assignment x ∈ {− 1, 1}n 
+
+> 1:
+
+ϕsol = ∅ 
+
+> 2:
+
+best cost =∞ 
+
+> 3:
+
+for j = 1 , · · · , max iter do  
+
+> 4:
+
+model =cdcl.solve (ϕhard ∪ ϕsol ) 
+
+> 5:
+
+ϕsol = ϕsol ∪ ¬ model  
+
+> 6:
+
+x =random init (model ) ▷Polarities of the random initial assignment are fixed by model  
+
+> 7:
+
+Search for a local optimum x∗ of Fϕ(x) 
+
+> 8:
+
+if Fϕ(x∗) ≤best cost then  
+
+> 9:
+
+cdcl.set phase (x∗) 
+
+> 10:
+
+best cost =Fϕ(x∗) 
+
+> 11:
+
+x∗∗ = x∗ 
+
+> 12:
+
+return x∗∗ 
+
+with decay rate βi = α(1 − α)t−i and α ∈ [0 , 1] . A con-straint adapts to a higher weight if it is frequently unsatis-fied along the search history. Therefore, the solver should focus more on the subspace that satisfies constraints with a higher wc. In practice, the adaptive weight can be efficiently updated as follows. In practice, we use α = 0 .1 to adapt the weight as follows. 
+
+Proposition 3 (Adaptive weight) The weight of c at step t +1 can be computed by 
+
+wc[t + 1] = (1 − α)wc[t] + αr c[t].
+
+ii. Initialization for Hybrid MaxSAT Solving The above weighting heuristic applies to SAT solving with the reduc-tion given by Theorem 3. For MaxSAT solving, we initial-ize the assignments by solving the hard constraints with CDCL. A valid solution found by CLS satisfying more soft constraints will be set as the CDCL phase. The integra-tion of CDCL and CLS results in FastFourierMaxSAT in Algorithm 3. In our experiments, we use Cadical195 and Gluecard4 from PySAT (Ignatiev, Morgado, and Marques-Silva 2018) to enumerate multiple models, which are used to warm-start the CLS component in parallel. 
+
+# 4 Experimental Results 
+
+In this section, we compare our solver FastFourierSAT with CLS and other SOTA SAT solvers. We aim to conduct ex-periments to answer the following research questions: 
+
+RQ1. Can implementing FastFourierSAT on GPU lead to a substantial acceleration in gradient computations compared to prior CPU implementations of CLS? 
+
+RQ2. Can FastFourierSAT outperform SOTA parallel solvers in solving (Max)SAT problems that can be naturally encoded with hybrid Boolean constraints? 
+
+RQ3. Given industrial-scale problems as (Max)SAT for-mulas, how does FastFourierSAT perform compared to the CDCL solvers that have dominated over the past decades? We implement FastFourierSAT in both CPU and GPU frameworks. We use JAX (Bradbury et al. 2018) for the framework and JAXopt (Blondel et al. 2022) for the opti-mizer. We compare our approach with the following solvers. 
+
+Solver Competitors For the hybrid SAT benchmark, we compare with 1) Parallel DLS solvers using CPUs, in-cluding PalSAT (Biere 2014) and WalkSAT; 2) Parallel CDCL solvers using CPUs, including PRS (Balyo et al. 2023) and CryptoMiniSAT (CMS) (Soos, Nohl, and Castel-luccia 2009); 3) Parallel CDCL solvers using GPUs, in-cluding GpuShareSAT (Prevot, Soos, and Meel 2021) and ParaFrost (Osama, Wijs, and Biere 2021). GpuShare-SAT has two versions, using Glucose-Syrup or Relaxed-LCMDCBDL-newTech as the base solver. ParaFrost has two versions, which are complied for CPU or GPU. The portfo-lio results in GSS-Glucose+Relax and ParaFrost-cpu+gpu. For the hybrid MaxSAT benchmark, we compare with 4) LinPB (Yang and Meel 2021). 5) Solvers from MSEval’23 ,including NoSAT-MaxSAT (Schupp 2023), Loandra (Berg 2023), NuWLS-c (Chu, Cai, and Luo 2023). 
+
+Experimental Setup The CPU solvers run on a server with dual AMD Epyc 7773X CPUs and 2 TB of RAM. Each experiment for CPU solvers uses 32 CPU threads, and 128 GB of RAM. The GPU solvers run on a workstation with INTEL i9-12900F CPU, 32 GB of RAM, and NVIDIA RTX 3080 Ti GPU. Timeout is 300 s unless specifically stated. 
+
+Encodings CLS solvers accept hybrid constraints via WEs or BDDs. Solvers who do not accept the cardinality con-straints use the encoding from (Ans´ otegui et al. 2021), which automatically chooses the best encoding. Except for CMS and LinPB, solving XOR constraints by Gaussian elimina-tion, other non-CLS solvers encode XOR by (Li 2000). 
+
+Benchmark 1: Gradient Computation Time To eval-uate the gradient computation time, we generate m ∈{100 , 200 , 400 } cardinality constraints, with length l ∈{8, 16 , 32 }. We evaluate the above constraints with 10000 points from [−1, 1] n for average gradient computation time. 
+
+Benchmark 2: Hybrid SAT formulas This benchmark includes two types of instances. 1) Random Cardinal-ity Constraints . For each N ∈ { 50 , 100 , 150 , 200 , 250 },we choose l = N/ 5 and m = 3l to generate 100 in-stances with m random (l/ 2) -cardinality constraints. Each constraint sampled l variables as the literals with 1/2 proba-bility of all positive or all negative. 2) Parity Learning with Error Problems aim to find an assignment that can satisfy at least (1 − e) · m out of m XOR constraints. For e ∈ (0 , 1/2) ,whether the problem is in P remains an open question and is known to be hard for local search solver (Crawford, Kearns, and Schapire 1994). For each N ∈ { 20 , 30 , 40 , 50 , 60 }, we choose e = 1 /4 and m = 2 N to generate 100 hard in-stances. CLS solvers can solve them natively with at most 
+
+e · m XOR constraints violated. Otherwise, we used the en-coding due to (Hoos and St¨ utzle 2000). 
+
+Benchmark 3: Hybrid MaxSAT for graph problems 
+
+Soft XOR constraints are added to the formulas in this benchmark. We harden the soft XOR constraints by (Soos and Meel 2021) for non-CLS solvers. Finding the maxi-mal number of satisfied XOR constraints can be useful in 11145 Average Gradient Computation Time (ms) CLS Solvers 8 100 8 200 8 400 16 100 16 200 16 400 32 100 32 200 32 400 FastFourierSAT-gpu 1.75 1.77 1.81 1.81 1.79 1.80 1.82 1.88 1.91 
+
+FastFourierSAT-cpu 1.58 1.70 1.76 1.84 2.13 3.06 3.09 4.44 7.57 GradSAT 3.93 8.80 19.60 18.40 41.06 94.15 90.76 208.08 472.31 FourierSAT 25.95 53.08 106.47 87.37 179.56 356.29 359.66 743.84 1280.89 Table 1: The average gradient computation time of different CLS solvers. l m means m cardinality constraints with length l.hashing-based approximate model counting (Chakraborty, Meel, and Vardi 2021). This benchmark includes two types of graph problems encoded by hybrid formulas. Let 
+
+G(V, E ) be an undirected graph, 1) Hamiltonian Cy-cle Problem is to find a path from edges E that visits each vertex in V exactly once. Problems are encoded in 
+
+N = |V |2 variables {xv,i }, where v refers to the ver-tex and i is the order in a prospective cycle. It uses hard 
+
+exact-one constraints for one-hot encoding, i.e., P 
+
+> v
+
+xv,i =1, ∀i and P 
+
+> i
+
+xv,i = 1, ∀v. Hard binary clauses (¯ xu,i ∨
+
+¯xv,i +1 ) ∧ (¯ xv,i ∨ ¯xu,i +1 ), ∀(u, v ) /∈ E enforce the path can only be constructed by a subset of E. For each |V | ∈ {10 , 20 , 30 , 40 , 50 }, we choose degree |V |/2 to generate 10 regular graphs. |V |2 soft XOR constraints are added, each with a length of N/ 2. 2) Graph Coloring Problem is to assign colors to vertices such that no two adjacent vertices have the same color. Given |C| colors, we encode the prob-lem in N = |V | · | C| variables {xv,i }, where v and i refer to the vertex and i represent the color. It uses hard exact-one 
+
+constraints for assigning exactly one color to every vertices, i.e., P 
+
+> i
+
+xv,i = 1 , ∀v. Every edge (u, v ) ∈ E use hard binary clauses ¯xu,i ∨ ¯xv,i to avoid adjacent vertices having the same color. For each |V | ∈ { 100 , 200 , 300 , 400 , 500 }, we choose degree |C| = |V |/10 to generate 10 regular graphs. |V | soft XOR constraints are added, each with a length of N/ 2.
+
+Benchmark 4: SAT Competition (SC) and MaxSAT Evaluation (MSEval) 2023 Since CLS is incomplete, we select the instances proven to be satisfiable from SC’23 and all unweighted instances from anytime track in MSEval’23 .
+
+Scoring Metrics We use the PAR-2 score for evaluating the satisfaction problems. The PAR-2 score is defined to be its average runtime over all instances, whereby unsolved in-stances contribute twice the time limit. We use the anytime score for evaluating the optimization problems. The anytime score of a solver s on instance i is the ratio between 1 plus the best solution found by s and 1 plus the best-known solu-tion for i.
+
+RQ1. Table 1 showcases the results of Benchmark 1. GradSAT and FourierSAT use for-loops to compute the gra-dients for various constraints. FastFourierSAT, as the vector-ized version of FourierSAT, leverages the highly optimized BLAS (Basic Linear Algebra Subprograms) for matrix mul-tiplication. There has been a great improvement in using the CPU implementation of FastFourierSAT, especially for small instances. The GPU implementation offers scalability, despite suffering from the data communication between the 
+
+Figure 1: Results on a) cardinality constraints and b) par-ity learning problems from benchmark 2. Dashed lines are referred to as GPU solvers. Legends are ranked by PAR-2 scores, with the numbers in parentheses indicating each en-try’s specific PAR-2 score. CPU and GPU. For the largest instance, it achieves 472 ×
+
+and 1280 × speedup w.r.t. GradSAT and FourierSAT. 
+
+RQ2. The results of benchmark 2 are shown in Fig. 1. GPU-enabled CDCL solvers, i.e. , GSS-glucose+relax (312), ParaFrost-cpu+gpu (318), perform worse than the CPU CDCL solvers, i.e. , CMS (497), PRS (399) 3. It may be due to CDCL solvers being memory-intensive for clause learn-ing while GPUs have limited RAM. The cardinality con-straints can be natively accepted by CLS solvers where GradSAT-32 and FastFourierSAT can solve all instances. FourierSAT-32 solves only 397 instances due to the slow gradient computation with non-parallelized convolution op-erations. FastFourierSAT-cpu-32 achieves a 15.13 × speedup in terms of PAR-2 score while using GPU achieves an-other 1.92 × speedup. From the inset of Fig. 1a, we observe that as the size of the instance increases, the running time 
+
+> 3The number in parentheses represents the number of instances that the solver solved within the time limit. 11146
+
+Anytime Scores Solvers Hamiltonian Cycle Graph Coloring FastFourierMaxSAT-32-gpu 0.989 0.938 FastFourierMaxSAT-32-cpu 0.981 0.920 LinPB 0.983 0.914 Loandra 0.976 0.893 NuWLS-c 0.962 0.881 FastFourierSAT-32-gpu 0.948 0.861 FastFourierSAT-32-cpu 0.884 0.621 NoSAT-MaxSAT 0.359 0.858 GradSAT-32 0.352 0.135 FourierSAT-32 0.205 0.132 Table 2: Results on graph problems from benchmark 3. The anytime score refers to the scoring metric in MSEval’23 .for most solvers increases significantly. Nevertheless, Fast-FourierSAT seems to be more scalable for larger formulas. Parity learning problems were easily solved by CMS (500), which handles XORs by Gaussian elimination. The inset of Fig. 1b shows that CMS can solve most instances within 1 s. In contrast, DLS perform poorly, e.g. , PalSAT (129), and WalkSAT (0). FastFourierSAT-32-cpu (486) solv-ing more instances than -gpu (412) seems counter-intuitive. FastFourierSAT-4096-gpu increases the GPU utilization rate and solves 495 instances. 
+
+RQ3. Benchmark 4 tests CLS solvers on satisfiable in-stances from SC’23 with a 1000 s timelimit. FourierSAT-32 fails to solve any instance and GradSAT-32 solves 1 in-stance. FastFourierSAT-32-cpu (resp. -gpu) can solve 5 and (resp. 13) instances. However, these instances are easy for the solvers from SC’23 , which take minimally 0.04 to 1.07 s. We also test CLS solvers on the unweighted in-stances from anytime track in MSEval’23 . FourierSAT-32 fails to give valid solutions. GradSAT-32 uses a portfo-lio optimizer and finds solutions with a score of 0.102. FastFourierMaxSAT-32-cpu (resp. -gpu) achieves scores of 0.321 (resp. 0.327). The improvement of using GPU is not significant, where the performance depends mostly on the CDCL-based initialization. For the ablation study, we test FastFourierSAT-32-cpu (resp. -gpu) on these instances, achieving scores of 0.093 (resp. 0.116). In contrast, the VBS solver from MSEval’23 achieves an anytime score of 0.954. The above results can conclude that given industrial prob-lems, FastFourier(Max)SAT might not be competitive with mature CDCL solvers submitted to the competitions. The instances from competitions are in (W)CNF format and are encoded to be arc-consistent, where the CDCL solvers can capture the semantics and do efficient propagation. The competition solvers are crafted with well-engineered heuris-tics to achieve good performance. Usually, an arc-consistent encoding yields a larger formula than that of a non-arc-consistent encoding. While CLS solvers cannot capture the arc consistency, they need to solve a larger formula. To see the performance loss, we try FastFourierSAT on the (W)CNF formulas from RQ2 . Recall that FastFourier-SAT is competitive with SOTA solvers when solving hy-brid formulas. However, for cardinality constraints encoded in CNF, FastFourierSAT-32-cpu (resp. -gpu) can solve 120 (resp. 195) instances with PAR-2 score of 466.961 (resp. 373.579). Parity learning is challenging for local search, where FastFourierSAT-32-cpu (resp. -gpu) can solve 1 (resp. 27) instance with PAR-2 score of 598.995 (resp. 578.938). And FastFourierSAT fails to solve any instance from bench-mark 3 encoded by WCNF. This is because a compact hybrid formula is encoded to an extremely large-size SAT formula. For example, a graph coloring instance originally has 2.5 K variables, 60 K clauses, 100 exact-one constraints, and 2.5 K XOR constraints. However, the encoded WCNF formula has more than 6 M variables and 26 M clauses. 
+
+# 5 Conclusion 
+
+The present study introduces a novel FFT-inspired approach for accelerating the evaluation of ESPs, which significantly enhances the CLS approach for hybrid SAT solving. The ac-celeration is achieved by leveraging the thread-, instruction-, and data-level parallelism on the GPU, which enables ef-ficient gradient computation. Our results demonstrate that FastFourierSAT is competitive with the SOTA solvers in a few benchmarks. They also highlight that, with the mas-sively parallel scheme, CLS approaches can complement the existing CDCL solvers for solving non-CNF constraints. We list the limitations and future directions in the following. 
+
+Rounding errors Rounding errors from Walsh coeffi-cients and the computations in the frequency domain reduce the numerical stability for CLS. This work mitigates the er-rors by using higher bit precision, which comes with a no-table computation and memory overhead. We are interested in computationally efficient methods for improving the nu-merical stability. 
+
+Global Optimization and Completeness CLS, as an in-complete framework, relies on local optimization to search the satisfiable assignments of the Boolean formulas. While CLS cannot prove unsatisfiability through techniques like deletion resolution asymmetric tautology (DRAT) employed by CDCL solvers (Wetzler, Heule, and Hunt Jr 2014), we can borrow ideas from continuous optimization methods that provide guarantees of a global minimum. We aim to develop a global optimizer based on the gradient of the Moreau enve-lope of the objectives (Osher, Heaton, and Wu Fung 2023). We are interested in studying the completeness of global op-timization with the Moreau envelope. 
+
+# Acknowledgments 
+
+We thank Moshe Vardi for the helpful and insightful com-ments and discussions that contributed to this work. This work was supported by the National Research Founda-tion, Prime Minister’s Office, Singapore, under its Com-petitive Research Program (NRF-CRP24-2020-0002 and NRF-CRP24-2020-0003), the Ministry of Education (Singa-pore) Tier 2 Academic Research Fund (MOE-T2EP50220-0012 and MOE-T2EP50221-0008). Zhiwei Zhang is sup-11147 ported in part by NSF grants (IIS-1527668, CCF1704883, IIS1830549), DoD MURI grant (N00014-20-1-2787), An-drew Ladd Graduate Fellowship of Rice Ken Kennedy Insti-tute, and an award from the Maryland Procurement Office. 
+
+# References 
+
+Ans´ otegui, C.; Ojeda, J.; Pacheco, A.; Pon, J.; Salvia, J. M.; and Torres, E. 2021. Optilog: A framework for sat-based systems. In Theory and Applications of Satis-fiability Testing–SAT 2021: 24th International Conference, Barcelona, Spain, July 5-9, 2021, Proceedings 24 , 1–10. Springer. Balyo, T.; Heule, M.; Iser, M.; J¨ arvisalo, M.; and Suda, M., eds. 2023. Proceedings of SAT Competition 2023: Solver, Benchmark and Proof Checker Descriptions . Department of Computer Science Series of Publications B. Finland: De-partment of Computer Science, University of Helsinki. Baydin, A. G.; Pearlmutter, B. A.; Radul, A. A.; and Siskind, J. M. 2018. Automatic differentiation in machine learning: a survey. Journal of Marchine Learning Research , 18: 1–43. Berg, J. 2023. Loandra in the 2022 (and 2023) MaxSAT Evaluation. MaxSAT Evaluation 2023 , 21. Biere, A. 2014. Yet another Local Search Solver and Lin-geling and Friends Entering the SAT Competition 2014. In Balint, A.; Belov, A.; Heule, M.; and J¨ arvisalo, M., eds., 
+
+Proc. of SAT Competition 2014 – Solver and Benchmark Descriptions , volume B-2014-2 of Department of Com-puter Science Series of Publications B , 39–40. University of Helsinki. Blondel, M.; Berthet, Q.; Cuturi, M.; Frostig, R.; Hoyer, S.; Llinares-L´ opez, F.; Pedregosa, F.; and Vert, J.-P. 2022. Effi-cient and modular implicit differentiation. Advances in neu-ral information processing systems , 35: 5230–5242. Bradbury, J.; Frostig, R.; Hawkins, P.; Johnson, M. J.; Leary, C.; Maclaurin, D.; Necula, G.; Paszke, A.; VanderPlas, J.; Wanderman-Milne, S.; and Zhang, Q. 2018. JAX: compos-able transformations of Python+NumPy programs. Bryant, R. E. 1995. Binary decision diagrams and beyond: Enabling technologies for formal verification. In Proceed-ings of IEEE International Conference on Computer Aided Design (ICCAD) , 236–243. IEEE. Chakraborty, S.; Meel, K. S.; and Vardi, M. Y. 2021. Ap-proximate model counting. In Handbook of Satisfiability ,1015–1045. IOS Press. Chu, Y.; Cai, S.; and Luo, C. 2023. NuWLS-c-2023: Solver description. MaxSAT Evaluation 2023 , 23. Crawford, J. M.; Kearns, M. J.; and Schapire, R. E. 1994. The minimal disagreement parity problem as a hard satis-fiability problem. Computational Intell. Research Lab and AT&T Bell Labs TR .Dal Pal` u, A.; Dovier, A.; Formisano, A.; and Pontelli, E. 2015. Cud@ sat: Sat solving on gpus. Journal of Experimen-tal & Theoretical Artificial Intelligence , 27(3): 293–316. Davis, M.; Logemann, G.; and Loveland, D. 1962. A ma-chine program for theorem-proving. Communications of the ACM , 5(7): 394–397. Davis, M.; and Putnam, H. 1960. A computing procedure for quantification theory. Journal of the ACM (JACM) , 7(3): 201–215. Golia, P.; Juba, B.; and Meel, K. S. 2022. A Scalable Shannon Entropy Estimator. In International Conference on Computer Aided Verification , 363–384. Springer. Gu, J. 1994. Global optimization for satisfiability (SAT) problem. IEEE Transactions on Knowledge and Data En-gineering , 6(3): 361–381. Hamadi, Y.; Jabbour, S.; and Sais, L. 2010. ManySAT: a parallel SAT solver. Journal on Satisfiability, Boolean Mod-eling and Computation , 6(4): 245–262. Hamadi, Y.; and Wintersteiger, C. 2013. Seven challenges in parallel SAT solving. AI Magazine , 34(2): 99–99. Hoos, H. H.; and St¨ utzle, T. 2000. SATLIB: An online re-source for research on SAT. Sat , 2000: 283–292. Ignatiev, A.; Morgado, A.; and Marques-Silva, J. 2018. PySAT: A Python Toolkit for Prototyping with SAT Oracles. In SAT , 428–437. Jain, P.; Kar, P.; et al. 2017. Non-convex optimization for machine learning. Foundations and Trends® in Machine Learning , 10(3-4): 142–363. Jain, P.; Netrapalli, P.; and Sanghavi, S. 2013. Low-rank ma-trix completion using alternating minimization. In Proceed-ings of the forty-fifth annual ACM symposium on Theory of computing , 665–674. Jouppi, N. P.; Young, C.; Patil, N.; Patterson, D.; Agrawal, G.; Bajwa, R.; Bates, S.; Bhatia, S.; Boden, N.; Borchers, A.; et al. 2017. In-datacenter performance analysis of a tensor processing unit. In Proceedings of the 44th annual interna-tional symposium on computer architecture , 1–12. Kyrillidis, A.; Shrivastava, A.; Vardi, M.; and Zhang, Z. 2020. FourierSAT: A Fourier expansion-based algebraic framework for solving hybrid boolean constraints. In Pro-ceedings of the AAAI Conference on Artificial Intelligence ,volume 34, 1552–1560. Kyrillidis, A.; Vardi, M.; and Zhang, Z. 2021. On continu-ous local BDD-based search for hybrid SAT solving. In Pro-ceedings of the AAAI Conference on Artificial Intelligence ,volume 35, 3841–3850. Le Frioux, L.; Baarir, S.; Sopena, J.; and Kordon, F. 2017. PaInleSS: a framework for parallel SAT solving. In Theory and Applications of Satisfiability Testing–SAT 2017: 20th In-ternational Conference, Melbourne, VIC, Australia, August 28–September 1, 2017, Proceedings 20 , 233–250. Springer. Li, C. M. 2000. Integrating equivalency reasoning into Davis-Putnam procedure. AAAI/IAAI , 2000: 291–296. Liang, J.; Ganesh, V.; Poupart, P.; and Czarnecki, K. 2016. Exponential recency weighted average branching heuristic for SAT solvers. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 30. Marques-Silva, J. P.; and Sakallah, K. A. 1999. GRASP: A search algorithm for propositional satisfiability. IEEE Trans-actions on Computers , 48(5): 506–521. Martins, R.; Manquinho, V.; and Lynce, I. 2012. An overview of parallel SAT solving. Constraints , 17: 304–347. 11148 Mitchell, D.; Selman, B.; and Leveque, H. 1992. A new method for solving hard satisfiability problems. In Pro-ceedings of the tenth national conference on artificial intel-ligence (AAAI-92) , 440–446. O’Donnell, R. 2014. Analysis of boolean functions . Cam-bridge University Press. Osama, M.; Wijs, A.; and Biere, A. 2021. SAT solving with GPU accelerated inprocessing. In Tools and Algorithms for the Construction and Analysis of Systems: 27th Interna-tional Conference, TACAS 2021, Held as Part of the Euro-pean Joint Conferences on Theory and Practice of Software, ETAPS 2021, Luxembourg City, Luxembourg, March 27– April 1, 2021, Proceedings, Part I 27 , 133–151. Springer. Osher, S.; Heaton, H.; and Wu Fung, S. 2023. A Hamilton– Jacobi-based proximal operator. Proceedings of the National Academy of Sciences , 120(14): e2220469120. Pearl, J. 1988. Belief updating by network propagation. In Probabilistic Reasoning in Intelligent Systems , 143–237. Morgan Kaufmann San Francisco (CA). Prevot, N.; Soos, M.; and Meel, K. S. 2021. Leveraging GPUs for Effective Clause Sharing in Parallel SAT Solv-ing. In Theory and Applications of Satisfiability Testing–SAT 2021: 24th International Conference, Barcelona, Spain, July 5-9, 2021, Proceedings , 471–487. Springer. Sasao, T.; Fujita, M.; et al. 1996. Representations of discrete functions . Springer. Schupp, O. L. S. 2023. noSAT-MaxSATv2. MaxSAT Evalu-ation 2023 , 27. Shafer, G. R.; and Shenoy, P. P. 1990. Probability propaga-tion. Annals of mathematics and Artificial Intelligence , 2: 327–351. Soos, M.; and Meel, K. S. 2021. Gaussian elimination meets maximum satisfiability. In Proceedings of the International Conference on Principles of Knowledge Representation and Reasoning , volume 18, 581–587. Soos, M.; Nohl, K.; and Castelluccia, C. 2009. Extend-ing SAT solvers to cryptographic problems. In Interna-tional Conference on Theory and Applications of Satisfia-bility Testing , 244–257. Springer. Thornton, M.; and Nair, V. 1994. Efficient spectral coeffi-cient calculation using circuit output probabilities. Digital Signal Processing , 4(4): 245–254. Vardi, M. Y.; and Zhang, Z. 2023. Solving Quantum-Inspired Perfect Matching Problems via Tutte’s Theorem-Based Hybrid Boolean Constraints. arXiv preprint arXiv:2301.09833 .Wang, F.; Liu, J.; and Young, E. F. 2023. FastPass: Fast Pin Access Analysis with Incremental SAT Solving. In Pro-ceedings of the 2023 International Symposium on Physical Design , 9–16. Wetzler, N.; Heule, M. J.; and Hunt Jr, W. A. 2014. DRAT-trim: Efficient checking and trimming using expressive clausal proofs. In International Conference on Theory and Applications of Satisfiability Testing , 422–429. Springer. Yang, J.; and Meel, K. S. 2021. Engineering an efficient PB-XOR solver. In 27th International Conference on Prin-ciples and Practice of Constraint Programming (CP 2021) .Schloss-Dagstuhl-Leibniz Zentrum f¨ ur Informatik. Zhang, H.; Bonacina, M. P.; and Hsiang, J. 1996. PSATO: a distributed propositional prover and its application to quasi-group problems. Journal of Symbolic Computation , 21(4-6): 543–560. 11149

@@ -1,0 +1,665 @@
+Title: Certified Branch-and-Bound MaxSAT Solving
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/38449/42411
+
+Number of Pages: 10
+
+Markdown Content:
+# Certified Branch-and-Bound MaxSAT Solving 
+
+# Dieter Vandesande 1,2 , Jordi Coll 3, Bart Bogaerts 2,1 
+
+> 1
+
+Vrije Universiteit Brussel, Dept. of Computer Science, Brussels, Belgium 
+
+> 2
+
+KU Leuven, Dept. of Computer Science, B-3000 Leuven, Belgium 
+
+> 3
+
+Universitat de Girona, Girona, Spain dieter.vandesande@vub.be, jordicoll@udg.edu, bart.bogaerts@kuleuven.be 
+
+Abstract  
+
+> Over the past few decades, combinatorial solvers have seen remarkable performance improvements, enabling their prac-tical use in real-world applications. In some of these appli-cations, ensuring the correctness of the solver’s output is critical. However, the complexity of modern solvers makes them susceptible to bugs in their source code. In the do-main of satisfiability checking (SAT), this issue has been ad-dressed through proof logging , where the solver generates a formal proof of the correctness of its answer. For more ex-pressive problems like MaxSAT, the optimization variant of SAT, proof logging had not seen a comparable breakthrough until recently. In this paper, we show how to achieve proof logging for state-of-the-art techniques in Branch-and-Bound MaxSAT solving. This includes certifying look-ahead methods used in such al-gorithms as well as advanced clausal encodings of pseudo-Boolean constraints based on so-called Multi-Valued Deci-sion Diagrams (MDDs). We implement these ideas in Max-CDCL, the dominant branch-and-bound solver, and experi-mentally demonstrate that proof logging is feasible with lim-ited overhead, while proof checking remains a challenge.
+
+# 1 Introduction 
+
+With increasingly efficient solvers being developed across various domains of combinatorial search and optimization, we have effectively reached a point where NP-hard prob-lems are routinely addressed in practice. This maturation has led to the deployment of solvers in a wide range of real-world applications, including safety-critical systems and life-impacting decision-making processes—such as verify-ing software for transportation infrastructure (Ferreira and Silva 2004), checking the correctness of plans for the space shuttle’s reaction control system (Nogueira et al. 2001), and matching donors with recipients in kidney transplants (Manlove and O’Malley 2014). Given these high-stakes ap-plications, it is crucial that the results produced by such solvers are guaranteed to be correct. Unfortunately, this is not always the case: numerous reports have documented solvers producing infeasible solutions or incorrectly claim-ing optimality or unsatisfiability (Berg et al. 2023; Brum-mayer, Lonsing, and Biere 2010; Cook et al. 2013; Gillard, Schaus, and Deville 2019; J¨ arvisalo, Heule, and Biere 2012). 
+
+> Copyright © 2026, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved.
+
+This problem calls for a systematic solution. The most straightforward approach would be to use formal verifi-cation ; that is, employing a proof assistant (Bertot and Cast´ eran 2004; Nipkow, Paulson, and Wenzel 2002; Slind and Norrish 2008; de Moura and Ullrich 2021) to formally prove the correctness of a solver. However, in practice, for-mal verification often comes at the cost of performance (Fleury 2020; Heule et al. 2022), which is precisely what has driven the success of combinatorial optimization. Instead, we advocate for the use of certifying algorithms 
+
+(McConnell et al. 2011), an approach also known as proof logging in the context of combinatorial optimization. With proof logging, a solver not only produces an answer (e.g., an optimal solution to an optimization problem) but also a proof of correctness for that answer. This proof can be checked efficiently (in terms of the proof size) by an in-dependent tool known as a proof checker . Beyond ensuring correctness, proof logging also serves as a powerful soft-ware development methodology: it supports advanced test-ing and debugging of solver implementations (Brummayer and Biere 2009). Moreover, the generated proofs constitute an auditable trail and can be used to speed-up the generation of explanations of why a particular conclusion was reached (Bleukx et al. 2026). Proof logging was pioneered in the field of Boolean sat-isfiability (SAT), where numerous proof formats and proof checkers, including formally verified ones, have been de-veloped over the years (Biere 2006; Goldberg and Novikov 2003; Heule, Hunt, and Wetzler 2013; Wetzler, Heule, and Hunt 2014; Cruz-Filipe et al. 2017). For several years, proof logging has been mandatory in the main tracks of the annual SAT solving competition, reflecting the community’s strong commitment to ensuring that all SAT solvers are certifying. In this paper, we are concerned with maximum satisfiabil-ity (MaxSAT), the optimization variant of SAT. In contrast to SAT, proof logging in MaxSAT is still relatively uncommon. While several proof systems for MaxSAT have been devel-oped (Bonet, Levy, and Many` a 2007; Larrosa et al. 2011; Morgado and Marques-Silva 2011; Py, Cherif, and Habet 2020) and a solver has been designed specifically to gener-ate such proofs (Py, Cherif, and Habet 2022), only with the recent advent of the V ERI PB proof system (Bogaerts et al. 2023; Gocht and Nordstr¨ om 2021) did a general-purpose proof logging methodology for MaxSAT see the light (Van-The Fortieth AAAI Conference on Artificial Intelligence (AAAI-26) 
+
+> 14342
+
+desande, De Wulf, and Bogaerts 2022). V ERI PB, a proof system for linear inequalities over 0–1 integer variables, has since been successfully applied to MaxSAT solvers based on 
+
+solution-improving search (Vandesande, De Wulf, and Bo-gaerts 2022; Vandesande 2023; Berg et al. 2024a) (where a SAT oracle is repeatedly queried to find solutions that im-prove upon the current best), as well as to solvers using 
+
+core-guided search (Berg et al. 2023) (where a SAT ora-cle is queried iteratively under increasingly relaxed opti-mistic assumptions). The techniques developed there have also led to certification of generalizations of MaxSAT for multi-objective problems (Jabs et al. 2025). In addition to solution-improving and ore-guided search, state-of-the-art MaxSAT solvers also employ other strate-gies, such as implicit hitting set and branch-and-bound 
+
+search. In a companion paper (Ihalainen et al. 2026), we show how to certify IHS search, and in the current pa-per, we develop V ERI PB-based certification for branch-and-bound search (Li and Many` a 2021; Li et al. 2022; Abram´ eand Habet 2014; K¨ ugel 2010; Li, Many` a, and Planes 2007; Heras, Larrosa, and Oliveras 2008), thereby finally cover-ing all key search paradigm in MaxSAT solving. Modern branch-and-bound solvers combine conflict-driven clause learning (CDCL) (Silva and Sakallah 1999) with a sophis-ticated bounding function that determines whether it is the case that no assignment refining the current node can im-prove upon the best solution found so far (Li et al. 2022, 2021; Coll et al. 2025b). While it is well understood how to certify CDCL search using V ERI PB, the main challenge lies in certifying the conclusions drawn by the bounding func-tion. This bounding function employs look-ahead methods to generate (conditional) unsatisfiable cores: sets of liter-als that cannot simultaneously be true. These cores are then combined to estimate the best possible objective value that remains achievable. In order to bring this certification to practice, there are more hurdles to overcome: state-of-the-art branch-and-bound solvers employ several other clever tricks to speed up the solving process, such as pre-processing methods as well as integrating ideas from other search paradigms. One par-ticular technique that proved to be challenging is the use of 
+
+multi-valued decision diagrams (MDDs) in order to create a CNF encoding of a solution-improving constraint (which is enabled or disabled heuristically depending on the size of the instance at hand) (Bofill et al. 2020). This encod-ing generalizes the encoding of Ab´ ıo et al. (2012) based on Binary Decision Diagrams (BDDs) by allowing splits on sets of variables instead of a single variable. While MDDs have been used in a lazy clause generation setting (Gange, Stuckey, and Szymanek 2011), their clausal encoding has never been certified. From the perspective of proof logging, one main challenge with BDD- or MDD-based encodings is that multiple (equivalent) constraints are represented by the same variable in this encoding. In the proof, we then have to show that they are indeed equivalent. As an example, con-sider the constraints 
+
+12 x1 + 5 x2 + 4 x3 ≥ 6 and 
+
+12 x1 + 5 x2 + 4 x3 ≥ 9.
+
+Taking into account that the variables xi take values in 
+
+{0, 1}, it is not hard to see that these constraints are equiv-alent: all combinations of truth assignments that lead to the left-hand side taking a value at least six, must assign it a value of at least nine. In other words: the left-hand side can-not take values 6, 7, or 8. In general, checking whether such a linear expression can take a specific value (e.g., 7) is well-known to be NP hard, but BDD (and MDD) construction algorithms will in several cases detect this efficiently. The main question of interest for us is how to convince a proof checker of the fact that these two constraints are equivalent, without doing a substantial amount of additional work. We achieve this using an algorithm that proves this property for all nodes in an MDD in a linear pass over its representation. To evaluate our approach, we add proof logging to the branch-and-bound solver WMaxCDCL (Coll et al. 2025b). WMaxCDCL is the current state-of-the-art in branch-and-bound MaxSAT solving, which is showcased by the fact that it won (as part of a portfolio-solver) the unweighted track of the 2024 edition and the weighted track of the 2023 edi-tion (J¨ arvisalo et al. 2023; Berg et al. 2024b). In the exper-iments, we focus on evaluating the overhead in the solving time, while also measuring the time necessary to check the produced proofs; the results show that proof logging is in-deed possible without significant overhead for most cases, while proof checking overhead can be improved. The rest of this paper is structured as follows. In Sec-tion 2, we recall some preliminaries about MaxSAT solving and V ERI PB-based proof logging. Section 3 is devoted to presenting the core of the M AX CDCL algorithm, focusing on look-ahead–based bounding, as well as explaining how to get a certifying version of this. In Section 4, we explain how BDDs and MDDs are used to encode PB constraints and how this can be made certifying. Section 5 contains our experimental analysis and Section 6 concludes the paper. Formal details and proofs are often omitted, but can be found in the extended version of this paper (Vandesande, Coll, and Bogaerts 2025a). 
+
+# 2 Preliminaries 
+
+We first recall some concepts from pseudo-Boolean opti-mization and MaxSAT solving. Afterwards, we introduce the V ERI PB proof system. A more complete exposition can be found in previous work (Li and Many` a 2021; Bogaerts et al. 2023). 
+
+## 2.1 Pseudo-Boolean Optimization and MaxSAT 
+
+In this paper, all variables are assumed to be Boolean ; mean-ing they take a value in {0, 1}. A literal ℓ is a Boolean vari-able x or its negation x. A pseudo-Boolean (PB) constraint 
+
+C is a 0–1 integer linear inequality P 
+
+> i
+
+wiℓi ▷◁ A , with wi, A 
+
+integers, ℓi literals and ▷◁ ∈ {≥ , ≤} . Without loss of gen-erality, we will often assume our constraints to be normal-ized , meaning that the ℓi are different literals, the compari-son symbol ▷◁ is equal to ≥ and all coefficients wi and the degree A are non-negative. A formula is a conjunction of PB constraints. A clause is a special case of a PB constraint having all wi and A equal to one. 14343 A (partial) assignment α is a (partial) function from the set of variables to {0, 1}; it is extended to literals in the obvi-ous way, and we sometimes identify an assignment with the set of literals it maps to 1. We write C↾α for the constraint obtained from C by substituting all assigned variables x by their assigned value α(x). A constraint C is satisfied under 
+
+α if P 
+
+> α(ℓi)=1
+
+wi ≥ A. A formula F is satisfied under α if all of its constraints are. We say that F implies C (and write 
+
+F |= C) if all assignments that satisfy F also satisfy C. A constraint C (unit) propagates a literal x to a value in {0, 1}
+
+under a (partial) assignment α if assigning x the opposite value makes the constraint C↾α unsatisfiable. A pseudo-Boolean optimization instance consists of a for-mula F and a linear term O = P 
+
+> i
+
+vibi (called the objec-tive ) to be minimized, where vi are integers (without loss of generality assumed to be positive here) and bi are differ-ent literals, which we will refer to as objective literals . If ℓ
+
+is a literal, we write wO (ℓ) for the weight of ℓ in O, i.e., 
+
+wO (bi) = vi for all i and wO (ℓ) = 0 for all other literals. In line with previous work on certifying MaxSAT solvers (e.g., Berg et al. 2023; Vandesande 2023; Berg et al. 2024a), in this paper, we view MaxSAT as the special case of pseudo-Boolean optimization where F is a conjunction of clauses. A discussion on the equivalence of this view and the more clause-centric view using hard and soft clauses is given by for example Leivo, Berg, and J¨ arvisalo (2020). 
+
+## 2.2 The V ERI PB Proof System 
+
+For a pseudo-Boolean optimization instance (F, O), the VERI PB proof system (Bogaerts et al. 2023; Gocht and Nordstr¨ om 2021) maintains a proof configuration F, which is a set of constraints derived so far, and is initialized with F .We are allowed to update the configuration using the cutting planes proof system (Cook, Coullard, and Tur´ an 1987): 
+
+Literal Axioms: For any literal, we can add ℓi ≥ 0 to F.
+
+Linear Combination: Given two PB constraints C1 and 
+
+C2 in F, we can add a positive linear combination of 
+
+C1 and C2 to F.
+
+Division: Given the normalized PB constraint P 
+
+> i
+
+wiℓi ≥
+
+A in F and a positive integer c, we can add the constraint P
+
+> i
+
+⌈wi/c ⌉ℓi ≥ ⌈ A/c ⌉ to F.
+
+Saturation: Given the normalized PB constraint P 
+
+> i
+
+aili ≥
+
+A in F, we can add P 
+
+> i
+
+bili ≥ A with bi = min( ai, A )
+
+for each i, to F.Importantly, in many cases, it is not required to show pre-cisely why a constraint can be derived, but the verifier can figure it out itself by means of so-called reverse unit prop-agation (RUP) (Goldberg and Novikov 2003): if applying unit propagation until fixpoint on F ∧ ¬ C propagates to a contradiction, then we can add C to F.VERI PB has some additional rules, which are briefly dis-cussed below. We refer to earlier work (Bogaerts et al. 2023) for more details. There is a rule for dealing with optimiza-tion statements: 
+
+Objective Improvement: Given an assignment α that sat-isfies F, we can add the constraint O < O↾α to F.The constraint added to F is also called the solution-improving constraint; if 0 ≥ 1 can be derived from F af-ter applying the objective improvement rule, then it is con-cluded that α is an optimal solution. VERI PB allows deriving non-implied constraints with the 
+
+redundance-based strengthening rule : a generalization of the RAT rule (J¨ arvisalo, Heule, and Biere 2012) and com-monly used in proof systems for SAT. In this paper, the re-dundance rule is mainly used for reification : for any PB constraint C and any fresh variable v, not used before, two applications of the redundance rule allow us to derive PB constraints that express v ⇒ C and v ⇐ C. Moreover, the redundance rule allows us to derive implied constraints by a 
+
+proof by contradiction : if we have a cutting planes deriva-tion that shows that F ∧ ¬ C |= 0 ≥ 1, then we can add C to 
+
+F.1
+
+# 3 Certifying Branch-And-Bound with Look-Ahead 
+
+In this section, we present the working of modern branch-and-bound search for MaxSAT, specifically for the M AX -CDCL algorithm. Our presentation is given with proof log-ging in mind (we immediately explain what is essential for each step from the proof logging perspective) and hence we often take a different perspective from the original papers introducing this algorithm (Li et al. 2021; Coll et al. 2025b). MAX CDCL combines branch-and-bound search and conflict-driven clause learning (CDCL). An overview of the algorithm is given in Algorithm 1. As can be seen, this essen-tially performs CDCL search (this is the branching aspect), using standard techniques such as assigning variables, unit propagation, conflict analysis, and non-chronological back-tracking (Silva and Sakallah 1999). MAX CDCL maintains the objective value v∗ of the best found solution so far, which is initialized as +∞. How-ever, after unit propagation the lookahead procedure is called. This procedure is where the bounding aspect hap-pens: here sophisticated techniques are used to determine whether the current assignment can still be extended to a satisfying assignment that improves upon the current best objective value. If not, the search is interrupted and a new clause forcing the solver to backtrack is learned. It is well known how to get V ERI PB-based certification for CDCL (this is done for instance in a MaxSAT setting by Vandesande, De Wulf, and Bogaerts 2022), so we focus here only on how to get proof logging for the lookahead 
+
+method. 2
+
+Let us now focus on the lookahead procedure. Before diving into the algorithmic aspects, we formalize what it aims to compute, namely a set of weighted local cores .
+
+Definition 1. Let α be an assignment, and (F, O) a MaxSAT instance. A weighted local core of (F, O) relative to α is a   
+
+> 1In practice, this is mimicked by applying the redundance-based strengthening rule with an empty witness; details can be found in the supplementary material.
+> 2Obviously, our implementation with proof logging also han-dles the other aspects of the algorithm. 14344
+
+Algorithm 1: Overview of the M AX CDCL algo-rithm for branch-and-bound MaxSAT solving. 
+
+Input: CNF formula F , objective O
+
+Output: optimal assigment or UNSAT  
+
+> 1
+
+F ← Preprocess (F );  
+
+> 2
+
+α ← ∅ ; α∗ ← UNSAT ; v∗ ← +∞; 
+
+> 3
+
+while true do  
+
+> 4
+
+unit-propagate (F , α);  
+
+> 5
+
+lookahead (F , O, v∗, α);  
+
+> 6
+
+if conflict detected then  
+
+> 7
+
+if at root level then  
+
+> 8
+
+return α∗ 
+
+> 9
+
+Analyze conflict and backtrack;  
+
+> 10
+
+else if all variables assigned then  
+
+> 11
+
+if O↾α < v ∗ then α∗ ← α; v∗ ← O ↾α; 
+
+> 12
+
+Backtrack  
+
+> 13
+
+else  
+
+> 14
+
+Decide on some unassigned variable; 
+
+triple 
+
+q = ⟨w, R, K ⟩
+
+such that R ⊆ α and K contains only negations of objective literals and 
+
+F ∧ R ∧ K |= ⊥,
+
+where ⊥ denotes the trivially false constraint 0 ≥ 1.
+
+In other words, a local core guarantees that, given the as-signments in R (which are also called the reasons of K), the objective literals in K cannot all be false, and hence at least one of the objective literals in K has to incur cost. Now, we are not just interested in finding a single local core, but in a compatible set of such cores. 
+
+Definition 2. Let Q be a set of weighted local cores of 
+
+(F, O) relative to α. We call Q O -compatible, if for each objective literal ℓ,
+
+X w
+
+> ⟨w,R,K ⟩∈Q∧ ℓ∈K
+
+≤ wO (ℓ).
+
+In other words, Q is O-compatible if the total weight of all cores containing a literal does not exceed the weight of the underlying objective literal in the objective. In what follows, if ℓ is an objective literal, we write res (ℓ, Q) for 
+
+wO (ℓ) − X w
+
+> ⟨w,R,K ⟩∈Q∧ ℓ∈K
+
+and call this the residual weight of ℓ with respect to Q. The total weight of a core set, written wO (Q) is P 
+
+> ⟨w,R,K ⟩∈Q
+
+w.The following proposition now formalizes how a set of weighted local cores can be used during search. 
+
+Proposition 3. Let Q be an O-compatible set of weighted local cores and assume β is any total assignments that re-fines α and satisfies F .1. If wO (Q) ≥ v∗, then O↾β ≥ v∗.2. If for some unassigned objective literal ℓ,
+
+res (ℓ, Q) + wO (Q) ≥ v∗,
+
+then it holds that if O↾β < v ∗, then β(ℓ) = 0 .
+
+The first case of this proposition is known as a soft con-flict (Coll et al. 2025a). This means that if the total weight of the core set exceeds v∗, then we are sure that all assignments that refine the current one will have an objective value that does not improve upon the best found so far. In this case, we know that the current node of the search tree is hopeless and we can backtrack (in fact, M AX CDCL will learn a clause explaining this soft conflict, as discussed later). The sec-ond case in Proposition 3 was called hardening (Coll et al. 2025a). The setting captured here is that if we were to set a literal ℓ to be cost-incurring, then the condition in the first item would trigger. As such, we can safely propagate ℓ to be non-cost-incurring. Pseudo-code of the lookahead procedure, and details as to how it finds those local cores can be found in Algo-rithm 2. It initializes a local assignment λ to be equal to 
+
+α, and maintains a partially constructed core K, initialized as the empty set. In line 4 it initializes Q to be the set of all trivial weighted local cores (by going over all objective lit-erals that are already cost-incurring in α). In the main loop at line 5, it iteratively assigns an objective literal to be non cost-incurring and runs unit propagation. If this results in an-other objective literal to be propagated to be cost-incurring (line 8) or if a conflict is found (line 10) , this means we have found a local core. In principle taking R equal to α and K
+
+as constructed so far could be used for a local core. Instead, however, line 12 uses standard conflict analysis methods to further reduce this. The local core that is found in this way is added to Q (line 14) and K and λ are reset (line 16). If one of the two conditions of Theorem 3 is satisfied, a new clause is learned (based on the set of local cores and standard conflict analysis techniques) and added to F
+
+(lines 17–21). Here, we use the notation 
+
+CQ := _
+
+> ⟨w,R,K ⟩∈Q∧ ℓ∈R
+
+ℓ. 
+
+We now turn our attention to proof logging for this looka-head procedure. It consists of two important components. On the one hand, we need proofs for the core discovery 
+
+(lines 3–16) and on the other hand, the proof that the clause added to F can indeed be derived. We now show that this can indeed be done efficiently. 
+
+Proposition 4. If ⟨w, R, K ⟩ is a local core found by Algo-rithm 2, then the clause 
+
+Cq := _
+
+> ℓ∈R∪K
+
+ℓ. 
+
+is RUP wrt F .Proof sketch. This follows from the fact that Algorithm 2 finds a local core q after the propagation of the negation of 
+
+Cq leads to a contradiction. 
+
+Theorem 5. Let Q be an O-compatible set of weighted local cores and let |O| be the number of objective literals. 14345 Algorithm 2: Overview of the lookahead proce-dure. 
+
+Input: Formula F , objective O, upper bound v∗,assignment α 
+
+> 1
+
+λ ← α; Q ← ∅ ; 
+
+> 2
+
+K ← ∅ ; 
+
+> 3
+
+for each objective literal ℓ s.t. α(ℓ) = 1 do  
+
+> 4
+
+Q ← Q ∪ {⟨ wO (ℓ), {ℓ}, {ℓ}⟩}  
+
+> 5
+
+while some ℓ with res (ℓ, Q) > 0 is unassigned do  
+
+> 6
+
+λ(ℓ) ← 0; K ← K ∪ { ℓ}; 
+
+> 7
+
+unit-propagate (F , λ);  
+
+> 8
+
+if some ℓ′ with res (ℓ′, Q) > 0 is propagated then  
+
+> 9
+
+K ← K ∪ { ℓ′}; 
+
+> 10
+
+else if no conflict was derived then  
+
+> 11
+
+continue  
+
+> 12
+
+R, K ← improve-core (K); 
+
+> 13
+
+w ← min ℓ∈K res (ℓ, Q); 
+
+> 14
+
+Q ← Q ∪ {⟨ w, R, K ⟩} ; 
+
+> 15
+
+if wO (Q) ≥ v∗ then break ; 
+
+> 16
+
+K ← ∅ ; λ ← α 
+
+> 17
+
+if wO (Q) ≥ v∗ then  
+
+> 18
+
+F ← F ∪ { analyze (CQ)}; 
+
+> 19
+
+else  
+
+> 20
+
+for each ℓ with res (ℓ, Q) + wO (Q) ≥ v∗ do  
+
+> 21
+
+F ← F ∪ { analyze (CQ ∨ ℓ)} ; 
+
+> 22
+
+unit-propagate (F , α); 
+
+1. If wO (Q) ≥ v∗, then there is a cutting planes derivation that derives CQ from the constraint O ≤ v∗ − 1 and the constraints Cq for every q ∈ Q using at most 3|O| +2|Q| + 1 steps. 2. If for some unassigned objective literal ℓ, res (ℓ, Q) + 
+
+wO (Q) ≥ v∗, then there is a cutting planes derivation that derives CQ ∨ ℓ from the constraint O ≤ v∗ − 1
+
+and the constraints Cq for every q ∈ Q using at most 
+
+3|O| + 2 |Q| − 2 steps. 
+
+Note that since the clauses that are finally learned by MAX CDCL in lines 18 and 21 of Algorithm 2 are derived by standard CDCL on the clauses derived in Theorem 5, they can be proven by RUP. Moreover, when line 8 of Al-gorithm 1 finds a conflict at root level, the clause 0 ≥ 1 is also provable by RUP, which proves the optimality of the last found solution due to the objective improvement rule. We end this section with an example illustrating the cut-ting planes derivation of the first case of Theorem 5. 3
+
+Example 6. Let us consider a MaxSAT instance expressed as a PBO instance (F, O), with O = 3 x1 + 5 x2 + 5 x3 +6x4. Assume that the best found solution so far has objective value v∗ = 7 , that the current partial assignment assigns y1
+
+and y2 to true, and that algorithm 2 has found a set of local 
+
+> 3A more advanced example, as well as the proof for Theorem 5 can be found in the extended version of this paper (Vandesande, Coll, and Bogaerts 2025a).
+
+cores Q = {q1, q 2}, with 
+
+q1 = ⟨3, {y1}, {x1, x 2}⟩ and 
+
+q2 = ⟨5, {y2}, {x3, x 4}⟩ .We can observe that this is indeed an O-compatible set and that the first case of Theorem 5 is applicable. Hence, we will derive the clause CQ, which is y1 + y2 ≥ 1.Following Proposition 4, we can derive the clauses 
+
+Cq1 := y1 + x1 + x2 ≥ 1, and 
+
+Cq2 := y2 + x3 + x4 ≥ 1
+
+by Reverse Unit Propagation. Multiplying Cq1 and Cq2 by their respective weight and adding them up results in 
+
+3y1 + 3 x1 + 3 x2 + 5 y2 + 5 x3 + 5 x4 ≥ 8 (1) 
+
+Now, from the solution improving constraint, we can obtain 
+
+3x1 + 3 x2 + 5 x3 + 5 x4 ≤ 6 (2) 
+
+by the addition of literal axioms x4 ≥ 0 and x2 ≥ 0 multi-plied by 2. Addition of (1) and (2) , and simplification gives 
+
+3y1 + 5 y2 ≥ 2
+
+Dividing this by 5 now yields CQ.
+
+# 4 Certifying CNF Encodings based on (Multi-Valued) Decision Diagrams 
+
+When a solution is found (at line 11 of Algorithm 1), M AX -CDCL decides heuristically whether or not to add a CNF-encoding of the solution-improving constraint 
+
+O ≤ v∗ − 1.
+
+For many CNF encodings of pseudo-Boolean constraints, it is well-known how to get certification (Vandesande 2023; Gocht et al. 2022; Berg et al. 2024a). One notable excep-tion is the CNF encoding based on binary decision diagrams 
+
+(BDD), which Bofill et al. (2020) recently generalized to so-called multi-valued decision diagrams (MDD) and is used by M AX CDCL. Most of the interesting questions from a proof logging perspective already show up for BDDs, so to keep the presentation more accessible, we focus on that case and afterwards briefly discuss how this generalizes to MDDs. Formal details and proofs are included in the sup-plementary material. 
+
+## 4.1 Binary Decision Diagrams 
+
+A Binary Decision Diagram (BDD) is a (node- and edge-)labeled graph with two leaves, labeled true ( t) and false ( f ), respectively, where each internal node is labeled with a variable and has two outgoing edges, labeled true (t) and false ( f ), respectively. We write child( η, f ) and 
+
+child( η, t) for the children following the edge with labels 
+
+f and t, respectively. Each node η in a BDD represents a 
+
+Boolean function : the true and false leaf nodes represent a tautology and contradiction respectively; if η is a node la-beled x with true child ηt and false child ηf , it maps any (total) assignment α to η(α), which is defined as ηt(α) if 
+
+x ∈ α and as ηf (α) if x ∈ α.14346 A BDD is ordered if there is a total order of the variables such that each path through the BDD respects this order and it is reduced if two conditions hold: (1) no node has two identical children and (2) no two nodes have the same la-bel, t-child and f -child. For a fixed variable ordering, each Boolean function has a unique ordered and reduced repre-sentation as a BDD, i.e., ordered and reduced BDDs form a canonical representation of Boolean functions. When using BDDs to encode a solution-improving con-straint O ≤ v∗ − 1 as clauses, first a BDD representing this constraint is constructed, then a set of clauses is generated from this BDD. 
+
+## 4.2 Phase 1: Construction of a BDD 
+
+The standard way to create a reduced and ordered BDD for 
+
+> n
+
+X
+
+> i=1
+
+vibi ≤ v∗ − 1
+
+is to first recursively descend and create BDDs ηt and ηf for 
+
+> n
+
+X
+
+> i> 1
+
+vibi ≤ v∗ − 1 − a1 and 
+
+> n
+
+X
+
+> i> 1
+
+vibi ≤ v∗ − 1
+
+respectively, and then combine them into the node 
+
+bdd( x1, η t, η f ). Using memoization, the BDD is always kept reduced: if a node is being created with the same label, and the same two children as an existing node, the existing node is returned instead; if ηt = ηf , then ηt is returned. This procedure, which first creates the two children, will however always take exponential time (in terms of the num-ber of objective literals), while this can in many cases be avoided. Crucially, all PB constraints for which a BDD node are created are of the form Pni≥k vibi ≤ A and for a fixed k, the fact that we work with Boolean variables means that many different right-hand-sides will result in an equiv-alent constraint. Moreover, such values can be computed while constructing the BDD using a dynamic programming approach. In the following proposition, which formalizes the construction, we say that [l, u ] is a degree interval for Pni≥k vibi when we mean that for all values A in the (possi-bly unbounded) interval [l, u ], Pni≥k vibi ≤ A is equivalent to Pni≥k vibi ≤ u.
+
+Proposition 7 ((Ab´ ıo et al. 2012)) . If [lt, u t] and [lf , u f ] are degree intervals for Pni=k+1 vibi, then 
+
+[max( lt + vk, l f ), min( ut + vk, u f )] 
+
+is a degree interval for Pni=k vibi.
+
+The dynamic programming approach for creating ordered and reduced BDDs now consists in keeping track of this in-terval for each translated PB constraint and reusing already created BDDs whenever possible. From now on, we will identify a node in a BDD η = bdd( k, l, u ) as the node that represents the boolean function Pni=k vibi ≤ [l, u ].
+
+## 4.3 Phase 2: A CNF Encoding From the BDD 
+
+Given a BDD that represents a PB constraint, constructed as discussed above, we can get a CNF encoding as follows. • For each internal node η in the BDD, a new variable vη
+
+is created; intuitively this variable is true only when the Boolean function represented by η is true. In practice for the two leaf nodes no variable is created but their truth value is filled in directly. However, in the proofs below we will, to avoid case splitting pretend that a variable exists for each node. • For each internal node η that is labeled with literal b
+
+with children ηt = child( η, t) and ηf = child( η, f ), the clauses 
+
+b + vηt + vη ≥ 1, and (3) 
+
+vηf + vη ≥ 1 (4) are added. The first clause expresses that if b is true and 
+
+ηt is false, then so is η. The second clause expresses that whenever ηf is false, so is η (this does not hold for BDDs in general, but only for the specific ones gener-ated here, where we know η to represent a constraint Pni≥k vibi ≤ A and ηf represents Pni≥k+1 vibi ≤ A,both with positive coefficients). • Finally, for the top node η⊤ representing O ≤ v∗ − 1, the unit clause vη⊤ is added. 
+
+## 4.4 Certification 
+
+Our strategy for proof logging for this encoding follows the general pattern described by Vandesande, De Wulf, and Bogaerts (2022), namely, we first introduce the fresh vari-ables by explicitly stating what their meaning is in terms of pseudo-Boolean constraints and later we derive the clauses from those constraints. Due to the fact that BDDs are re-duced, the first step becomes non-obvious. Indeed, the new variables represent multiple (equivalent) pseudo-Boolean constraints at once. To make this work in practice, for each node η = bdd( k, l, u ), we will show we can derive the con-straints that express 
+
+vη ⇒
+
+> n
+
+X
+
+> i≥k
+
+vibi ≤ l and 
+
+vη ⇐
+
+> n
+
+X
+
+> i≥k
+
+vibi ≤ u. 
+
+We will refer to these two constraints as the defining con-straints for node η. These constraints together precisely de-termine the meaning of vη , but they also contain the infor-mation that the partial sum cannot take any values between 
+
+l + 1 and u. Hence, proving them is expected to require sub-stantial effort. Once we have these constraints for each node, deriving the clauses becomes very easy. 
+
+Proposition 8. For each internal node η, the clauses (3) and 
+
+(4) can be derived by a cutting planes derivation consisting of one literal axiom, one multiplication, three additions and one division from the defining constraints for η, child( η, t)
+
+and child( η, f ).14347 Proposition 9. Let η⊤ = bdd(1 , l, v ∗ − 1) for some l ≤
+
+v∗ − 1 be the root node of the BDD. The unit clause vη⊤ ≥ 1
+
+can be derived by a cutting planes derivation of one addition and one deletion from the defining constraints for η⊤ and the solution-improving constraint. 
+
+The harder part is to actually derive the defining con-straints for the internal nodes. Also this can be done in the VERI PB proof system, as we show next. 
+
+Proposition 10. Let η = bdd( k, l, u ) be an internal node with label bk and with children ηt = child( η, t) and ηf =child( η, f ).If the defining constraints for ηt and ηf are given, then the defining constraints for η can be derived in the VeriPB proof system. Proof Sketch. The first step is to introduce two reification variables vη and v′ 
+
+> η
+
+as 
+
+vη ⇔
+
+> n
+
+X
+
+> i≥k
+
+vibi ≤ l and 
+
+v′ 
+
+> η
+
+⇔
+
+> n
+
+X
+
+> i≥k
+
+vibi ≤ u. 
+
+The next step is showing that these two variables are actually the same; the difficult direction is showing that v′ 
+
+> η
+
+implies 
+
+vη . We do this by case splitting on bk and deriving each case by contradiction using the defining constraints for ηt and ηf .To derive x + v′ 
+
+> η
+
++ vη ≥ 1, assume that bk and v′ 
+
+> η
+
+are true and that vη is false. The assumption on bk and v′ 
+
+> η
+
+together with the defining constraints for ηt makes that vηt is true; the assumption that bk is true and vη is false together with the defining constraints for ηt makes that vηt is false. This is clearly a contradiction. Using the defining constraints of ηf ,we can in a similar way derive bk +v′ 
+
+> η
+
++vη ≥ 1. A short cut-ting planes derivation now allows us to derive that v′ 
+
+> η
+
+implies 
+
+vη and hence derive the required defining constraints. Finally, it can happen that due to reducedness of BDDs, a node actually represents multiple constraints. The following proposition shows that also this can be proven in VeriPB. 
+
+Proposition 11. Consider a node η = bdd( k, l, u ) and let k′ and l′ be numbers with k′ < k and l′ = l +Pk−1 
+
+> i=k′
+
+vi such that the Boolean functions Pni=k vibi ≤ u
+
+and Pni=k′ vibi ≤ u are equivalent. From the defining constraints of bdd( k, l, u ), there is a cutting planes derivation consisting of 6( k−k′)+3 steps that derives the defining constraints for bdd( k′, l ′, u ) for reifica-tion variable vη .
+
+## 4.5 Generalization to MDDs 
+
+MAX CDCL not only makes use of BDDs for encoding the solution-improving constraint, but also of MDDs. The idea is as follows. In some cases, M AX CDCL can infer implicit at-most-one constraints. These are constraints of the form P 
+
+> i∈I
+
+bi ≤ 1 where the bi are literals in the objective O.The detection of such constraints is common in MaxSAT solvers, and certification for it has been described by Berg et al. (2023), so we will not repeat this here. Now assume that a set of disjoint at-most-one constraints has been found. In an MDD, instead of branching on single variable in each node, we will branch on a set of variables for which an at-most-one constraint has previous been derived. This means a node does not have two, but |I| + 1 children: one for each variable in the set and one for the case where none of them is true. Otherwise, the construction and ideas remain the same. As far as certification is concerned: essentially all proofs continue to hold; the main difference is that the case splitting in the proof of Theorem 10 will now split into |I| + 1 cases instead of two and will then use the at most one constraint to derive that the conclusion must hold in exactly one of the cases. 
+
+# 5 Experiments 
+
+We implemented proof logging in the M AX CDCL solver as described by Coll et al. (2025b). 4 Each solver call was as-signed a single core on a 2x32-core AMD EPYC 9384X. The time and memory limits are enforced by runlim. 5 As benchmarks, we used the instances of the MaxSAT Evalua-tion 2024 (Berg et al. 2024b). The implementation, together with the raw data from the experiments can be found on Zen-odo (Vandesande, Coll, and Bogaerts 2025b). 
+
+## 5.1 Overhead in Proof Logging 
+
+A scatter plot evaluating the overhead in the solving time due to proof logging is shown in Figure 1. The experiments ran with a time limit of 1 hour and a memory limit of 32GB. Out of the 701 instances that were solved without proof logging, six instances could not be solved with proof logging. Con-sidering instances solved both with and without proof log-ging, the median overhead of proof logging is 19% , which shows that for most instances, proof logging overhead is manageable. However, we see that for 10% of the instances, MAX CDCL with proof logging takes more than 4.61 times the time to solve the instance using M AX CDCL without proof logging. This is in line with earlier work on certify-ing PB-to-CNF encodings using VeriPB, such as the work of Berg et al. (2024a). Preliminary tests indicate as possible explanation for this phenomenon that writing the defining constraints for a node in an MDD is linear in the number of objective literals. In practice, this leads to large overhead for instances with a large number of objective literals. Investi-gating possible ways to circumvent this is part of planned future work. 
+
+## 5.2 Overhead in Proof Checking 
+
+While optimizing the checking time for the produced proofs was out of scope for this work, we also evaluated it by run-ning the VeriPB proof checker (VeriPB) with a time limit of 10 hours and a memory limit of 64GB. Figure 2 shows 
+
+> 4On top of the basic algorithm described above, the experiments include proof logging for a range of techniques included in Max-CDCL (Coll et al. 2025b), namely clause vivification, equivalent and failed literal detection, clause subsumption and simplification due to unit propagation.
+> 5https://github.com/arminbiere/runlim 14348 OoT OoM
+
+OoT OoM     
+
+> 110 100 1000 10000
+> 110 100 1000 10000
+
+Solving with PL (time in s) Solving without PL (time in s) 
+
+> Unweighted Weighted
+
+Figure 1: Comparison of solving time with and without proof logging. a scatter plot comparing the solving time with proof log-ging with the proof checking time. Out of 695 produced proofs, 485 were checked successfully; for the other 210 
+
+instances, the proof checker ran out of time for 202 in-stances and out of memory for 8 instances. In the median proof verification took 42 .94 times the solving time. We believe this checking overhead to be too high for making this usable in practice. However, there are several ways in which this can be improved. On the one hand, a new proof checker is currently under development for improved perfor-mance (PBOxide 2025). Simultaneously, there are ongoing efforts for building a proof trimmer for VeriPB proofs. The proofs generated by our tools can serve as benchmarks to further guide this ecosystem of VeriPB tools. On the other hand, once the proof checker is in a stable state, we can investigate which potential optimizations to the generated proofs benefit the proof checking time. One thing that comes to mind is using RUP with hints instead of plain RUP, so that the checker does not need to perform unit propagation. 6
+
+# 6 Conclusion 
+
+In this paper, we demonstrate how to add proof logging to the branch-and-bound MaxSAT solving paradigm using the VeriPB proof system. To do so, we formalize the paradigm with proof logging in mind, offering a new perspective on how these solvers operate. To put our formalization to the test, we implemented proof logging in the state-of-the-art branch-and-bound solver M AX CDCL, including the MDD encoding of the solution-improving search constraint, which is created by M AX CDCL to improve its performance. The main challenge in certifying the MDD encoding turns out to be proving that a node in an MDD represents multiple equiv-alent Boolean functions. Experiments show that proof log-    
+
+> 6For more information on these rules, see the VeriPB repository (VeriPB). OoT OoM
+> 110 100 1000 10000
+> 110 100 1000 10000
+
+VeriPB (time in s) Solving with PL (time in s) 
+
+> Unweighted Weighted
+
+Figure 2: Comparison of solving time (with proof logging enabled) with proof checking time. ging overhead is generally manageable, while proof check-ing performance still leaves room for improvement. As future work, we plan to add proof logging to literal unlocking, a recent technique (Li et al. 2025) that improves lower bounds during look-ahead. 
+
+# Acknowledgments 
+
+This work is partially funded by the European Union (ERC, CertiFOX, 101122653). Views and opinions expressed are however those of the author(s) only and do not necessar-ily reflect those of the European Union or the European Re-search Council. Neither the European Union nor the granting authority can be held responsible for them. In addition, this work is partially funded by the Fonds Wetenschappelijk Onderzoek – Vlaanderen (projects G064925N and G070521N & fellowship 11A5J25N), and by grants PID2021-122274OB-I00 and PID2024-157625OB-I00 funded by MI-CIU/AEI/10.13039/501100011033/FEDER, UE. 
+
+# References 
+
+Ab´ ıo, I.; Nieuwenhuis, R.; Oliveras, A.; Rodr´ ıguez-Carbonell, E.; and Mayer-Eichberger, V. 2012. A New Look at BDDs for Pseudo-Boolean Constraints. J. Artif. Intell. Res. , 45: 443–480. Abram´ e, A.; and Habet, D. 2014. Ahmaxsat: Description and Evaluation of a Branch and Bound Max-SAT Solver. J. Satisf. Boolean Model. Comput. , 9(1): 89–128. Berg, J.; Bogaerts, B.; Nordstr¨ om, J.; Oertel, A.; Paxian, T.; and Vandesande, D. 2024a. Certifying Without Loss of Gen-erality Reasoning in Solution-Improving Maximum Satis-fiability. In CP , volume 307 of LIPIcs , 4:1–4:28. Schloss Dagstuhl. 14349 Berg, J.; Bogaerts, B.; Nordstr¨ om, J.; Oertel, A.; and Van-desande, D. 2023. Certified Core-Guided MaxSAT Solving. In CADE , volume 14132 of LNCS , 1–22. Springer. Berg, J.; J¨ arvisalo, M.; Martins, R.; Niskanen, A.; and Pax-ian, T. 2024b. MaxSAT Evaluation 2024. https://maxsat-evaluations.github.io/2024/. Bertot, Y.; and Cast´ eran, P. 2004. Interactive Theorem Prov-ing and Program Development - Coq’Art: The Calculus of Inductive Constructions . Texts in Theoretical Computer Sci-ence. An EATCS Series. Springer. Biere, A. 2006. TraceCheck. http://fmv.jku.at/tracecheck/. Bleukx, I.; Flippo, M.; Demirovi´ c, E.; Bogaerts, B.; and Guns, T. 2026. Using Certifying Constraint Solvers for Generating Step-wise Explanations. In Proceedings of The 40th Annual AAAI Conference on Artificial Intelligence . Ac-cepted for publication. Bofill, M.; Coll, J.; Suy, J.; and Villaret, M. 2020. An MDD-based SAT encoding for pseudo-Boolean constraints with at-most-one relations. Artif. Intell. Rev. , 53(7): 5157–5188. Bogaerts, B.; Gocht, S.; McCreesh, C.; and Nordstr¨ om, J. 2023. Certified Dominance and Symmetry Breaking for Combinatorial Optimisation. J. Artif. Intell. Res. , 77: 1539– 1589. Bonet, M. L.; Levy, J.; and Many` a, F. 2007. Resolution for Max-SAT. Artif. Intell. , 171(8-9): 606–618. Brummayer, R.; and Biere, A. 2009. Fuzzing and Delta-Debugging SMT Solvers. In Proceedings of the SMT’09 ,1–5. ISBN 9781605584843. Brummayer, R.; Lonsing, F.; and Biere, A. 2010. Automated Testing and Debugging of SAT and QBF Solvers. In SAT ,volume 6175 of LNCS , 44–57. Springer. Coll, J.; Li, C. M.; Li, S.; Habet, D.; and Many` a, F. 2025a. Solving weighted Maximum Satisfiability with Branch and Bound and clause learning. Comput. Oper. Res. , 183: 107195. Coll, J.; Li, C.-M.; Li, S.; Habet, D.; and Many` a, F. 2025b. Solving weighted maximum satisfiability with branch and bound and clause learning. Computers & Operations Re-search , 107195. Cook, W. J.; Coullard, C. R.; and Tur´ an, G. 1987. On the complexity of cutting-plane proofs. Discret. Appl. Math. ,18(1): 25–38. Cook, W. J.; Koch, T.; Steffy, D. E.; and Wolter, K. 2013. A hybrid branch-and-bound approach for exact rational mixed-integer programming. Math. Program. Comput. , 5(3): 305– 344. Cruz-Filipe, L.; Heule, M. J. H.; Hunt, W. A., Jr.; Kaufmann, M.; and Schneider-Kamp, P. 2017. Efficient Certified RAT Verification. In CADE , volume 10395 of LNCS , 220–236. Springer. de Moura, L.; and Ullrich, S. 2021. The Lean 4 Theo-rem Prover and Programming Language. In CADE , volume 12699 of LNCS , 625–635. Springer. Ferreira, N. G.; and Silva, P. S. M. 2004. Automatic Veri-fication of Safety Rules for a Subway Control Software. In 
+
+SBMF , volume 130 of Electronic Notes in Theoretical Com-puter Science , 323–343. Elsevier. Fleury, M. 2020. Formalization of logical calculi in Is-abelle/HOL . Ph.D. thesis, Saarland University, Saarbr¨ ucken, Germany. Gange, G.; Stuckey, P. J.; and Szymanek, R. 2011. MDD propagators with explanation. Constraints An Int. J. , 16(4): 407–429. Gillard, X.; Schaus, P.; and Deville, Y. 2019. SolverCheck: Declarative Testing of Constraints. In CP , volume 11802 of 
+
+LNCS , 565–582. Springer. Gocht, S.; Martins, R.; Nordstr¨ om, J.; and Oertel, A. 2022. Certified CNF Translations for Pseudo-Boolean Solving. In 
+
+SAT , volume 236 of LIPIcs , 16:1–16:25. Schloss Dagstuhl. Gocht, S.; and Nordstr¨ om, J. 2021. Certifying Parity Rea-soning Efficiently Using Pseudo-Boolean Proofs. In AAAI ,3768–3777. AAAI Press. Goldberg, E. I.; and Novikov, Y. 2003. Verification of Proofs of Unsatisfiability for CNF Formulas. In DATE , 10886– 10891. IEEE Computer Society. Heras, F.; Larrosa, J.; and Oliveras, A. 2008. MiniMaxSAT: An Efficient Weighted Max-SAT solver. J. Artif. Intell. Res. ,31: 1–32. Heule, M.; Hunt, W. A., Jr.; and Wetzler, N. 2013. Trimming while checking clausal proofs. In FMCAD , 181–188. IEEE. Heule, M.; J¨ arvisalo, M.; Suda, M.; Iser, M.; and Balyo, T. 2022. The 2022 International SAT Competition. https:// satcompetition.github.io/2022/. Ihalainen, H.; Vandesande, D.; Schidler, A.; Berg, J.; Bo-gaerts, B.; and J¨ arvisalo, M. 2026. Efficient and Reliable Hitting-Set Computations for the Implicit Hitting Set Ap-proach. In Proceedings of The 40th Annual AAAI Confer-ence on Artificial Intelligence . Accepted for publication. Jabs, C.; Berg, J.; Bogaerts, B.; and J¨ arvisalo, M. 2025. Cer-tifying Pareto Optimality in Multi-Objective Maximum Sat-isfiability. In TACAS (2) , volume 15697 of LNCS , 108–129. Springer. J¨ arvisalo, M.; Berg, J.; Martins, R.; and Niskanen, A. 2023. MaxSAT Evaluation 2023. https://maxsat-evaluations. github.io/2023/. J¨ arvisalo, M.; Heule, M.; and Biere, A. 2012. Inprocessing Rules. In IJCAR , volume 7364 of LNCS , 355–370. Springer. K¨ ugel, A. 2010. Improved Exact Solver for the Weighted MAX-SAT Problem. In POS@SAT , volume 8 of EPiC Se-ries in Computing , 15–27. EasyChair. Larrosa, J.; Nieuwenhuis, R.; Oliveras, A.; and Rodr´ ıguez-Carbonell, E. 2011. A Framework for Certified Boolean Branch-and-Bound Optimization. J. Autom. Reason. , 46(1): 81–102. Leivo, M.; Berg, J.; and J¨ arvisalo, M. 2020. Preprocess-ing in Incomplete MaxSAT Solving. In ECAI , volume 325 of Frontiers in Artificial Intelligence and Applications , 347– 354. IOS Press. Li, C.; Xu, Z.; Coll, J.; Many` a, F.; Habet, D.; and He, K. 2021. Combining Clause Learning and Branch and Bound 14350 for MaxSAT. In CP , volume 210 of LIPIcs , 38:1–38:18. Schloss Dagstuhl. Li, C.; Xu, Z.; Coll, J.; Many` a, F.; Habet, D.; and He, K. 2022. Boosting branch-and-bound MaxSAT solvers with clause learning. AI Commun. , 35(2): 131–151. Li, C. M.; and Many` a, F. 2021. MaxSAT, Hard and Soft Constraints. In Handbook of Satisfiability , volume 336 of 
+
+FAIA , 903–927. IOS Press. Li, C. M.; Many` a, F.; and Planes, J. 2007. New Inference Rules for Max-SAT. J. Artif. Intell. Res. , 30: 321–359. Li, S.; Li, C.; Coll, J.; Habet, D.; and Many` a, F. 2025. Im-proving the Lower Bound in Branch-and-Bound Algorithms for MaxSAT. In AAAI , 11272–11281. AAAI Press. Manlove, D. F.; and O’Malley, G. 2014. Paired and Altruis-tic Kidney Donation in the UK: Algorithms and Experimen-tation. ACM J. Exp. Algorithmics , 19(1). McConnell, R. M.; Mehlhorn, K.; N¨ aher, S.; and Schweitzer, P. 2011. Certifying algorithms. Comput. Sci. Rev. , 5(2): 119– 161. Morgado, A.; and Marques-Silva, J. 2011. On Validating Boolean Optimizers. In ICTAI , 924–926. IEEE Computer Society. Nipkow, T.; Paulson, L. C.; and Wenzel, M. 2002. Is-abelle/HOL - A Proof Assistant for Higher-Order Logic , vol-ume 2283 of LNCS . Springer. Nogueira, M. L.; Balduccini, M.; Gelfond, M.; Watson, R.; and Barry, M. 2001. An A-Prolog Decision Support System for the Space Shuttle. In PADL , volume 1990 of LNCS , 169– 183. Springer. PBOxide 2025. 2025. PBOxide: Verifier for pseudo-Boolean proofs rewritten in Rust. https://gitlab.com/ MIAOresearch/software/pboxide. Py, M.; Cherif, M. S.; and Habet, D. 2020. Towards Bridging the Gap Between SAT and Max-SAT Refutations. In ICTAI ,137–144. IEEE. Py, M.; Cherif, M. S.; and Habet, D. 2022. Proofs and Cer-tificates for Max-SAT. J. Artif. Intell. Res. , 75: 1373–1400. Silva, J. P. M.; and Sakallah, K. A. 1999. GRASP: A Search Algorithm for Propositional Satisfiability. IEEE Trans. Computers , 48(5): 506–521. Slind, K.; and Norrish, M. 2008. A Brief Overview of HOL4. In TPHOLs , volume 5170 of LNCS , 28–32. Springer. Vandesande, D. 2023. Towards Certified MaxSAT Solving: Certified MaxSAT solving with SAT oracles and encodings of pseudo-Boolean constraints . Master’s thesis, Vrije Uni-versiteit Brussel (VUB). Vandesande, D.; Coll, J.; and Bogaerts, B. 2025a. Certified Branch-and-Bound MaxSAT Solving (Extended Version). arXiv:2511.10273. Vandesande, D.; Coll, J.; and Bogaerts, B. 2025b. Ex-perimental Repository for “Certified Branch-and-Bound MaxSAT Solving” (AAAI26). https://doi.org/10.5281/ zenodo.7709687. Vandesande, D.; De Wulf, W.; and Bogaerts, B. 2022. QMaxSATpb: A Certified MaxSAT Solver. In LPNMR , vol-ume 13416 of LNCS , 429–442. Springer. VeriPB. 2024. VeriPB: Verifier for pseudo-Boolean proofs. https://gitlab.com/MIAOresearch/software/VeriPB. Wetzler, N.; Heule, M.; and Hunt, W. A., Jr. 2014. DRAT-trim: Efficient Checking and Trimming Using Expressive Clausal Proofs. In SAT , volume 8561 of LNCS , 422–429. Springer. 14351

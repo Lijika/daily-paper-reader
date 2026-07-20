@@ -1,0 +1,460 @@
+Title: Solving Higher-Order Quantified Boolean Satisfiability via Higher-Order Model Checking
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/33237/35392
+
+Number of Pages: 9
+
+Markdown Content:
+# Solving Higher-Order Quantified Boolean Satisfiability via Higher-Order Model Checking 
+
+# Hiroshi Unno 1, Takeshi Tsukada 2, Jie-Hong Roland Jiang 3
+
+> 1
+
+Tohoku University 
+
+> 2
+
+Chiba University 
+
+> 3
+
+National Taiwan University hiroshi.unno@acm.org, t.tsukada@acm.org, jhjiang@ntu.edu.tw 
+
+Abstract  
+
+> The satisfiability (SAT) problem of higher-order quantified Boolean formula (HOQBF) emerged as a natural general-ization of SAT, quantified SAT, and second-order quantified SAT. It allows succinct encoding of k-EXPTIME problems beyond the reach of prior Boolean satisfiability formulations, but its application was hampered by the lack of solvers. In this paper, we present the first HOQBF solver that leverages tech-niques from the model-checking community. Our HOQBF solver is based on reduction to higher-order model check-ing, which is a generalization from model checking of while-programs to that of higher-order functional programs. The ability of a higher-order model checker to deal with higher-order functions in a program is used to reason about higher-order quantifiers in HOQBF.
+
+# 1 Introduction 
+
+Higher-order quantified Boolean satisfiability (HOSAT) ex-tends Boolean satisfiability (SAT). It allows quantification over higher-order Boolean function variables, and subsumes all the currently known SAT variants, including the sat-isfiability of quantified Boolean formula (QBF), depen-dency QBF (DQBF), and second-order QBF (SOQBF). The HOSAT problem is TOWER-complete and the higher-order quantified Boolean formula (HOQBF) is capable of succinct encoding of k-EXPTIME problems (Chistikov et al. 2022). Its usefulness has been demonstrated in encoding Pres-burger arithmetic for a theoretical complexity study (Chis-tikov et al. 2022). Other potential applications may include, e.g., memory consistency verification (Cooksey et al. 2020), planning for multi-agent systems, secure system synthesis (Jiang 2023), and solving quantified bit-vector arithmetic problems (Jon´ aˇ s and Strejˇ cek 2018). Despite the potential broad applications of HOQBF, to date, there are no HOQBF solvers, not even for SOQBF. In this work, we develop the first HOQBF solver to ini-tiate the study for practical applications. The technical nov-elty lies in leveraging techniques from higher-order model checking for reasoning about higher-order quantifiers in HOQBFs. Higher-order model checking is a generalization from model checking of while -programs to that of higher-order functional programs, where functions can be passed 
+
+> Copyright © 2025, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved.
+
+as arguments to other functions and returned as results. Since the decidability problem of higher-order model check-ing being resolved by (Ong 2006), various model check-ers (Kobayashi 2009a; Broadbent and Kobayashi 2013; Ramsay, Neatherway, and Ong 2014) have been actively re-searched and developed, with the aim of making them prac-tical for the formal verification of higher-order functional programs, even with the high computational complexity. Specifically, we reduce the HOSAT problem to higher-order model checking by constructing a higher-order pro-gram that returns true when the HOSAT problem is sat-isfiable and false otherwise. Here, the higher-order vari-ables in the original HOQBF, introduced by the higher-order quantifiers, naturally correspond to higher-order variables in the program through the transformation, allowing a higher-order model checker to efficiently and precisely reason about higher-order functions and, as a result, higher-order quanti-fiers. Technically, to achieve this transformation, it is nec-essary to define recursive functions for enumerating the ele-ments in the domains of higher-order quantifiers. However, since higher-order model checking can only handle finite data domains, such as Boolean or enumerated types as prim-itive data types, careful design is required. To address this, we inductively define and use what we call enumeration structures for Boolean and higher-order function types (for more details, see Section 3). In some applications, such as synthesis (Jiang 2023), it is required not only to determine the satisfiability of a HO-QBF but also to extract assignments to existential quanti-fiers that make the HOQBF true as Skolem functions. There-fore, this work also provides a method for extracting Skolem functions from the witness output by a higher-order model checker when it answers “yes.” We implemented the proposed reduction and combined it with the state-of-the-art higher-order model checker H OR -SAT 2 (Broadbent and Kobayashi 2013; Kobayashi 2016), realizing the first HOQBF solver, which we call HOMC-SAT . We evaluated the solver using a benchmark set consist-ing of 21 problem instances and obtained promising results while also identifying the limitations of the backend solver and suggesting directions for improvement. By bridging these two distinct worlds of higher-order model checking and higher-order quantified Boolean logic satisfiability through our reduction, and by applying higher-The Thirty-Ninth AAAI Conference on Artificial Intelligence (AAAI-25) 
+
+> 11372
+
+order model checking to such a novel and challenging do-main, we have opened the door to mutually exchanging tech-niques and advancing the solving methods in both fields. The remainder of this paper is structured as follows. Sec-tion 2 provides a brief review of higher-order quantified Boolean formulas and higher-order model checking. In Sec-tion 3, we discuss the reduction from HOSAT to higher-order model checking. Section 4 presents a method for ex-tracting Skolem functions from the witness output by a higher-order model checker. Section 5 reports on the imple-mentation and evaluation results. In Section 6, we compare related work, and in Section 7, we conclude the paper with remarks on future work. 
+
+# 2 Preliminaries 
+
+This section briefly reviews higher-order quantified boolean formulas and higher-order model checking. 
+
+## 2.1 Higher-Order Quantified Boolean Formula 
+
+A higher-order quantified boolean formula (HOQBF) is composed of Boolean operators (i.e., conjunction, disjunc-tion and negation) and quantifiers (i.e. ∀ and ∃), just like an ordinary quantified Boolean formula. The difference is the range of quantifiers: HOQBF may have a quantifier over functions and/or over higher-order functions (i.e. functions on functions). We use types to appropriately control higher-order func-tions. The syntax of (simple) types is given by A, B ::= 
+
+bool | A → B, so a type is either the boolean type bool or a function type A → B. The meaning of each type should be obvious: bool denotes the set [[ bool ]] := {true , false }
+
+and A → B the set [[ A → B]] := [[ B]] [[ A]] of all functions from [[ A]] to [[ B]] . Note that [[ A]] is finite for every A, since the denotation [[ bool ]] of the unique atomic type is finite. A higher-order quantifier is of the form ∀xA.φ or ∃xA.φ .These quantifiers introduce the new variable x of type A
+
+whose scope is φ. The formula ∀xA.φ means that φ is true no matter which element of [[ A]] is assigned to x, and ∃xA.φ 
+
+is true if φ is true for some assignment to x.In the context of satisfiability testing, the order of a type is defined by order( bool ) := 1 and 
+
+order( A1 → · · · → Ak → bool ) := max  
+
+> i
+
+{order( Ai) + 1 }.
+
+The order of a formula is the maximal order of types A such that a quantifier, ∀xA or ∃xA, appears in the formula. 
+
+## 2.2 Higher-Order Model Checking 
+
+Higher-order model checking is the problem to decide if a given program in a certain programming language satisfies a given property. This subsection defines the model-checking problem by providing the target programming language. The target programming language is a functional programming language with recursion but with two important constraints: the language is simply-typed and has only finite data types. That the target language is simply-typed 1 means that each 
+
+> 1This is a technical term in the programming language com-munity, meaning that the language has a type system that has no advanced features such as polymorphism.
+
+expression in the language is associated with a type. The syntax of types and their intuitive meaning are the same as in Section 2.1. The syntax of expressions or terms is given as follows. We assume infinite sets Var A indexed by types A such that 
+
+Var A and Var B are disjoint if A̸ = B. Intuitively, Var A is the set of variables of type A, and its element is written as x
+
+(or xA to emphasize its type). The terms are constructed by the following rules. • If xA ∈ Var A, then xA is a term of type A.• If t is a term of type A and xB ∈ Var B , then λx B .t is a term of type B → A. This is a function that takes an argument of type B, evaluates t, and returns the result of the evaluation. The function body t can contain the variable x.• If t is a term of type A, u is a term of type B → C
+
+and f B→C ∈ Var B→C is a variable of type B → C,then let rec f = u in t is a term of type A. Here t and 
+
+u can contain the variable f , so f = u is a recursive definition of the function f . The value of this expression is the result of the evaluation of t, which may refer to the definition f = u of f when the function f is invoked during the evaluation. • If t is a term of type A → B and u is a term of type A,then t u is a term of type B. This is the function applica-tion. • true and false are terms of type bool .• If t is a term of type bool and s and u are terms of type 
+
+A, then if t then s else u is a term of type A.A term t of type A1 → A2 → · · · → Ak → bool is often regarded as a function taking k arguments, and we write a series of applications t u 1 u2 . . . u k as t(u1, . . . , u k).The logical conjunction t and s and disjunction t or s
+
+for t, s : bool are defined by if t then s else false and 
+
+if t then true else s, respectively. The variable x in λx.t (resp. f in let rec f = u in s)is a binding variable whose scope is t (resp. u and s). An occurrence of a variable x in t (resp. f in u or s) is bound .An unbound occurrence of a variable x is free . A variable in t is a free variable if it has a free occurrence, and we write FV( t) for the set of free variables. A term t is closed 
+
+if FV( t) = ∅.A program is a closed term of type bool . The result of the evaluation of a program is true , false , or divergence. The higher-order model-checking asks whether a given program t is not evaluated to false (i.e. the evaluation di-verges or results in true ). 2 Remarkably, the higher-order model checking is decidable, despite the fact that many pro-gram verification problems are known to be undecidable, 
+
+> 2The higher-order model-checking studied by Ong (Ong 2006) is more general than the problem considered here. The specification used in this paper concerns only the final outcome of the evaluation of a program, but Ong studied a verification problem against tem-poral properties. The complexity result (Theorem 1) holds for the subproblem of this paper, as shown in (Kobayashi and Ong 2009). The target languages differ in several respects, but the gap can be filled by program transformations. 11373
+
+and some efficient solvers (Broadbent and Kobayashi 2013; Kobayashi 2009a; Ramsay, Neatherway, and Ong 2014) are available. The hardness of the higher-order model checking depends on the order of a program. The order of a term t is the max-imum order of the types of the subterms of t.
+
+Theorem 1 ((Ong 2006; Kobayashi and Ong 2009)) . The higher-order model checking for order-n terms is (n − 1) -EXPTIME complete. 
+
+Since the second-order QBF belongs to 2-EXPTIME (Jiang 2023), there exists a polynomial-time many-one reduction from the second-order QBF to the order-3 higher-order model checking. This general result motivates us to utilize the algorithms and tools for the higher-order model checking to solve the second-order QBF. Unfortunately, the reduction obtained by the general result looks very inefficient. So, we will discuss a more direct reduction in the following section. 
+
+# 3 Reduction of HOSAT to Higher-Order Model Checking 
+
+This section reduces the satisfiability problem of higher-order quantified boolean formulas to the higher-order model checking (Ong 2006; Kobayashi 2009b, 2013). We encode higher-order variables in formulas introduced by the higher-order quantifiers by using the higher-order variables of the functional programming language. 
+
+## 3.1 Basic Idea and Challenge 
+
+We reduce the HOQBF solving to higher-order model checking. A given formula φ is mapped to a program Pφ
+
+that calculates the truth value of φ.The translation is straightforward in most cases: 
+
+Pφ∧ψ := Pφ and Pψ
+
+Pφ∨ψ := Pφ or Pψ
+
+Pf (x1,...,x k ) := f (x1, . . . , x k)
+
+P¬φ := not Pφ.
+
+Here and , or , and not are implementations of logical con-junction, disjunction, and negation. (We use the infix nota-tions for these functions.) The remaining constructs are quantifiers. A na¨ ıve ap-proach is to translate the first order quantifiers ∀xbool and 
+
+∃xbool into the following programs: 
+
+P∀xbool .φ := (( λx.P φ) true ) and (( λx.P φ) false )
+
+P∃xbool .φ := (( λx.P φ) true ) or (( λx.P φ) false ).
+
+A similar approach is applicable to quantifiers ∀f A and ∃f A
+
+over arbitrary type A since the set of all elements of the type 
+
+A is finite, say {F0, F 1, . . . , F N }:
+
+P∀f A.φ := (( λf.P φ) F0) and · · · and (( λf.P φ) FN )
+
+P∃f A.φ := (( λf.P φ) F0) or · · · or (( λf.P φ) FN ).
+
+As expected, the above translation yields a program Pφ that is evaluated to true if and only if φ is true. A problem here is that the size of Pφ can be huge for the following reasons: 1. The number of elements of τ = bool → · · · → bool 
+
+is 22k
+
+, where k is the number of arguments of τ . Hence, even for 2nd-order formulas, the size of the constructed program may be hyper-exponential in size. So the trans-lation itself is not in polynomial time. 2. The program P∀xbool .φ has two copies of Pφ. Hence 
+
+P∀xbool     
+
+> 1.∀xbool
+> 2.... ∀xbool
+> n.φ
+
+has 2n copies of Pφ, so its size cannot be bounded by a polynomial. 
+
+## 3.2 Compact Implementation of Quantifiers 
+
+First, for simplicity, consider quantifiers on a finite subset 
+
+A := {0, 1, . . . , N } of natural numbers. In other words, suppose we want programs that calculate the truth values of ∀x ∈ A.φ (x) and ∃x ∈ A.φ (x). They can be easily de-scribed using loops: for example, a program computing the universal quantifier is given by 
+
+r := true for x in 0..N: r := r and Pφ
+
+return r
+
+Loops and mutable variables are not in the functional pro-gramming language for the higher-order model checking, but there are known ways to simulate these features. The above program can be written as the following functional program: 
+
+P∀xA.φ := let rec f = t in f (0) 
+
+where t is 
+
+λx A.P φ(x) and if x = N then true else f (x + 1) .
+
+The program itself can also be understood directly. The function f (or, equivalently, t since f = t by the recursive definition of f ) takes an integer i and computes the truth value of ∀x ∈ { i, . . . , N }.φ (x). The above definition of f
+
+corresponds to the logical equivalence 
+
+∀x ∈ { i, . . . , N }.φ (x)
+
+⇔ φ(i) ∧ (( i = N ) ∨ (∀x ∈ { i + 1 , . . . , N }.φ (x))) .
+
+It should be now clear how to describe ∃x ∈ A.φ (x) in the functional programming language. The above discussion assumes that A = {0, . . . , N } for some natural number N . However, on closer examination, one notices that only the following assumptions are actually used. • The following data are programmable: 
+
+– The minimum element zero := 0 .
+
+– The comparison ismax (x) := ( x = N ) to the maxi-mum element N ∈ A.
+
+– The successor function succ (x) := x + 1 .• The maximum element N is reachable from 0 by iterative application of the successor, i.e., 
+
+ismax (succ k(zero )) = true 
+
+for some k. Furthermore 
+
+A = {zero , succ (zero ), . . . , succ k(zero )}.11374 Let us call this structure an enumeration structure . This structure allows us to program universal and existential quantifiers for a function type by the above-described method: 
+
+P∀xA.φ := let rec f = t in f (zero )
+
+where t is 
+
+λx A.P φ(x) and if ismax (x) then true else f (succ (x)) 
+
+The set of boolean functions (as well as the set of boolean values) is not a subset of the natural numbers, but it has prop-erties similar to subsets of the natural numbers in the sense that there are constants and operations as above. Details shall be discussed in the next subsection. Assuming appropriate implementations of zero A,
+
+ismax A, and succ A for all types A, our transformation is defined by induction on the length of the logical formula, as follows: 
+
+Pφ∧ψ := Pφ and Pψ
+
+Pφ∨ψ := Pφ or Pψ
+
+Pf (x1,...,x k ) := f (x1, . . . , x k)
+
+P¬φ := not Pφ
+
+and the translations of quantifiers are given by 
+
+P∀xA.φ := 
+
+
+
+let rec f x = Pφ and 
+
+if ismax A(x) then true else f (succ A(x)) 
+
+in f(zero A)
+
+
+
+and 
+
+P∃xA.φ := 
+
+
+
+let rec f x = Pφ or 
+
+if ismax A(x) then false else f (succ A(x)) 
+
+in f(zero A)
+
+
+
+where let rec f x = t in s is an abbreviation for 
+
+let rec f = ( λx.t ) in s.As we shall see in the next subsection, since the size of 
+
+zero A, ismax A, and succ A is linear with respect to the size of A, we obtain the following result. 
+
+Theorem 2. There exists a linear-time reduction φ 7 →
+
+Pφ from the HOQBF satisfiability problem to higher-order model checking. Furthermore, the reduction maps an order-
+
+n formula to order-(n + 1) model checking. 
+
+## 3.3 Enumeration Structure of Each Type 
+
+We describe an implementation of an enumeration structure for each type A. The definition is by induction on A.
+
+Enumeration Structure of Booleans The set of values 
+
+[[ bool ]] = {true , false } of type bool has an obvious enu-meration structure. 
+
+zero bool := false ismax bool (x) := x
+
+succ bool (x) := true .
+
+The definition of succ bool has arbitrariness. The value of 
+
+succ bool for the “maximum” value can be anything (since it is essentially undefined), so we can set, for example, 
+
+succ bool (true ) = false instead of the above definition (i.e. succ bool (true ) = true ). So succ bool (x) := not (x)
+
+is another possible implementation. 
+
+Enumeration Structure of Functions Taking Booleans 
+
+Before discussing arbitrary function types, let us first fo-cus on function types whose argument type is bool . Let 
+
+A = bool → B and assume an enumeration structure for B.We define zero A : A, succ A : A → A, and ismax A : A →
+
+bool with the expected properties. By the induction hypothesis, the set [[ B]] can be seen as an initial segment {0, 1, . . . , N } of natural numbers for some 
+
+N . The idea is to identify a function f ∈ [[ bool → B]] 
+
+with a pair (f (true ), f (false )) ∈ [[ B]] × [[ B]] . So there is a bijective correspondence between functions in [[ A]] = [[ bool → B]] and two-digit numbers in the base-(N +1) sys-tem. The idea is to define the zero and the successor for the two-digit numbers in the base-(N + 1) system. The zero is expressed as (0 , 0) . So it is the constant func-tion to 0 in {0, . . . , N } ∼= [[ B]] :
+
+zero bool →B := λx bool .zero B .
+
+The successor of (n, m ) is defined as follows: • If m < N , then the successor is (n, m + 1) .• If m = N and n < N , then the successor is (n + 1 , 0) .• If m = n = N , the successor is undefined. This observation gives the following definition of the suc-cessor. 
+
+succ bool →B (x) := if ismax B (x(false )) then 
+
+λb bool .if b then succ B (x(b)) else zero B
+
+else 
+
+λb bool .if b then x(b) else succ B (x(b)) .
+
+The (n, m ) is the maximum number if and only if n =
+
+m = N :
+
+ismax bool →B (x) := ismax B (x(true )) and ismax B (x(false )) .
+
+Enumeration Structure of General Function Types The above given enumeration structure of first-order function types can be easily extended to arbitrary function types. In the above discussion, we identify elements in [[ bool → B]] 
+
+as two-digit numbers in the base-(N + 1) system, where 
+
+[[ B]] ∼= {0, 1, . . . , N }. Here, the number of digits, 2, comes from the number of elements in [[ bool ]] = {true , false }.For a general type C with [[ C]] ∼= {0, 1, . . . , M }, there is 11375 a bijective correspondence between elements in [[ C → B]] 
+
+and (M + 1) -digit numbers in the base-(N + 1) system. So it suffices to implement the zero, the comparison with the maximum and the successor function for (M +1) -digit num-bers in the base-(N + 1) system. The implementation will be slightly more cumbersome due to the increased number of digits, but there are no inherent difficulties. 
+
+# 4 Synthesizing Skolem Functions 
+
+The previous section provided a translation from higher-order QBFs to higher-order functional programs. The truth value of an input formula coincides with the evaluation re-sult of the generated program, so efficient program verifica-tion tools are applicable to solve the higher-order QBF solv-ing. Some applications concern not only the truth or falsity of a logical formula, but also the assignment to existentially quantified variables that would make the logical formula true. Such an assignment can be expressed as Skolem func-tions .
+
+Example 1. Consider the formula 
+
+∀xbool .∃ybool .∀zbool .(x ∨ y ∨ z) ∧ (¬x ∨ ¬ y ∨ ¬ z),
+
+which is true. An appropriate choice for y may depend on the value of x, so it can be expressed as a function 
+
+Y : bool → bool (taking the value of x as its argument). We seek a function Y that makes the formula 
+
+∀xbool .∀zbool .(x ∨ Y (x) ∨ z) ∧ (¬x ∨ ¬ Y (x) ∨ ¬ z),
+
+true, and 
+
+Y (x) := ¬x
+
+is an example of such a function. 
+
+Example 2. Consider the formula 
+
+∀f bool →bool .∃gbool →bool .∃zbool .(f (g(z)) ↔ z),
+
+which is true. An appropriate choice for g and z depends on 
+
+f , so we would like to find functions G : ( bool → bool ) →
+
+bool → bool and Z : ( bool → bool ) → bool that make 
+
+∀f bool →bool . f (G(f, Z (f ))) ↔ Z(f )
+
+true. The requirement is satisfied by 
+
+G(f, x ) := ⊤ and Z(f ) := f (⊤).
+
+Our higher-order QBF solving method based on the re-duction to the higher-order model-checking program can be used to synthesize such Skolem functions. When a higher-order model checker answers “yes,” it generates a witness to the correctness of the answer, from which Skolem functions can be extracted. This witness is known as a derivation tree for a refinement intersection type system , but we limit our discussion here to what is necessary for this paper; see, e.g., (Kobayashi 2013) for a general theory. For simplicity, we will focus on the second-order QBF. A witness consists of specifications that each part of the input program satisfies. The specifications for a part of bool 
+
+type are {⊤ , ⊥} meaning the result of the evaluation. Spec-ifications for function types have two kinds: prime ones and 
+
+collective ones. 3 A prime specification expresses an output to a specified input: for example, a prime specification for 
+
+bool → bool → bool is that “the function returns ⊤ if it takes ⊤ as the first argument and ⊥ as the second argu-ment,” which we write as ⊤ → ⊥ → ⊤ . We allow the “don’t care” argument for specification: for example, ⊤ → ∗ → ⊤ 
+
+means that the function returns true if its first argument is 
+
+⊤, whatever the second argument is. This specification is met by the disjunction function but not by the conjunction function since conj (⊤, ⊥) = ⊥. A collective specification is simply a finite set of prime specifications, meaning that all prime specifications in the set is satisfied. For example, 
+
+{⊤ → ∗ → ⊥ , ⊥ → ∗ → ⊤} is a collective specification, and there exists a unique function that satisfies this specifi-cation (namely, the function f (x, y ) := ¬x). A higher-order model checker returns a specification for (the parts of) the input program which suffices to prove the correctness of the answer of the model checker. 
+
+Example 3. Recall Example 1. Let φ(x, y, z ) := ( x ∨ y ∨
+
+z) ∧ (¬x ∨ ¬ y ∨ ¬ z). The translation in the previous section yields a program that contains Pφ, which is a program with three free variables x, y and z. Regarding Pφ as a function of type bool → bool → bool → bool , a possible wit-ness returned by a model checker says that Pφ satisfies the following (collective) specification: 
+
+⊤ → ⊥ → ∗ → ⊤ , ⊥ → ⊤ → ∗ → ⊤ .
+
+Intuitively, this means that φ(⊤, ⊥, ∗) = φ(⊥, ⊤, ∗) = ⊤.The witness suggests that we should set y = ⊥ when x = ⊤
+
+and y = ⊤ when x = ⊥. This is the Skolem function given in Example 1. 
+
+Our translation of a second-order QBF generates a pro-gram in which a subprogram taking a function as an argu-ment appears. For such higher-order functions, a witness is similarly given. A slight difference is that a specification of function arguments is given as a collective specification (rather than boolean values). For example, Φ → ⊥ → ⊤ 
+
+where Φ = {⊤ → ⊤} means that the function returns ⊤
+
+if its first argument satisfies Φ and the second argument is 
+
+⊥. An example of a function that meets this specification is 
+
+H(f, z ) = f (¬z).
+
+Example 4. Recall Example 2. Let ψ(f, g, z ) := (f (g(z)) ↔ z). The translation in the previous section yields a program that contains Pψ , which is a program with three free variables f, g and z. Regarding Pψ as a function of type (bool → bool ) → (bool → bool ) → bool →
+
+bool , a possible witness returned by a model checker says that Pψ satisfies the following (collective) specification: 
+
+ {⊤ → ⊤} → {∗ → ⊤} → ⊤ → ⊤ ,
+
+{⊤ → ⊥} → {∗ → ⊤} → ⊥ → ⊤ 
+
+
+
+.
+
+This witness suggests that it is better to divide the first argu-ment f into two cases, namely, when it satisfies {⊤ → ⊤} 
+
+and when it satisfies {⊤ → ⊥} (i.e., the case where f (⊤) =   
+
+> 3Collective specifications are usually called intersection types ,whereas prime specifications as prime types .11376
+
+problem O V A result time (s) example1 1 3 2 SAT 0.032 example2 2 3 1 SAT 0.024 aaai23 ex1 2 5 4 SAT 0.437 aaai23 ex2 2 7 4 UNSAT 12.274 sym-asym-b 2 5 0 UNSAT 0.190 sym-asym-bb 2 9 0 T/O N/A sym-asym-id 2 7 1 SAT 0.070 SB-theorem 2 16 3 SAT 0.152 left-total 2 3 1 SAT 0.035 right-total 2 3 1 UNSAT 0.035 left-uniq 2 4 0 UNSAT 0.035 right-uniq 2 4 0 SAT 0.032 refl-cl-exist 2 11 2 SAT 3.415 refl-cl-uniq 2 23 2 SAT 124.717 sym-cl-exist 2 13 2 SAT 7.717 sym-cl-uniq 2 27 2 M/O N/A tran-cl-exist 2 15 2 SAT 30.286 tran-cl-uniq 2 31 2 M/O N/A f h-neq-g h 3 3 2 SAT 0.111 cps-arity1 3 5 4 SAT 11.785 cps-arity2 4 6 4 M/O N/A Table 1: Experiment results on the HOQBF benchmark set 
+
+⊤ and the case where f (⊤) = ⊥). The witness also sug-gests that, in the former case, g and z can be chosen so that 
+
+g(∗) = ⊤ and z = ⊤, and in the latter case, g(∗) = ⊤ and 
+
+z = ⊥. This is the Skolem function given in Example 2. 
+
+As the above examples demonstrate, in general, appropri-ate Skolem functions for a formula 
+
+Q1x1. . . . Qnxn.φ (x1, . . . , x n)
+
+(where Qi ∈ {∀ , ∃} , xi is an ordinary or functional variable, and φ is quantifier-free) can be synthesized from the wit-ness given to the subprogram Pφ by a higher-order model checker. The witness is a (collective) specification for a function with arguments x1, . . . , x n and suggests, for each universally quantified variable, an appropriate case distinc-tion for the values for the variable and, for each existentially quantified variable, the value that the variable should be set. 
+
+# 5 Implementation and Evaluation 
+
+We implemented the reduction from HOQBF satisfiabil-ity (HOSAT) to higher-order model checking proposed in Section 3 and developed a HOSAT solver we call HOM-CS AT 4 by using HOR SAT 2 (Broadbent and Kobayashi 2013; Kobayashi 2016) as the backend higher-order model checker. HOMCS AT can read Boolean, QBF, and DQBF satisfiability problems in prenex CNF, written in the DI-MACS, QDIMACS, and DQDIMACS formats, respectively, and solve them by converting them to HOSAT. It also sup-ports reading a custom format for specifying non-prenex, non-CNF HOSAT problem instances. 
+
+> 4Available from https://github.com/hiroshi-unno/coar.
+
+We prepared a HOSAT benchmark set consisting of 21 problems to conduct preliminary experiments for evaluat-ing HOMCS AT . The experiments were conducted on a ma-chine with a 12th Gen Intel(R) Core(TM) i7-1270P 2.20 GHz processor and 32 GB of memory. The experimental results are summarized in Table 1. In the “problem” col-umn, example1 and example2 are the HOQBFs from Examples 1 and 2, respectively, while aaai23 ex1 and 
+
+aaai23 ex2 are from Examples 1 and 2 in (Jiang 2023), respectively. Cases sym-asym-b and sym-asym-bb as-sert the existence of symmetric and anti-symmetric binary relations on bool and bool ×bool , respectively; the former is unsatisfiable, while the latter is satisfiable. These bench-marks were designed to assess solver scalability as the depth of quantifier nesting increases, by changing the bit width of the bitvector. Case sym-asym-id asserts that sym-metric and anti-symmetric binary relations are character-ized as subsets of the identity relation, while SB-theorem 
+
+is a HOQBF representing the Schr¨ oder-Bernstein theorem, which states that for sets A and B, if there exist injec-tive functions from A to B and from B to A, then there exists a bijection from A to B. Cases left-total ,
+
+right-total , left-uniq , and right-uniq assert that all bool → bool functions are, respectively, left-total, right-total, left-unique, and right-unique. However, only cases left-total and right-uniq are satisfi-able. Cases refl-cl-uniq and refl-cl-exists rep-resent the uniqueness and existence of the reflexive closure, respectively, while sym-cl-* and trans-cl-* make similar assertions regarding the symmetric and transitive closures, respectively. Case f h-neq-g h is an order-3 problem instance representing 
+
+∀f (bool →bool )→bool .∃g(bool →bool )→bool .∀hbool →bool .
+
+¬(f (h) ↔ g(h)) .
+
+Cases cps-arity1 and cps-arity2 assert the ex-istence of CPS-transformed equivalent functions of type 
+
+bool → (bool → bool ) → bool and bool → (( bool →
+
+bool ) → bool ) → bool , respectively, for all functions of type bool → bool and bool → bool → bool . These benchmarks were intended to test solver scalability as the arity of functions increases, and consequently, the order of the CPS-transformed functions increases. In the table, the column labeled “O” indicates the order of each problem, “V” represents the number of variables, “A” indicates the maximum number of quantifier alterna-tions along a path from the root to a leaf in the syntax tree of the HOQBF, and in the “result” column, “SAT” and “UN-SAT” show that HOMCS AT correctly judged whether the problem is satisfiable or unsatisfiable, respectively. “T/O” indicates a timeout (300 seconds), and “M/O” represents out of memory. The column labeled “time (s)” shows the time in seconds taken to conclude “SAT” or “UNSAT.” As the first HOSAT solver, HOMCS AT was able to solve various HOQBFs that express typical properties of boolean functions and binary relations, which involve higher-order quantifiers and quantifier alternations, yielding promising results. At the same time, the experimental results highlight both the limitations of H OR SAT 2, the backend higher-order 11377 model checker used, and possible directions for improve-ment. Since H OR SAT 2 has primarily been applied to pro-gram verification, it struggles to scale when dealing with cases like those in our benchmark set that involve extensive branching due to numerous quantifiers, a situation uncom-mon in programs written by humans. This extensive branch-ing leads to the “ intersection refinement types ,” which H OR -SAT 2 searches for as witnesses of satisfiability, becoming too large and complex to manage effectively. This is re-flected in problems such as sym-asym-b , which involves proving the existence of a binary relation on bool and was solved in under 0.2 seconds, but sym-asym-bb , which expands the search space to binary relations on bool ×
+
+bool , timed out. Similarly, out-of-memory errors occur with 
+
+sym-cl-uniq , trans-cl-uniq , and cps-arity2 .The results do not clearly reveal the relationship between parameters such as the number of quantified variables, or-der, and quantifier alternation depth, and the time required for solving. We believe this is because H OR SAT 2 tends to be peaky in performance, making it challenging to mea-sure their scalability based on these parameters. Possi-ble remedies include improving H OR SAT 2 by compactly representing the “ intersection refinement types ” using bi-nary decision diagrams (BDDs) (Lee 1959; Bryant 1986) or zero-suppressed binary decision diagrams (ZDDs) (Mi-nato 1993), as symbolic model checkers do, and incorpo-rating abstraction, pruning, and propagation techniques sim-ilar to those used in SAT, QBF, and DQBF solvers. With these extensions, as the higher-order model checker scales to HOSAT instances with more quantifiers, future work could involve applying HOMCS AT to second-order solving for relaxed memory models, which, like in our current exper-iments, would involve reasoning about combinations of typ-ical properties concerning n-ary relations, as explored in (Cooksey et al. 2020). 
+
+# 6 Related Work 
+
+HOQBF is an elevation from SOQBF by permitting quan-tification over variables of arbitrary order, whereas SOQBF subsumes DQBF by allowing an arbitrary number of alterna-tions between universal and existential second-order quan-tification. The satisfiability checking of SOQBF has complexity corresponding to the exponential-time hierarchy (EXPH) (Dawar, Gottlob, and Hella 1998), as was established in (Lohrey 2012; L¨ uck 2016). The connection between SO-QBF and EXPH is similar to that between QBF and the polynomial-time hierarchy (PH) (Stockmeyer 1976). Prior work (Jiang 2023) provides a sound and complete proof sys-tem for SOQBF and an algorithm for countermodel extrac-tion from a refutation proof. Chistikov et al. formulates HOQBF and shows its com-putational complexity. Essentially, HOSAT is TOWER-complete for the unbounded case and is complete for the weak k-EXP hierarchy when the formula is of order at most 
+
+k and has d quantifier alternations for d being odd (Chis-tikov et al. 2022). In contrast, in this work, we focus on the algorithmic solving for HOQBF. In this paper, instead of extending existing QBF and DQBF solving techniques for checking the satisfiability of HOQBFs, we applied the techniques of higher-order model checking, which have been developed independently from the SAT community, bridging the gap between the two re-search communities. Since Ong (2006) established the de-cidability of higher-order model checking, practical model checkers based on intersection refinement types or collapsi-ble pushdown systems such as TR EC S (Kobayashi 2009a), GTR EC S (Kobayashi 2011), T RAV MC (Neatherway, Ram-say, and Ong 2012), C-SHOR E (Broadbent et al. 2013), HOR SAT (Broadbent and Kobayashi 2013), and PREF - 
+
+> ACE
+
+(Ramsay, Neatherway, and Ong 2014) have been ac-tively researched and developed, despite the inherently high computational complexity. Although higher-order model checking has primarily been applied to the verification of higher-order functional programs, addressing a wide range of specifications (Kuwa-hara et al. 2014, 2015; Murase et al. 2016) and lan-guage features (Kobayashi 2013; Kobayashi, Tabuchi, and Unno 2010; Ong and Ramsay 2011; Unno, Tabuchi, and Kobayashi 2010; Kobayashi, Sato, and Unno 2011; Sato, Unno, and Kobayashi 2013; Matsumoto, Kobayashi, and Unno 2015; Kobayashi, Lago, and Grellois 2020; Dal Lago and Ghyselen 2024; Sekiyama and Unno 2024) as program verification problems, to the best of our knowledge, this paper is the first to apply it to Boolean satisfiability prob-lems, particularly those involving reasoning with higher-order quantifiers. As discussed in Section 5, we not only obtained promising results for this novel application but also identified the limitations of existing higher-order model checkers and proposed directions for future improvements. 
+
+# 7 Conclusion and Future Work 
+
+We have developed the first HOQBF solver based on the re-duction to higher-order model checking. We implemented the proposed approach and evaluated it using a HOSAT benchmark set, with the higher-order model checker H OR -SAT 2 as the backend. Despite the high computational com-plexity, our solver HOMCS AT successfully solved various higher-order examples, yielding promising results. At the same time, we also identified problem instances that could not be solved due to H OR SAT 2 being a bottleneck and dis-cussed possible directions for improving H OR SAT 2. The ap-plication of higher-order model checking in this work differs significantly from previous applications, as it involves ex-tensive branching caused by higher-order quantifiers. This makes it an important future work to introduce techniques developed for solving SAT, QBF, and DQBF, such as ab-straction, pruning, and propagation, into higher-order model checking. Once these enhancements are made, we plan to explore full-scale applications such as memory consistency verification (Cooksey et al. 2020), planning for multi-agent systems, secure system synthesis (Jiang 2023), and solv-ing quantified bit-vector arithmetic problems (Jon´ aˇ s and Strejˇ cek 2018). 11378 Acknowledgments 
+
+We thank the anonymous reviewers for their comments, which improved the paper. This research was partially sup-ported by JSPS KAKENHI Grant Numbers JP20H04162, JP20H05703, JP24H00699, JP23K24826, and JP23K24820, and NSTC 111-2923-E-002-013-MY3 of Taiwan. 
+
+# References 
+
+Broadbent, C.; Carayol, A.; Hague, M.; and Serre, O. 2013. C-SHORe: A Collapsible Approach to Higher-order Verifi-cation. In ICFP ’13 , 13–24. ACM. Broadbent, C.; and Kobayashi, N. 2013. Saturation-Based Model Checking of Higher-Order Recursion Schemes. In 
+
+CSL ’13 , volume 23 of LIPIcs , 129–148. Schloss Dagstuhl– Leibniz-Zentrum fuer Informatik. Bryant, R. E. 1986. Graph-Based Algorithms for Boolean Function Manipulation. IEEE Transactions on Computers ,C-35(8): 677–691. Chistikov, D.; Haase, C.; Hadizadeh, Z.; and Mansutti, A. 2022. Higher-Order Quantified Boolean Satisfiability. In 
+
+MFCS ’22 , volume 241 of LIPIcs , 33:1–33:15. Schloss Dagstuhl – Leibniz-Zentrum f¨ ur Informatik. Cooksey, S.; Harris, S.; Batty, M.; Grigore, R.; and Janota, M. 2020. PrideMM: Second Order Model Checking for Memory Consistency Models. In Formal Methods. FM 2019 International Workshops , 507–525. Springer. Dal Lago, U.; and Ghyselen, A. 2024. On Model-Checking Higher-Order Effectful Programs. Proceedings of the ACM on Programming Languages , 8(POPL). Dawar, A.; Gottlob, G.; and Hella, L. 1998. Capturing Rel-ativized Complexity Classes without Order. Mathematical Logic Quarterly , 44(1): 109–122. Jiang, J.-H. R. 2023. Second-Order Quantified Boolean Logic. In AAAI ’23 , volume 37, 4007–4015. Jon´ aˇ s, M.; and Strejˇ cek, J. 2018. On the complexity of the quantified bit-vector arithmetic with binary encoding. Infor-mation Processing Letters , 135: 57–61. Kobayashi, N. 2009a. Model-checking higher-order func-tions. In PPDP ’09 , 25–36. ACM. Kobayashi, N. 2009b. Types and higher-order recursion schemes for verification of higher-order programs. In POPL ’09 , 416–428. ACM. Kobayashi, N. 2011. A Practical Linear Time Algorithm for Trivial Automata Model Checking of Higher-Order Re-cursion Schemes. In FoSSaCS ’11 , volume 6604 of LNCS ,260–274. Springer. Kobayashi, N. 2013. Model Checking Higher-Order Pro-grams. Journal of the ACM , 60(3): 20:1–20:62. Kobayashi, N. 2016. HOR SAT 2. https://www-kb.is.s.u-tokyo.ac.jp/ ∼koba/horsat2/. Kobayashi, N.; Lago, U. D.; and Grellois, C. 2020. On the Termination Problem for Probabilistic Higher-Order Recur-sive Programs. Logical Methods in Computer Science , Vol-ume 16, Issue 4. Kobayashi, N.; and Ong, C.-H. L. 2009. Complexity of Model Checking Recursion Schemes for Fragments of the Modal Mu-Calculus. In ICALP ’09 , volume 5556 of LNCS ,223–234. Springer. Kobayashi, N.; Sato, R.; and Unno, H. 2011. Predicate ab-straction and CEGAR for higher-order model checking. In 
+
+PLDI ’11 , 222–233. ACM. Kobayashi, N.; Tabuchi, N.; and Unno, H. 2010. Higher-order multi-parameter tree transducers and recursion schemes for program verification. In POPL ’10 , 495–508. ACM. Kuwahara, T.; Sato, R.; Unno, H.; and Kobayashi, N. 2015. Predicate Abstraction and CEGAR for Disproving Termi-nation of Higher-order Functional Programs. In CAV ’15 ,LNCS. Springer. Kuwahara, T.; Terauchi, T.; Unno, H.; and Kobayashi, N. 2014. Automatic Termination Verification for Higher-Order Functional Programs. In ESOP ’14 , volume 8410 of LNCS ,392–411. Springer. Lee, C. Y. 1959. Representation of switching circuits by binary-decision programs. The Bell System Technical Jour-nal , 38(4): 985–999. Lohrey, M. 2012. Model-checking hierarchical structures. 
+
+Journal of Computer and System Sciences , 78(2): 461–490. L¨ uck, M. 2016. Complete Problems of Propositional Logic for the Exponential Hierarchy. CoRR , abs/1602.03050. Matsumoto, Y.; Kobayashi, N.; and Unno, H. 2015. Automata-Based Abstraction for Automated Verification of Higher-Order Tree-Processing Programs. In APLAS ’15 ,295–312. Springer. Minato, S.-i. 1993. Zero-suppressed BDDs for set manip-ulation in combinatorial problems. In DAC ’93 , DAC ’93, 272–277. ACM. Murase, A.; Terauchi, T.; Kobayashi, N.; Sato, R.; and Unno, H. 2016. Temporal Verification of Higher-order Functional Programs. In POPL ’16 , 57–68. ACM. Neatherway, R. P.; Ramsay, S. J.; and Ong, C.-H. L. 2012. A Traversal-based Algorithm for Higher-order Model Check-ing. In ICFP ’12 , 353–364. ACM. Ong, C.-H. L. 2006. On Model-Checking Trees Generated by Higher-Order Recursion Schemes. In LICS ’06 , 81–90. IEEE. Ong, C.-H. L.; and Ramsay, S. J. 2011. Verifying higher-order functional programs with pattern-matching algebraic data types. In POPL ’11 , 587–598. ACM. Ramsay, S. J.; Neatherway, R. P.; and Ong, C.-H. L. 2014. A Type-directed Abstraction Refinement Approach to Higher-order Model Checking. In POPL ’14 , 61–72. ACM. Sato, R.; Unno, H.; and Kobayashi, N. 2013. Towards a scalable software model checker for higher-order programs. In PEPM ’13 , 53–62. ACM. Sekiyama, T.; and Unno, H. 2024. Higher-Order Model Checking of Effect-Handling Programs with Answer-Type Modification. Proceedings of the ACM on Programming Languages , 8(OOPSLA2). 11379 Stockmeyer, L. J. 1976. The polynomial-time hierarchy. 
+
+Theoretical Computer Science , 3(1): 1–22. Unno, H.; Tabuchi, N.; and Kobayashi, N. 2010. Verifica-tion of Tree-Processing Programs via Higher-Order Model Checking. In APLAS ’10 , volume 6461 of LNCS , 312–327. Springer. 11380

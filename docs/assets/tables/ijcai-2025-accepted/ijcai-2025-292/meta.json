@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "extractor": "papercropper",
+  "tables": [
+    {
+      "url": "assets/tables/ijcai-2025-accepted/ijcai-2025-292/table-001.webp",
+      "caption": "",
+      "page": 0,
+      "index": 1,
+      "width": 618,
+      "height": 345,
+      "label": "Table"
+    },
+    {
+      "url": "assets/tables/ijcai-2025-accepted/ijcai-2025-292/table-002.webp",
+      "caption": "",
+      "page": 0,
+      "index": 2,
+      "width": 743,
+      "height": 187,
+      "label": "Table"
+    },
+    {
+      "url": "assets/tables/ijcai-2025-accepted/ijcai-2025-292/table-003.webp",
+      "caption": "",
+      "page": 0,
+      "index": 3,
+      "width": 1645,
+      "height": 149,
+      "label": "Table"
+    }
+  ]
+}

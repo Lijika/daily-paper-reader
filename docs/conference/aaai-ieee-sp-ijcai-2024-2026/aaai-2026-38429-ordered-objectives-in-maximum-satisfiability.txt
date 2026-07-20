@@ -1,0 +1,438 @@
+Title: Ordered Objectives in Maximum Satisfiability
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/38429/42391
+
+Number of Pages: 9
+
+Markdown Content:
+# Ordered Objectives in Maximum Satisfiability 
+
+# Jeremias Berg 1, Andr´ e Schidler 2, Matti J¨ arvisalo 1
+
+> 1
+
+University of Helsinki, Finland 
+
+> 2
+
+University of Freiburg, Germany jeremias.berg@helsinki.fi, schidler@cs.uni-freiburg.de, matti.jarvisalo@helsinki.fi 
+
+Abstract       
+
+> Maximum satisfiability (MaxSAT) is aviable approach to solving NP-hard combinatorial optimization problems through propositional encodings. Understanding how prob-lem structure and encodings impact the behaviour of differ-ent MaxSAT solving algorithms is an important challenge. In this work, we identify MaxSAT instances in which the constraints entail an ordering of the objective variables as an interesting instance class from the perspectives of prob-lem structure and MaxSAT solving. From the problem struc-ture perspective, we show that a non-negligible percentage of instances in commonly used MaxSAT benchmark sets have ordered objectives and further identify various examples of such problem domains to which MaxSAT solvers have been successfully applied. From the algorithmic perspective, we argue that MaxSAT instances with ordered objectives, pro-vided an ordering, can be solved (at least) as efficiently with a very simplistic algorithmic approach as with modern core-based MaxSAT solving algorithms. We show empirically that state-of-the-art MaxSAT solvers suffer from overheads and are outperformed by the simplistic approach on real-world optimization problems with ordered objectives.
+
+# 1 Introduction 
+
+Building on the success of Boolean satisfiability (SAT) solving (Biere et al. 2021; Fichte et al. 2023), maxi-mum satisfiability (MaxSAT) is today a noteworthy declara-tive approach to solving computationally hard combinato-rial optimization problems (Bacchus, J¨ arvisalo, and Mar-tins 2021; Li and Many` a 2021). Currently, the most suc-cessful algorithmic approaches to MaxSAT solving are (i) core-based algorithms —namely, core-guided (Andres et al. 2012; Ans´ otegui, Didier, and Gab` as 2015; Ans´ otegui and Gab` as 2017; Bjørner and Narodytska 2015; Fu and Ma-lik 2006; Marques-Silva and Planes 2007; Morgado, Do-daro, and Marques-Silva 2014; Narodytska and Bacchus 2014) and implicit hitting set (IHS) algorithms (Davies and Bacchus 2013; Saikko, Berg, and J¨ arvisalo 2016)—based on iteratively identifying sources of inconsistency in terms of unsatisfiable cores using a SAT solver; (ii) solution-improving algorithms (Berre and Parrain 2010; E´ en and S¨ orensson 2006; Paxian, Reimer, and Becker 2018) based 
+
+> Copyright © 2026, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved.
+
+on querying a SAT solver for better solutions until there are none; and (iii) branch-and-bound approaches (Abram´ eand Habet 2014; Li, Many` a, and Planes 2005) with re-cent improvements through integration of clause learning techniques (Li et al. 2021, 2022). A majority of modern MaxSAT solvers implement variants of the core-based al-gorithms (Bacchus, J¨ arvisalo, and Martins 2021). Understanding how problem structure and encodings im-pact the efficiency of solvers is an important challenge towards further improving the current state of the art in MaxSAT solving. Previous work in this context in-cludes structure-based heuristics for increased solver effi-ciency, such as the so-called at-most-ones technique (Ig-natiev, Morgado, and Marques-Silva 2019) based on iden-tifying cliques of objective variables, and multilevel opti-mization (Argelich, Lynce, and Marques-Silva 2009), based on partitioning the objective into independent subparts. Both are widely employed in current solvers. We identify MaxSAT instances in which the constraints entail an ordering of the objective variables as an interesting instance class from the perspectives of problem structure, encodings, and MaxSAT solving. Various examples of do-mains in which MaxSAT encodings yielding instances with such ordered objectives can be identified. As we will expli-cate, one specific example are problems in which the un-derlying objective is to minimize the maximum of a spe-cific measure, i.e., min-max type optimization problems. MaxSAT encodings for min-max type problems in the litera-ture include e.g. treewidth (Berg and J¨ arvisalo 2014; Robert-son and Seymour 1986), judgment aggregation in computa-tional social choice (Conati, Niskanen, and J¨ arvisalo 2024; Endriss 2016), inconsistency measurement of propositional knowledge bases (Grant 1978; Niskanen et al. 2023), in-terpretable clustering (Shati, Cohen, and McIlraith 2023), 
+
+task allocation (Zheng, Cherif, and Shibasaki 2024), as well as graph coloring (Glorian et al. 2019; Van Gelder 2008). Specifically, natural encodings of such objectives re-sult in binary objective variables indicating that the maxi-mum value under minimization being bounded by different constants. This yields an ordering among the MaxSAT ob-jective variables that essentially hides the structure of the original objective. While this “hidden structure” in terms of the underlying semantics of such objective variables occurs naturally in various types of problems viewed as MaxSAT, The Fortieth AAAI Conference on Artificial Intelligence (AAAI-26) 
+
+> 14166
+
+modern solvers do not use it, and—despite successful ap-plications in such problem domains—actually incur runtime overheads on such encodings. Our main contributions are five-fold: (i) We define MaxSAT instances with ordered and almost-ordered objec-tives, and relate these properties with minimal unsatisfiable cores of instances being unit and all optimal solutions in-curring cost on the same soft constraints. (ii) We show em-pirically that a non-negligible percentage of MaxSAT in-stances in recent MaxSAT Evaluation benchmark sets can be identified to have ordered objectives by outlining algorith-mic ways for identifying whether a given MaxSAT instance has an ordered objective without knowledge of the under-lying problem structure. (iii) We identify various examples of MaxSAT encodings from the literature which yield in-stances with ordered objective, pointing out that care needs to be taken in the encodings to guarantee ordered objectives. (iv) We formally analyze the behaviour of core-based al-gorithms on MaxSAT instances having ordered objectives, and pointing out that the algorithms essentially “trivialize” to simplistic iterative approaches on such instances. (v) We empirically evaluate the performance various state-of-the-art MaxSAT solvers on problems yielding ordered objectives, showing that that state-of-the-art solvers can suffer from un-necessary performance overheads on such instances against a more simplistic iterative approach. Formal proofs, additional details, empirical data and im-plementation code are available in an online supplement at https://doi.org/10.5281/zenodo.17601897. 
+
+# 2 Maximum Satisfiability 
+
+A literal ℓ is a Boolean variable x or its negation ¬x. A clause C = ℓ1 ∨ · · · ∨ ℓn is a disjunction of literals and a (CNF) formula F = C1 ∧ · · · ∧ Cm is a conjunction of clauses. A clause may be viewed as a set of literals and a formula as a set of clauses. An assignment α maps vari-ables to 1 (TRUE ) or 0 (FALSE ). The semantics of assign-ments are extended to literals, clauses, and formulas stan-dardly: α(¬x) = 1 − α(x), α(C) = max {α(ℓ) | ℓ ∈ C}
+
+and α(F ) = min {α(C) | C ∈ F }. α is a solution to F if 
+
+α(F ) = 1 . A formula is satisfiable if it has a solution and unsatisfiable otherwise. A solution α may be viewed as the set of literals it assigns to 1, i.e., write ℓ ∈ α if α(ℓ) = 1 .An objective O ≡ P
+
+> i
+
+cibi is a pseudo-Boolean expres-sion where wlog. each bi is a variable and ci a positive con-stant. An assignment α over the (objective) variables in O
+
+has cost α(O) = P
+
+> i
+
+ciα(bi). For representational conve-nience, we use an “objective-based” view to (weighted par-tial) MaxSAT which is equivalent to the classical view of via soft and hard clauses (Ihalainen et al. 2024; Leivo, Berg, and J¨ arvisalo 2020) and better captures the representation that core-based MaxSAT solvers work with. An instance (F, O )
+
+of (weighted partial) MaxSAT consists of a formula F and an objective O. The goal in MaxSAT is to find an optimal solution, i.e., a solution α of F minimizing α(O) over all solutions to F . The optimal cost of (F, O ) is the cost of its optimal solutions. For representational simplicity, we as-sume that MaxSAT instances have solutions. The restriction of a solution α to objective variables is denoted by α|O .Core-based MaxSAT solvers use (unsatisfiable) cores . For convenience, with slight abuse of terminology, we say that a clause C is a core of a MaxSAT instance (F, O ) if (i) C
+
+contains only objective variables and (ii) every solution α of 
+
+F satisfies C, i.e., F ∧ ¬ C is unsatisfiable (with ¬C more typically called an unsatisfiable core). A core C is minimal (an MUS) if no subset Cs ⊂ C is a core. A core C of an instance (F, O ) can be seen as a local witness for a lower bound on its optimal cost: since any solution α must satisfy each core C, the cost of α cannot be lower than the smallest objective coefficient among the variables in C.
+
+# 3 Ordered Objectives in MaxSAT Instances 
+
+We turn to MaxSAT instances with ordered objectives. 
+
+## 3.1 Ordered Objectives 
+
+As a running example, we will use graph coloring, where the task is to compute the chromatic number of a given undirected graph G = ( V, E ), i.e., the minimum number of colors required to color each vertex without monochro-matic edges. Encoded as MaxSAT, we obtain for a given graph G a MaxSAT instance (F G, O G) with a one-to-one correspondence between solutions of F G and colorings of 
+
+G so that the cost of a solution α is the number of col-ors used in the coloring χα given by α. A natural such en-coding (see e.g. (Glorian et al. 2019)) defines the objective 
+
+OG ≡ Pnk=1 bk, where n is the number of nodes in G and 
+
+bk is an indicator for using at least k colors. More precisely, 
+
+α sets α(bk) = 1 if χα maps the nodes in V to at least k
+
+different colors. Evidently, if χα uses more than k colors, it uses more than k − 1 colors. Stated in terms of MaxSAT, if α(bk) = 1 , then α(bk−1) = 1 also holds. The following definition of an ordered objective captures more generally MaxSAT instances in which the constraints entail such an ordering on the objective variables. 
+
+Definition 1. A MaxSAT instance (F, O ) has an ordered ob-jective if there is an ordering ≺ of the variables in O such that α(b ∨ ¬ b′) = 1 (i.e., α(b′ → b) = 1 ) holds whenever α
+
+is any solution to (F, O ) and b and b′ are objective variables for which b ≺ b′.
+
+For a specific ordering ≺, an instance (F, O ) has an ordered objective wrt ≺. We say that an instance 
+
+(F, Pnk=1 ckbk) has an ordered objective to mean that it has an ordered objective wrt the natural ordering ≺ for which 
+
+bi ≺ bj whenever i < j .Instances with ordered objectives have simple MUS struc-tures; each MUS contains only a single literal. When instan-tiated for graph coloring, the following general proposition states that every coloring of a graph with a chromatic num-ber t has to use at least k colors for all k = 1 , . . . , t .
+
+Proposition 1. Any MUS C of an instance (F, Pnk=1 ckbk)
+
+that has an ordered objective contains a single literal. 
+
+An ordered objective also implies that the MUSes them-selves are ordered. 
+
+Corollary 1. The set of MUSes of an instance 
+
+(F, Pnk=1 ckbk) that has an ordered objective is ex-actly the set of unit clauses {(bi) | i < t} for some 
+
+1 ≤ t ≤ n + 1 .14167 As every optimal solution to a MaxSAT instance assigns at least one variable in each of its MUSes to 1, by Corollary 1 all optimal solutions to a MaxSAT instance (F, Pnk=1 ckbk)
+
+with an ordered objective, assign bi = 1 for i = 1 , . . . , t 
+
+to 1 for a fixed constant t and the rest to 0. In this sense, an ordered objective implies that fewer assignments of the objective variables need to be considered when computing optimal solutions. While an ordered objective implies unit-MUSes, the con-verse does not hold in general. 
+
+Example 1. Consider the instance (F, O ) with F =
+
+{(b1), (b1 ∨ b2), (b1 ∨ b3)} and O = b1 + b2 + b3. The only MUS of (F, O ) is (b1). The instance does not have an ordered objective. To see this, consider the two solutions 
+
+α1 = {b1, b 2, ¬b3} and α2 = {b1, ¬b2, b 3} and observe that 
+
+α1(b3 ∨ ¬ b2) = 0 while α2(b2 ∨ ¬ b3) = 0 .
+
+## 3.2 Almost-Ordered Objectives 
+
+When devising MaxSAT encodings, the semantics of objec-tive variables are often encoded using implications instead of bi-implications (equivalences). In case of graph coloring, e.g., implications are used to encode that bk is set to 1 when-ever at least k colors are used. The other direction would encode that bk is set to to 0 whenever fewer than k col-ors are used. However, this is not necessary as it is covered through minimizing the objective. This does, however, mean that there can be non-optimal solutions that assign objective variables to 1 “unnecessarily”. Consequently, the resulting instance may not have an ordered objective in the sense of Definition 1, even if the semantics of graph coloring imply that it should. The following definition of an almost-ordered objective captures more generally this intuition. 
+
+Definition 2. An instance (F, O ) has an almost-ordered ob-jective if there is an ordering ≺ of the variables in O for which α(b ∨ ¬ b′) = 1 holds whenever α is an optimal solu-tion to (F, O ), and b, b ′ objective variables for which b ≺ b′.
+
+For a specific ordering ≺, we say that an instance (F, O )
+
+has an almost-ordered objective wrt ≺. When writing an in-stance with an almost-ordered objective as (F, Pnk=1 ckbk),we implicitly assume that the ordering is natural. In contrast to an ordered objective, an almost-ordered ob-jective does not generally imply that all MUSes are units. 
+
+Example 2. Consider the MaxSAT instance (F, O ) with 
+
+F = {(b1 ∨ x), ∨(¬x ∨ b2)} and O = b1 + 2 b2. The unique optimal solution is α = {¬ x, b 1, ¬b2}. Thus α(b1 ∨ ¬ b2) = 1 so (F, O ) has an almost-ordered objective. One non-unit MUS of the the instance is (b1 ∨ b2).
+
+On the other hand, any instance that only has unit-MUSes has an almost-ordered objective. This follows from a more general observation: any MaxSAT instance for which all op-timal solutions assign the objective variables in the same way has an almost-ordered objective. The following defini-tion makes this precise. 
+
+Definition 3. A MaxSAT instance (F, O ) has a unique opti-mal objective-solution if α1|O = α2|O holds for any optimal solutions α1 and α2 of (F, O ).
+
+Having an almost-ordered objective is equivalent to hav-ing a unique optimal objective-solution. 
+
+Proposition 2. A MaxSAT instance (F, O ) has a unique optimal objective-solution if and only if it has an almost-ordered objective. 
+
+As any instance for which all MUSes are unit has a unique optimal objective-solution, we have the following. 
+
+Corollary 2. Assume that every MUS of an instance (F, O )
+
+is a unit. Then (F, O ) has an almost-ordered objective. 
+
+Any instance with an almost-ordered objective can be ex-tended to an instance with an ordered objective by comput-ing the ordered extension. 
+
+Definition 4. Let (F, O ) be an instance with an almost-ordered objective wrt ≺. The ordered extension of (F, O )
+
+is (F ∧ { (bi ∨ ¬ bj ) | bi ≺ bj }, O ).
+
+The following observation summarizes properties of or-dered extensions. 
+
+Observation 1. Let (F E , O ) be the ordered extension of an instance (F, O ) with an almost-ordered objective wrt ≺. The following hold. (i) (F E , O ) has an ordered objective wrt ≺.(ii) An optimal solution α to (F E , O ) is an optimal solution to (F, O ) and vice versa. 
+
+We end this section by noting that (almost-)ordered ob-jectives could also be studied through the lens of redundant clauses (Ihalainen, Berg, and J¨ arvisalo 2022). From that per-spective, an instance has an (almost-)ordered objective wrt. 
+
+≺ if (b ∨ ¬ b′) is entailed by the other clauses in (preserves the optimal solutions of) the instance for all b ≺ b′.
+
+# 4 Prevalence of Ordered Objectives 
+
+We show—both algorithmically and through a literature survey—that MaxSAT instances with (almost-)ordered ob-jectives arise in practice from various settings. Algorith-mically, we show that a non-negligible fraction of stan-dard MaxSAT Evaluation (MSE) benchmarks have (al-most-)ordered objectives. We also give concrete examples of problem domains in which natural MaxSAT encodings can be identified to result in instances with (almost-)ordered objectives without resorting to algorithmic identification. 
+
+## 4.1 Algorithmic Detection 
+
+To decide if an instance (F, O ) has an ordered objective, we first let PREC (b) = { b′ : F entails b → b′ } for each objective variable b Then, we define ≺ by b ≺ b′ iff 
+
+|PREC (b)| ≤ | PREC (b′)|, with ties broken arbitrarily. Our approaches for detecting ordered objectives are based on the following proposition. 
+
+Proposition 3. Let (F, O ), PREC (b) and ≺ be as defined earlier. The following statements are equivalent. (1) (F, O ) has an ordered objective. (2) (F, O ) has an ordered objective wrt ≺.(3) PREC (b) ⊆ PREC (b′) for all b ≺ b′.
+
+3 ⇒ 2 ⇒ 1 also hold for any subsets of PREC (b).
+
+Thus, given the sets PREC (b) for each objective vari-able, deciding if the instance has an ordered objective is 14168 Instances # Ord. Not Ord. AO Not AO Unweighted 1558 134 1266 589 556 Weighted 1545 29 1421 616 439 Table 1: MaxSAT Evaluations 2022–2024 benchmarks: In-stances determined (not) to have ordered and almost-ordered objectives are shown in the columns Ord. , ( Not Ord. ) and 
+
+AO. (Not AO ), respectively. equivalent to checking if PREC (b) ⊆ PREC (b′) for all 
+
+b ≺ b′. We consider two methods for computing PREC (b)
+
+for each objective variable b, the exhaustive approach 
+
+and unit-propagation-based lookahead . The exhaustive ap-proach uses a SAT solver to check if F ∧ ¬ (b → b′) is un-satisfiable for each pair b, b ′. If it is, F entails (b → b′) so 
+
+b′ ∈ PREC (b). The exhaustive method correctly computes the full PREC (b) for each b and thus, by Proposition 3, can identify any instance with an ordered objective. However, the number of SAT calls required is worst-case quadratic in the number of objective variables. Standard unit-propagation (UP) based lookahead provides an alternative polytime incomplete approach to constructing a subset of each PREC (b). Specifically, propagating a vari-able b on F returns some of the literals ℓ such that F implies 
+
+b → ℓ. Any objective variables returned when unit propagat-ing b are thus in PREC (b). While UP cannot in general con-struct the full PREC (b) for each b, by Proposition 3 checking if PREC (b) ⊆ PREC (b′) holds for all b ≺ b′ and any subsets of PREC (b) is sufficient for detecting an ordered objective. By Proposition 2, almost-ordered objectives can be de-tected by first obtaining an optimal solution α with one call to an exact MaxSAT solver, and then calling the solver again after adding the clause {¬ ℓ | ℓ ∈ α|O } that blocks the as-signment α over objective variables. If the MaxSAT solver returns a higher optimal cost on the second call than on the first call, the instance has a unique optimal objective-solution and thus, by Proposition 2, an almost-ordered ob-jective. Alternatively, by Corollary 1, some of the instances with almost-ordered objectives can be identified by check-ing if all MUSes are unit by enumeration (terminating early whenever a non-unit MUS is found). We applied the just-described detection algorithms (more details provided in the online supplement) on the 1558 un-weighted and 1545 weighted benchmarks MSE 2022-2024 benchmark sets (https://maxsat-evaluations.github.io) with duplicate instances filtered by filename. Table 1 reports the number of instances that could be detected to have an (almost-)ordered objective using a per-instance 5-h time and 32-GB memory limit. We detected ordered objectives in six unweighted domains and two weighted domains (in a total of 163 instances), and could determine the non-existence of ordered objectives on 1266 unweighted and 1421 weighted benchmarks, respectively. While unable to decide the non-existence of ordered objectives, UP-based lookahead was fast, taking on average 44 seconds. Turning to almost-ordered objectives, we found definitive answers for 1145 of 
+
+1558 unweighted and 1055 of 1545 weighted instances. Ap-proximately half of the instances with a definitive answer have an almost-ordered objective. We conclude that almost-ordered objectives indeed appear in a non-negligible fraction of the instances. 
+
+## 4.2 Problems with (Almost-)Ordered Objectives 
+
+Complementing detecting ordered objectives algorithmi-cally, encodings of various problem domains can be iden-tified by inspection to give rise to MaxSAT instances having (almost-)ordered objectives. We provide an overview of a(-n incomplete) selection of such MaxSAT applications from the literature. In min-max optimization the goal is to compute a so-lution α of a CNF formula F that minimizes max {gi(α) |
+
+i = 1 ..n } where each gi is a positive integer-valued func-tion. As max {gi(α) | i = 1 ..n } ≥ k implies max {gi(α) |
+
+i = 1 ..n } ≥ k − 1, it follows that MaxSAT encodings of such problems naturally yield instances with almost-ordered objectives. A natural encoding that uses a low number of clauses encodes the (integer) values of each gi into CNF us-ing the order encoding (Bailleux and Boufkhad 2003; Craw-ford and Baker 1994) with variables oik for which a solution 
+
+α sets α(oik) = 1 if gi(α) ≥ k. The minimization of the maximum value of the gi is achieved by introducing (i) new variables bk, (ii) clauses equivalent to ¬bk → Vni=1 (¬oik),and (iii) the objective O ≡ P 
+
+> k
+
+bk. Note that if α is a so-lution with α(bk) = 0 , then α(oik) = 0 for all i and thus 
+
+max {gi(α) | i = 1 ..n } < k . This abstract encoding scheme of min-max optimization results in instances with almost-ordered objectives but not ordered ones. Intuitively, this is because optimal solutions will not assign objective variables to 1 “unnecessarily”, but non-optimal solutions can. There are several ways of turning the instance into one that has an ordered objective. The ordered extension (Definition 4) would add clauses of the form bk → bk−1. Alternatively, one can add clauses equivalent to bk → (o1 
+
+> k
+
+∨ . . . ∨ onk ) and 
+
+oik → (gi(α) ≥ k), effectively enforcing the semantics of the bk and oik variables with equivalences. Various problem domains are intrinsically min-max op-timization. Even graph coloring fits this encoding scheme by taking gi(α) to be the index of the color of the ith node in the coloring α represents. Beyond coloring, we shortly overview further min-max optimization problem settings for which MaxSAT encodings yielding instances with (al-most-)ordered objectives have been proposed. 
+
+Treewidth is a central graph-theoretic measure generally for problems where their underlying structure can be repre-sented as a graph (Cygan et al. 2015). A proposed MaxSAT encoding for treewidth (Berg and J¨ arvisalo 2014; Samer and Veith 2009) minimizes the maximum out-degree of the ver-tices in the so-called triangulated graph induced by elimi-nation orderings. It includes for each vertex v the variables 
+
+cv,k , where cv,k = 1 if the degree of v in the triangulated graph is larger than k, and thus fits the abstract encoding scheme of min-max optimization. 
+
+Judgment aggregation (JA) is a well-studied problem in computational social choice (COMSOC) research (Endriss 2016) that deals with aggregating judgment sets expressed 14169 by individual agents regarding the validity of logical state-ments into a collective judgment. As one of the central rules studied in the COMSOC literature, the MaxHamming ag-gregation rule minimizes the maximum Hamming distance between the collective judgment set and the judgment sets of the voters. A recently-proposed MaxSAT encoding (Conati, Niskanen, and J¨ arvisalo 2024) of this problem can be viewed as an instantiation of the abstract encoding scheme as its ob-jective variables explicitly represent the range of possible values for the maximum Hamming distance. 
+
+Inconsistency measurement (IM) (Grant 1978; Grant and Martinez 2018; Thimm 2018; Thimm and Wallner 2019) refers to providing a quantitative characterization of the level of inconsistency of a knowledge base. A MaxSAT approach to IM (Niskanen et al. 2023), captures among others the so-called max-distance IM measure. While the problem encod-ings differ in terms of their underlying constraints, it can be identified that the MaxSAT encoding of the max-distance IM measure is analogous—in terms of its objective—to the encoding of JA under the MaxHamming rule. A further example of min-max problems comes from in-terpretable clustering under the objective of minimizing the maximum diameter (MD) of the clusters, i.e., the maxi-mum distance between two points assigned to the same clus-ter (Shati, Cohen, and McIlraith 2023). A recent MaxSAT encoding of the problem includes objective variables b− 
+
+> w
+
+for which a solution α that assigns α(b− 
+
+> w
+
+) = 0 represents a clus-tering in which any pair of datapoints x, y with a pairwise distance larger than w are assigned to different clusters. This encoding yields instances with an almost-ordered objective by the semantics of clusterings; if w1 ≤ w and α is opti-mal, then α(b− 
+
+> w1
+
+) = 0 . Finally, MaxSAT has also been pro-posed for solving min-max problems related to task alloca-tion with the aim to minimize the maximum power output of workstations (Zheng, Cherif, and Shibasaki 2024). 
+
+# 5 MaxSAT Solving on Ordered Objectives 
+
+We analyze the search performed by state-of-the-art MaxSAT algorithms on instances with ordered objectives. 
+
+## 5.1 Core-Based MaxSAT Solving 
+
+Essentially all core-guided and IHS-based MaxSAT solvers extract unsatisfiable cores with the assumption interface of-fered by modern CDCL SAT solvers (E´ en and S¨ orensson 2003; Marques-Silva, Lynce, and Malik 2021). Given a MaxSAT instance (F, O ) we abstract the core extraction step into the procedure ExtCore (F, A) where A is a set of as-sumptions that contain negations of the variables in O. The call returns a triplet (sat? , α, C ). The Boolean sat? indicates the satisfiability of F ∧ V 
+
+> ℓ∈A
+
+ℓ. If sat? = TRUE , C is un-defined and α is a solution of F that assigns each ℓ ∈ A to 
+
+1, extending A. If sat? = FALSE , α is undefined and C is an unsatisfiable core over the variables in A, serving as an explanation for the unsatisfiability of F ∧ V 
+
+> ℓ∈A
+
+ℓ in terms of A.
+
+Example 3. Consider the instance (F, O ) with F = ( b1 ∨
+
+x) ∧ (¬x ∨ b2 ∨ b3) ∧ (b2 ∨ y) ∧ (¬y ∨ b4) and O = b1 +3b2 + 5 b3 + 5 b4. An optimal solution α to (F, O ) assigns 
+
+Algorithm 1: CG , core-guided MaxSAT search 
+
+Input: Instance (F, O )
+
+Output: Optimal solution αbest  
+
+> 1:
+
+(CARD , O W ) ← (∅, O ) 
+
+> 2:
+
+while TRUE do  
+
+> 3:
+
+A ← {¬ b | cb ∈ OW } 
+
+> 4:
+
+(sat? , α best , C ) ← ExtCore (F ∧ CARD , A) 
+
+> 5:
+
+if sat? then return αbest  
+
+> 6:
+
+(OW , N C ) ← Relax (C, O W )  
+
+> 7: CARD
+
+← CARD ∧ N C
+
+α(x) = α(b2) = 1 and the other variables to 0, with optimal cost 3. The clause C = ( b1 ∨ b2 ∨ b3) is an MUS of (F, O ).
+
+ExtCore (F, {¬ bi | i = 1 .. 4}) returns sat? = FALSE and, e.g., the (non-minimal) core C2 = ( b1 ∨ b2 ∨ b4).
+
+Algorithm 1 details an abstraction of the core-guided ap-proach to computing an optimal solution to a MaxSAT in-stance (F, O ). Initially the set CARD of additional clauses is empty and the working objective OW is O (Line 1). Each iteration of the main loop (Lines 2–7) starts by invoking a SAT solver (Line 4) on F ∧ CARD assuming the negation of each variable in the working objective OW . This check returns TRUE if there is a solution α of F ∧ CARD with 
+
+α(OW ) = 0 . If so, α is optimal for F , resulting in termi-nation (Line 5). Otherwise, a new core C is obtained and the instance is relaxed (Line 6). The Relax subroutine returns a new working objective OW and additional clauses N C that are added to CARD (Line 7) before the loop is reiterated. Core-guided algorithms differ in the specifics of Relax 
+
+(see the online supplement for the OLL instantiation (An-dres et al. 2012; Morgado, Dodaro, and Marques-Silva 2014)). Our observations apply generally to core-guided al-gorithms via the intuition that for a core-guided algorithm to make progress, the relaxation must allow at least one vari-able in a core to be assigned to 1 in subsequent iterations. Specifically, when relaxing a core of size 1, core-guided al-gorithms remove the variable in the core from OW and do not add new clauses. Algorithm 2 details the implicit hitting set approach to MaxSAT. First (Line 1) the set CORES of cores is empty. Each iteration of the main loop (Lines 2–7) begins by com-puting wrt O a minimum-cost solution γ of CORES (Line 3). A SAT solver is then invoked (Line 5) on the clauses in F as-suming the negation of each objective variable in O assigned to 0 by γ. This query returns TRUE if there is a solution α of 
+
+Algorithm 2: IHS , IHS-based MaxSAT search 
+
+Input: Instance (F, O )
+
+Output: Optimal solution αbest   
+
+> 1: CORES
+
+← ∅  
+
+> 2:
+
+while TRUE do  
+
+> 3:
+
+γ ← MinCost-Sol (CORES , O ) 
+
+> 4:
+
+A ← {¬ b | γ(b) = 0 }) 
+
+> 5:
+
+(sat? , α best , C ) ← ExtCore (F, A) 
+
+> 6:
+
+if sat? then return αbest   
+
+> 7: CORES
+
+← CORES ∪ { C}14170 F with α(O) = γ(O). If so, α is optimal and the algorithm terminates (Line 6). Otherwise, a new core falsified by A is obtained, added to CORES (Line 7) and the loop reiterated. 
+
+Example 4. Invoke IHS on the instance from Example 3. Take (b1 ∨ b2 ∨ b3) as the first core extracted on Line 5. Then 
+
+MinCost-Sol returns the solution γ assigning γ(b1) = 1 
+
+and all other objective variables to 0. The next call to 
+
+ExtCore is made with A = {¬ b2, ¬b3, ¬b4} as assump-tions. The call returns e.g. (b2 ∨ b4). In the next iteration the only minimum-cost solution γ to CORES assigns γ(b2) = 1 
+
+and others to 0, and IHS terminates after calling ExtCore .
+
+We use CG-mus and IHS-mus to denote variants of CG 
+
+and IHS , respectively, in which the call to ExtCore on Line 5 is guaranteed to return an MUS. In practice, extract-ing an MUS by complete core minimization requires further SAT solver calls. 
+
+## 5.2 Core-Based Search and Ordered Objectives 
+
+We analyze the search of CG and IHS on instances with or-dered objectives. By Proposition 1 such instances also have unit-MUSes. Unit cores trivialize the computation of both 
+
+CG and IHS ; the Relax subroutine of CG simply removes the variable in each MUS from the working objective, while the only minimum-cost solution over a set of unit-MUSes that the MinCost-Sol subroutine of IHS can return as-signs the variables that occur in the discovered MUSes to 
+
+1 and the rest to 0. As a consequence (as formalized next), 
+
+CG-mus and IHS-mus , the versions of CG and IHS guar-anteed to extract MUSes on each iteration, perform essen-tially the same search on instances with unit-MUSes. 
+
+Proposition 4. Consider invoking CG-mus or IHS-mus 
+
+on a unit-MUS instance (F, O ). Assume that (i) there are 
+
+m MUSes in total, and that (ii) when given a unit-core (b),
+
+Relax removes b from OW and does not add any clauses to CARD . Then the following hold. 1) The main loop (Lines 2 to 7) of both algorithms is re-peated m + 1 times. 2) The set A formed on iteration i consists in both algo-rithms of exactly the negations of the objective variables that did not appear in the i − 1 first MUSes extracted. 3) CARD in CG-mus will be empty on every iteration. 
+
+Consequently, the CG-mus and IHS-mus algorithms ex-hibit best-case performance in the number of iterations re-quired by CG and IHS when solving instances with unit-MUSes, which include instances with ordered objectives. More specifically, by Proposition 4, both CG-mus and 
+
+IHS-mus require m+1 iterations when solving a unit-MUS instance (F, O ) that has m MUSes. To see that IHS and CG 
+
+need to perform at least m + 1 iterations, note that any opti-mal solution to (F, O ) assigns exactly m objective variables to 1 and that the number of variables of O that can be as-signed to 1 by (potential) solutions extending the assump-tions A used in the ExtCore invocations of both CG and 
+
+IHS will be 0 on the first iteration and increase by at most one on subsequent ones. Furthermore, CG and IHS may require more iterations if the algorithms do not always extract MUSes (which is in-deed the case in practical implementations), since this can 
+
+Algorithm 3: SimpleUS , simple search over an ordered objective. 
+
+Input: Instance (F, O ) with O ordered wrt ≺
+
+Output: An optimal solution αbest  
+
+> 1:
+
+{b1, . . . , b n} ← sort ({b | c · b ∈ O}, ≺); 
+
+> 2:
+
+for i = 1 ..n do  
+
+> 3:
+
+(sat? , α best , ) ← ExtCore (F, {¬ bi}) 
+
+> 4:
+
+if sat? then return αbest 
+
+lead to CG adding unnecessary clauses and IHS making the hitting-set instance unnecessarily large. To see this, consider an instance (Fn, O n) with On = Pni=1 i · bi and assume that 
+
+(bn) is its only MUS. An optimal solution α of the instance assigns α(bn) = 1 and α(bi) = 0 for all other i. By Propo-sition 4, CG-mus and IHS-mus require two iterations to return an optimal solution of (Fn, O n). In contrast, the next example describes a (worst-case) execution of IHS that re-quires n + 1 iterations. 
+
+Example 5. Invoke IHS on (Fn, O n). Assume that the core extracted in the first iteration is C1 = b1 ∨ · · · ∨ bn. The only minimum-cost solution γ to {C1} assigns γ(b1) = 1 
+
+and γ(bi) = 0 for all other i so the next assumptions used on Line 5 will be A = {¬ b2, . . . , ¬bn}. Assume that the second core extracted is C2 = b2 ∨ · · · ∨ bn. Then the next call to MinCost-Sol returns the solution γ that assigns 
+
+γ(b2) = 1 and γ(bi) = 0 for all other i, which in turns leads to the next call to ExtCore having {¬ b1, ¬b3, .., ¬bn} as assumptions. If IHS continues in the same manner, it will require in total n + 1 iterations before terminating. 
+
+An analogous example for the OLL algorithm, showing that a worst-case quadratic number of extra variables and clauses are introduced in the relaxation steps necessary for termination, is provided in the online supplement. 
+
+## 5.3 Ordered Objective-Specific MaxSAT Solving 
+
+We have established that on MaxSAT instances with ordered objectives (i) CG-mus and IHS-mus perform essentially the same search, and that (ii) CG and IHS algorithms might incur overhead in terms of iterations required and additional constraints added. We now discuss two simple MaxSAT al-gorithm variants for instances with ordered objectives. The algorithms can be instantiated without (costly) MUS extrac-tion, but still avoid the potential overheads of CG and IHS .The first algorithm, SimpleUS outlined as Algorithm 3, starts by sorting the variables in the objective according to 
+
+≺. Then, for increasing i, the algorithm invokes ExtCore 
+
+with the negation ¬bi of the ith objective variable bi in the sorted order as a single assumption. If sat? = FALSE ,the only core that ExtCore can return is the MUS (bi).If sat? = TRUE , the obtained solution α is optimal as it assigns α(bj ) = 1 for each j < i (since (bj ) is an MUS), and α(bk) = 0 for all k ≥ i (as (bi ∨ ¬ bk) holds due to the instance having an ordered objective). The nat-ural counterpart of this lower-bounding search performed by SimpleUS is SimpleSIS which—as a simple form of solution-improving search—tries the objective variables 14171 UW W Col JA TW (108) (17) (415) (50) (287) Solver # P2 # P2 # P2 # P2 # P2 
+
+SimpleSIS 88 1.8 13 2.4 387 0.5 27 3.8 143 3.8 
+
+SimpleUS 86 2.0 14 1.8 386 0.5 27 4.1 136 4.0 EvalSCIP 84 2.2 12 2.5 392 0.5 19 5.0 123 4.4 EvalNoSCIP 83 2.2 13 2.3 387 0.5 19 5.0 126 4.2 MaxHS 86 2.0 14 2.0 387 0.5 23 4.4 133 4.0 MaxCDCL 81 2.4 12 2.6 385 0.6 21 4.9 115 4.5 Pacose 70 2.9 11 3.3 380 0.6 13 5.7 85 5.2 Virtual Best 89 1.7 14 1.6 393 0.4 28 3.7 143 3.8 Table 2: Runtime comparison. #: number of solved in-stances. P2: PAR-2, average runtime in 1000-s units each unsolved instance contributing 2x the time limit. in reverse order and iterates until ExtCore returns UNSAT at which point the final solution is optimal. Note that we detailed SimpleSIS and SimpleUS to enable a comparison to modern core-based MaxSAT al-gorithms, with the aim of understanding the behaviour of core-based algorithms on instances with ordered objec-tives. SimpleSIS and SimpleUS are simplifications of solution-improving search (SIS) (Berre and Parrain 2010; E´ en and S¨ orensson 2006; Paxian, Reimer, and Becker 2018) and UNSAT/SAT search, respectively. Both use extra con-straints to represent the cost of solutions, and refine either a lower (UNSAT/SAT) or an upper (SIS) bound until an opti-mal solution is found. SimpleUS and SimpleSIS avoid the use of extra constraints by using the fact that an instance has an ordered objective. 
+
+## 5.4 Overhead of Core-Based MaxSAT in Practice 
+
+We evaluate the behavior of state-of-the-art core-based MaxSAT solvers on real-world problems yielding MaxSAT instances having ordered objectives. Specifically, we use both the unweighted (UW) and weighted (W) MSE 2022-2024 benchmark identified to have ordered objective and, as specific domains, judgment aggregation (JA) (Conati, Niskanen, and J¨ arvisalo 2024), graph coloring (Col) (Glo-rian et al. 2019; Van Gelder 2008) and treewidth (TW) (Berg and J¨ arvisalo 2014; Fichte, Hecher, and Szeider 2020; Samer and Veith 2009). The 50 JA instances based on real-world PrefLib data are from (Conati, Niskanen, and J¨ arvisalo 2024), encoding judgment aggregation under the MaxHam-ming rule. The 287 treewidth instances based on Treewidth-LIB graphs were obtained from the authors of (Fichte, Lodha, and Szeider 2017), limited due to problem hard-ness to graphs with at most 200 vertices. For graph color-ing, we obtained a total of 415 instances by using both the TreewidthLIB graphs and the DIMACS graph coloring in-stances (https://sites.cc.gatech.edu/dimacs10/). We evaluate the following state-of-the-art MaxSAT solvers: the OLL solver EvalMaxSAT (Avellaneda 2020) (both its pure OLL implementation EvalNoSCIP and the variation EvalSCIP that first attempts to solve the instance with the MIP solver SCIP (Bolusani et al. 2024) for 500 s before starting OLL search); MaxHS (Davies and Bac-chus 2013) as the state-of-the-art IHS solver; the solution-improving solver Pacose (Paxian and Becker 2023; Paxian, Reimer, and Becker 2018); and the clause learning branch-and-bound MaxSAT solver MaxCDCL (Li et al. 2022). We compare the runtime performance of these solvers and our implementations (available in the online supplement) of the the simple SimpleUS and SimpleSIS algorithms (recall Section 5) using the PySAT 1.8.dev13 interface (Ignatiev, Morgado, and Marques-Silva 2018) and Cadical 1.9.5 (Biere et al. 2024) as the SAT solver. The experiments were run un-der Ubuntu 18.04 on 10-core 2.4-GHz Intel Xeon E5-2640 v4 CPUs and 160 GB memory, enforcing a per-instance 3600-s time and a 32-GB memory limit. The results are shown in Table 2. The simplistic solvers perform slightly better than the state-of-the-art solvers on all benchmark domains. This is surprising as state-of-the-art MaxSAT solvers make use of a number of additional search heuristics and are typically considered more perfor-mant than performing linear search on the objective func-tion range (Bacchus, J¨ arvisalo, and Martins 2021). These results are in line with our theoretical observations for core-based algorithms: on ordered MaxSAT instances the typ-ically performance improving techniques implemented in state-of-the-art implementations of of core-based MaxSAT solvers are essentially rendered useless, as the performance of the solvers is at best similar to (or weaker than) the sim-plistic SimpleUS and SimpleSIS algorithms. 
+
+## 5.5 On Solving Almost-Ordered Objectives 
+
+Neither SimpleUS and SimpleSIS are directly guar-anteed to in general compute optimal solutions on in-stances with almost-ordered objectives, to see this invoke 
+
+SimpleUS on the MaxSAT instance (F, O ) from Ex-ample 2. However, both can be used to solve instances that have unit-MUSes. We also evaluated the performance of SimpleUS and SimpleSIS against state-of-the-art solvers on instances with almost-ordered objectives and unit-MUSes. The results show (see the online supplement) that the simplistic solvers outperform state-of-the-art solvers on instances with almost-ordered objectives, and that state-of-the-art solvers perform better on the ordered objective variants than on the almost-ordered variants. 
+
+# 6 Conclusions 
+
+We identified MaxSAT instances with ordered objectives as an interesting class of MaxSAT. A non-negligible fraction of MSE benchmarks have ordered objectives, as various prob-lem encodings (when taking care) yield ordered objectives. Core-based algorithms—both core-guided and implicit hit-ting set approaches—essentially trivialize (at best) to sim-plistic iterative search on MaxSAT instances with ordered objectives. Empirically, state-of-the-art MaxSAT solvers can suffer from overheads on MaxSAT instances having ordered objectives even against simplistic iterative search, suggest-ing that knowledge of ordered objectives can be beneficial when solving MaxSAT instances. 14172 Acknowledgements 
+
+The first and third authors are supported by the Research Council of Finland (grants 362987 and 356046). The sec-ond author is supported by an Amazon Research Award (Fall/2023). Further, the authors acknowledge support by the state of Baden-W¨ urttemberg through bwHPC and the German Research Foundation (DFG) through grant INST 35/1597-1 FUGG. The initial idea for this work was con-ceived during the extended reunion of the program “Satisfi-ability: Theory, Practice, and Beyond” in the spring of 2023 at the Simons Institute for the Theory of Computing at UC Berkeley. 
+
+# References 
+
+Abram´ e, A.; and Habet, D. 2014. Ahmaxsat: Description and Evaluation of a Branch and Bound Max-SAT Solver. J. Satisf. Boolean Model. Comput. , 9(1): 89–128. Andres, B.; Kaufmann, B.; Matheis, O.; and Schaub, T. 2012. Unsatisfiability-based optimization in clasp. In ICLP (Technical Communications) , volume 17 of LIPIcs , 211– 221. Schloss Dagstuhl - Leibniz-Zentrum f¨ ur Informatik. Ans´ otegui, C.; Didier, F.; and Gab` as, J. 2015. Exploiting the Structure of Unsatisfiable Cores in MaxSAT. In IJCAI ,283–289. AAAI Press. Ans´ otegui, C.; and Gab` as, J. 2017. WPM3: An (in)complete algorithm for weighted partial MaxSAT. Artif. Intell. , 250: 37–57. Argelich, J.; Lynce, I.; and Marques-Silva, J. 2009. On Solv-ing Boolean Multilevel Optimization Problemse. In IJCAI ,393–398. Avellaneda, F. 2020. A short description of the solver Eval-MaxSAT. In MaxSAT Evaluation 2020 , 8–9. Bacchus, F.; J¨ arvisalo, M.; and Martins, R. 2021. Maximum Satisfiability. In Biere, A.; Heule, M.; van Maaren, H.; and Walsh, T., eds., Handbook of Satisfiability - Second Edition ,volume 336 of Frontiers in Artificial Intelligence and Appli-cations , 929–991. IOS Press. Bailleux, O.; and Boufkhad, Y. 2003. Efficient CNF Encod-ing of Boolean Cardinality Constraints. In CP , volume 2833 of Lecture Notes in Computer Science , 108–122. Springer. Berg, J.; and J¨ arvisalo, M. 2014. SAT-Based Approaches to Treewidth Computation: An Evaluation. In ICTAI , 328–335. IEEE Computer Society. Berre, D. L.; and Parrain, A. 2010. The Sat4j library, release 2.2. J. Satisf. Boolean Model. Comput. , 7(2-3): 59–6. Biere, A.; Faller, T.; Fazekas, K.; Fleury, M.; Froleyks, N.; and Pollitt, F. 2024. CaDiCaL 2.0. In Gurfinkel, A.; and Ganesh, V., eds., CAV , volume 14681 of Lecture Notes in Computer Science , 133–152. Springer. Biere, A.; Heule, M.; van Maaren, H.; and Walsh, T., eds. 2021. Handbook of Satisfiability - Second Edition , volume 336 of Frontiers in Artificial Intelligence and Applications .IOS Press. ISBN 978-1-64368-160-3. Bjørner, N. S.; and Narodytska, N. 2015. Maximum Satisfi-ability Using Cores and Correction Sets. In IJCAI , 246–252. AAAI Press. Bolusani, S.; Besanc ¸on, M.; Bestuzheva, K.; Chmiela, A.; Dion´ ısio, J.; Donkiewicz, T.; van Doornmalen, J.; Eifler, L.; Ghannam, M.; Gleixner, A.; Graczyk, C.; Halbig, K.; Hedtke, I.; Hoen, A.; Hojny, C.; van der Hulst, R.; Kamp, D.; Koch, T.; Kofler, K.; Lentz, J.; Manns, J.; Mexi, G.; M¨ uhmer, E.; Pfetsch, M. E.; Schl¨ osser, F.; Serrano, F.; Shi-nano, Y.; Turner, M.; Vigerske, S.; Weninger, D.; and Xu, L. 2024. The SCIP Optimization Suite 9.0. Technical report, Optimization Online. Conati, A.; Niskanen, A.; and J¨ arvisalo, M. 2024. Declar-ative Approaches to Outcome Determination in Judgment Aggregation. J. Artif. Intell. Res. , 81: 793–836. Crawford, J. M.; and Baker, A. B. 1994. Experimental Results on the Application of Satisfiability Algorithms to Scheduling Problems. In AAAI , 1092–1097. AAAI Press / The MIT Press. Cygan, M.; Fomin, F. V.; Kowalik, L.; Lokshtanov, D.; Marx, D.; Pilipczuk, M.; Pilipczuk, M.; and Saurabh, S. 2015. Parameterized Algorithms . Springer. ISBN 978-3-319-21274-6. Davies, J.; and Bacchus, F. 2013. Exploiting the Power of MIP Solvers in MaxSat. In SAT , volume 7962 of Lecture Notes in Computer Science , 166–181. Springer. E´ en, N.; and S¨ orensson, N. 2003. Temporal induction by in-cremental SAT solving. In BMC@CAV , volume 89 of Elec-tronic Notes in Theoretical Computer Science , 543–560. El-sevier. E´ en, N.; and S¨ orensson, N. 2006. Translating Pseudo-Boolean Constraints into SAT. J. Satisf. Boolean Model. Comput. , 2(1-4): 1–26. Endriss, U. 2016. Judgment Aggregation. In Brandt, F.; Conitzer, V.; Endriss, U.; Lang, J.; and Procaccia, A. D., eds., Handbook of Computational Social Choice , 399–426. Cambridge University Press. Fichte, J. K.; Berre, D. L.; Hecher, M.; and Szeider, S. 2023. The Silent (R)evolution of SAT. Commun. ACM , 66(6): 64– 72. Fichte, J. K.; Hecher, M.; and Szeider, S. 2020. Breaking Symmetries with RootClique and LexTopSort. In CP , vol-ume 12333 of Lecture Notes in Computer Science , 286–303. Springer. Fichte, J. K.; Lodha, N.; and Szeider, S. 2017. SAT-Based Local Improvement for Finding Tree Decompositions of Small Width. In SAT , volume 10491 of Lecture Notes in Computer Science , 401–411. Springer. Fu, Z.; and Malik, S. 2006. On Solving the Partial MAX-SAT Problem. In SAT , volume 4121 of Lecture Notes in Computer Science , 252–265. Springer. Glorian, G.; Lagniez, J.; Montmirail, V.; and Szczepanski, N. 2019. An Incremental SAT-Based Approach to the Graph Colouring Problem. In CP , volume 11802 of Lecture Notes in Computer Science , 213–231. Springer. Grant, J. 1978. Classifications for Inconsistent Theories. 
+
+Notre Dame Journal of Formal Logic , 19(3): 435–444. Grant, J.; and Martinez, M. V., eds. 2018. Measuring In-consistency in Information , volume 73 of Studies in Logic .College Publications. 14173 Ignatiev, A.; Morgado, A.; and Marques-Silva, J. 2018. PySAT: A Python Toolkit for Prototyping with SAT Oracles. In SAT , 428–437. Ignatiev, A.; Morgado, A.; and Marques-Silva, J. 2019. RC2: an Efficient MaxSAT Solver. J. Satisf. Boolean Model. Comput. , 11(1): 53–64. Ihalainen, H.; Berg, J.; and J¨ arvisalo, M. 2022. Clause Re-dundancy and Preprocessing in Maximum Satisfiability. In 
+
+IJCAR , volume 13385 of Lecture Notes in Computer Sci-ence , 75–94. Springer. Ihalainen, H.; Oertel, A.; Tan, Y. K.; Berg, J.; J¨ arvisalo, M.; Myreen, M. O.; and Nordstr¨ om, J. 2024. Certified MaxSAT Preprocessing. In IJCAR (1) , volume 14739 of Lecture Notes in Computer Science , 396–418. Springer. Leivo, M.; Berg, J.; and J¨ arvisalo, M. 2020. Preprocess-ing in Incomplete MaxSAT Solving. In ECAI , volume 325 of Frontiers in Artificial Intelligence and Applications , 347– 354. IOS Press. Li, C.; Xu, Z.; Coll, J.; Many` a, F.; Habet, D.; and He, K. 2021. Combining Clause Learning and Branch and Bound for MaxSAT. In CP , volume 210 of LIPIcs , 38:1–38:18. Schloss Dagstuhl - Leibniz-Zentrum f¨ ur Informatik. Li, C.; Xu, Z.; Coll, J.; Many` a, F.; Habet, D.; and He, K. 2022. Boosting branch-and-bound MaxSAT solvers with clause learning. AI Commun. , 35(2): 131–151. Li, C. M.; and Many` a, F. 2021. MaxSAT, Hard and Soft Constraints. In Handbook of Satisfiability - Second Edition ,volume 336 of Frontiers in Artificial Intelligence and Appli-cations , 903–927. IOS Press. Li, C. M.; Many` a, F.; and Planes, J. 2005. Exploiting Unit Propagation to Compute Lower Bounds in Branch and Bound Max-SAT Solvers. In CP , volume 3709 of Lecture Notes in Computer Science , 403–414. Springer. Marques-Silva, J.; Lynce, I.; and Malik, S. 2021. Conflict-Driven Clause Learning SAT Solvers. In Handbook of Sat-isfiability , volume 336 of Frontiers in Artificial Intelligence and Applications , 133–182. IOS Press, 2 edition. Marques-Silva, J.; and Planes, J. 2007. On Using Un-satisfiability for Solving Maximum Satisfiability. CoRR ,abs/0712.1097. Morgado, A.; Dodaro, C.; and Marques-Silva, J. 2014. Core-Guided MaxSAT with Soft Cardinality Constraints. In CP ,volume 8656 of Lecture Notes in Computer Science , 564– 573. Springer. Narodytska, N.; and Bacchus, F. 2014. Maximum Satisfi-ability Using Core-Guided MaxSAT Resolution. In AAAI ,2717–2723. AAAI Press. Niskanen, A.; Kuhlmann, I.; Thimm, M.; and J¨ arvisalo, M. 2023. MaxSAT-Based Inconsistency Measurement. In 
+
+ECAI , volume 372 of Frontiers in Artificial Intelligence and Applications , 1779–1786. IOS Press. Paxian, T.; and Becker, B. 2023. Pacose: An Iterative SAT-based MaxSAT Solver. In MaxSAT Evaluation 2023 , 20. Paxian, T.; Reimer, S.; and Becker, B. 2018. Dynamic Poly-nomial Watchdog Encoding for Solving Weighted MaxSAT. In SAT , volume 10929 of Lecture Notes in Computer Sci-ence , 37–53. Springer. Robertson, N.; and Seymour, P. D. 1986. Graph Minors. II. Algorithmic Aspects of Tree-Width. J. Algorithms , 7(3): 309–322. Saikko, P.; Berg, J.; and J¨ arvisalo, M. 2016. LMHS: A SAT-IP Hybrid MaxSAT Solver. In SAT , volume 9710 of Lecture Notes in Computer Science , 539–546. Springer. Samer, M.; and Veith, H. 2009. Encoding Treewidth into SAT. In Kullmann, O., ed., SAT , volume 5584 of Lecture Notes in Computer Science , 45–50. Springer. Shati, P.; Cohen, E.; and McIlraith, S. A. 2023. Optimal De-cision Trees For Interpretable Clustering with Constraints. In IJCAI , 2022–2030. ijcai.org. Thimm, M. 2018. On the Evaluation of Inconsistency Mea-sures. In Grant, J.; and Martinez, M. V., eds., Measuring In-consistency in Information , volume 73 of Studies in Logic .College Publications. Thimm, M.; and Wallner, J. P. 2019. On the complexity of inconsistency measurement. Artificial Intelligence , 275: 411–456. Van Gelder, A. 2008. Another look at graph coloring via propositional satisfiability. Discret. Appl. Math. , 156(2): 230–243. Zheng, Z.; Cherif, S.; and Shibasaki, R. S. 2024. Optimizing Power Peaks in Simple Assembly Line Balancing Through Maximum Satisfiability. In ICTAI , 363–370. IEEE. 14174

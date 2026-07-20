@@ -1,0 +1,670 @@
+Title: Parameterization of (Partial) Maximum Satisfiability above Matching in a Variable-Clause Graph
+
+URL Source: https://ojs.aaai.org/index.php/AAAI/article/download/28628/29220
+
+Number of Pages: 8
+
+Markdown Content:
+# Parameterization of (Partial) Maximum Satisfiability above Matching in a Variable-Clause Graph 
+
+## Vasily Alferov 1, Ivan Bliznets 2, Kirill Brilliantov 3
+
+> 1
+
+Independent Researcher 
+
+> 2
+
+University of Groningen 
+
+> 3
+
+St. Petersburg Department of Steklov Mathematical Institute of the RAS vasily.v.alferov@gmail.com, iabliznets@gmail.com/i.bliznets@rug.nl, ki.br178@gmail.com 
+
+Abstract 
+
+In the paper, we study the Maximum Satisfiability and the Partial Maximum Satisfiability problems. Using Gal-lai–Edmonds decomposition, we significantly improve the upper bound for the Maximum Satisfiability problem pa-rameterized above maximum matching in the variable-clause graph. Our algorithm operates with a runtime of O∗(2 .83 k ), a substantial improvement compared to the previous approach requiring O∗(4 k ), where k denotes the relevant parameter. Moreover, this result immediately implies O∗(1 .14977 m)
+
+and O∗(1 .27895 m) time algorithms for the (n, 3) -MaxSAT and (n, 4) -MaxSAT where m is the overall number of clauses. These upper bounds improve prior-known upper bounds equal to O∗(1 .1554 m) and O∗(1 .2872 m). We also adapt the algorithm so that it can handle instances of Partial Maximum Satisfiability without losing performance in some cases. Note that this is somewhat surprising, as the existence of even one hard clause can significantly increase the hard-ness of a problem. 
+
+## Introduction 
+
+The Maximum Satisfiability (M AX SAT) problem holds sig-nificant importance in various fields of artificial intelligence, computer science, mathematics, and engineering due to its theoretical relevance, algorithmic challenges, and practical applications. M AX SAT is a natural extension of the well-studied Boolean Satisfiability (SAT) problem. Investigating MAX SAT contributes to a deeper understanding of the com-plexity landscape of optimization and decision problems. The study of the Satisfiability and Maximum Satisfiability problems provides insights into the boundaries of what al-gorithms can achieve. The Satisfiability problem was one of the first problems for which NP-completeness was shown. For a detailed survey about SAT and M AX SAT problems, we refer to (Biere, Heule, and van Maaren 2021). A diverse array of strategies has been employed to address the inher-ent complexity of the M AX SAT problem. These encompass a spectrum of approaches, including randomized, approxi-mation, exact, and parameterized algorithms. After a prolonged period of silence, new results from an exact exponential point of view start to appear for M AX SAT again. At AAAI-21 (Alferov and Bliznets 2021) presented 
+
+Copyright © 2024, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 
+
+a new algorithm, introducing a novel approach with a run-time of O∗(1 .0927 L)1, where L is the total number of lit-erals within the input formula. Building upon this progress, at AAAI-2023 Brilliantov et al. published a subsequent en-hancement that achieved an even more impressive upper bound of O∗(1 .0911 L) (Brilliantov, Alferov, and Bliznets 2023). It is worth highlighting that prior to these results, the previous best-known upper bound dated back over two decades ago (Bansal and Raman 1999), yielding an upper bound of O∗(1 .1057 L).This trend of improvements also extends to another cru-cial measure of the input formulas: the total number of clauses. At AAAI-2019, Xu et al. introduced an algorithm with a time complexity of O∗(1 .2989 m) (Xu et al. 2019), presenting a substantial leap in performance. Following this result, at IJCAI-2022, Xiao further refined the landscape by unveiling an algorithm with an improved time complexity of 
+
+O∗(1 .2886 m) (Xiao 2022). These advancements superseded the previously established best upper bound, which had re-mained unchallenged since 2004 (Chen and Kanj 2004). The number of clauses that one is asked to satisfy in a given CNF formula is also a natural and well-studied mea-sure. For this measure, the best-known algorithm was devel-oped in (Chen, Xu, and Wang 2015), and the running time of the algorithm is O∗(1 .325 k′
+
+), where k′ is the number of clauses that we need to satisfy (we note that generally this measure is denoted by k, in order to avoid ambiguity we de-note this measure by k′). In this paper, we study the M AX SAT problem from pa-rameterized point of view. Specifically, we study M AX SAT parameterized above lower bounds. The M AX SAT has sev-eral natural lower bounds computable in polynomial time. It is well known that there is a truth assignment that satisfies at least half of all clauses. If we consider an assignment π1
+
+that sets all variables to True, and assignment π2 that sets all variables to False then at least one of them satisfies at least half of all clauses. Let us denote by ℓ0 the number of all clauses satisfied by the assignment π1. It is obvious, that optimal truth assignment satisfies at least ℓ0 clauses. In or-der to compute the third lower bound we do the following. Let us construct a graph in which each vertex corresponds 
+
+> 1
+
+O∗(·) supresses polynomial factors similarly as O(·) su-presses constant factors The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+7918 either to a variable or to the clause from the input formula. We connect two vertices with an edge if and only if one of the vertices corresponds to a variable x, the other vertex cor-responds to a clause C, and a variable x belongs to C. The constructed graph we call a variable-clause graph, and de-note it by GF (in future, if F is clear from the context we simply write G). Let us compute the maximum matching 
+
+M in GF and denote it by ν(GF ). It is easy to see that we can set values of variables so that we satisfy at least ν(GF )
+
+clauses. Precisely, for each edge e in M , we pick a value of the variable corresponding to one of the endpoints of e so that the clause corresponding to the other endpoint is satis-fied. In parameterization above guarantee one is given an opti-mization problem, an integer k (parameter), a lower bound ℓ
+
+for an optimum value and the goal is to check if the optimum value is at least ℓ + k. An interested reader can find more details on parameterization above guarantee in a recent sur-vey (Gutin and Mnich 2022). Parameterization above lower bound m 
+
+> 2
+
+was introduced in (Mahajan and Raman 1999). It was shown there that M AX SAT admits an FPT-algorithm under such parameterization. Moreover, they showed that the problem can be reduced to M AX SAT where the num-ber of clauses that need to satisfy is used as a parameter without significant blow-up of the original parameter. In the case of a lower bound ℓ0, it was shown (Belova and Bliznets 2020) that the problem is NP-complete even for 
+
+k = 1 . For a parameterization above lower bound ν(GF )
+
+(Crowston et al. 2014) presented a deterministic algorithm with running time O∗(2 e)2k+O(log 2k), and randomized al-gorithm with running time O∗(8 k+O(√k)). Later, advances for (n − k)-S ET COVER problem lead to a O∗(4 k) algo-rithm for this parameterization (Basavaraju et al. 2016). In this paper we further improve algorithm for this parameter-ization. Note that the measure k′ (number of clauses that need to satisfy) also can be considered as parameterization above guarantee where the lower bound is 0. 
+
+Our Results 
+
+We employ Gallai-Edmonds decomposition and signifi-cantly improve upper bound for (n − k)-S ET COVER . The new algorithm works in 2 3k 
+
+> 2
+
+time improving previous O(4 k)
+
+time algorithm. This result imply 2 3k 
+
+> 2
+
+time algorithm for MAX SAT parameterized above maximum matching in a variable-clause graph. Besides we adapt reduction from MAX SAT to (n − k)-S ET COVER so that it can handle hard clauses. Formally, we prove that P ARTIAL MAXIMUM 
+
+SATISFIABILITY above maximum matching can be solved in 2 3k 
+
+> 2
+
+time if all hard clauses has length at most 2, and in time O∗(2 3k 
+
+> 2
+
++ 2 k · 1.12226 h) if the number of hard clauses is h. Moreover, our result imply O∗(1 .14977 k′
+
+),
+
+O∗(1 .14977 m) (here m is overall number of clauses in the input formula and k′ is the number of clauses that we need to satisfy) time algorithms for M AX SAT restricted to in-stances where each variable appears at most three times and an O∗(1 .27895 k′
+
+), O∗(1 .27895 m) time algorithms for MAX SAT instances where each variable appears at most four times. Note that previous best-known algorithms for these special cases were O∗(1 .1554 k), O∗(1 .1554 m) (Bril-liantov, Alferov, and Bliznets 2023), O∗(1 .2872 m) (Xiao 2022), O∗(1 .2989 k) (Brilliantov, Alferov, and Bliznets 2023). We complement our theoretical findings with com-putational experiments. Note that the goal of the algorithm to be efficient when parameter k is small (such instances can arise during an execution of branching algorithm). If this is not the case then even simple brute-force algorithm outperform our algorithm. We compare performance of our solver with the state-of-the-art open source MaxSAT solvers on type of instances for which our algorithm was designed. It is obvious that on general instances our algorithm will be less efficient as it does not contain sophisticated heuristics that are very useful on practice, however, lack proved guar-antee on the running time. Through this testing, our objec-tive was to determine whether there are scenarios in which our algorithm demonstrates superior performance compared to the currently most competitive solvers. Note that on prac-tice algorithms with the best proven guarantee can be signif-icantly slower than algorithms based on heuristics without proven efficiency. Turns out that in this setting our algorithm outperforms other solvers. 
+
+## Preliminaries 
+
+In the paper, we assume that a reader is familiar with con-cepts such as boolean variables, literals, and clauses. A vari-able x is an (i, j )-variable in the formula F if literal x and literal x appear i times and j times in F , respectively. For a variable x, we call literal x positive and literal x negative. Throughout the whole paper we assume that for each vari-able x literal x appears at least the same number of times as literal x. Note that if some variable x in a formula does not satisfy the property, we can simply replace all literals x
+
+with x′, and all literals x with x′. We call clause positive if it contains only positive literals. For convenience instead of clause (x1 ∨ x2 ∨ · · · ∨ xk) we often write slightly abusing notation simply x1x2 . . . x k. Interested readers may find de-tails about CNF formula, satisfiability, the M AX SAT prob-lem and further relevant information in (Marek 2009). We also assume that the reader is familiar with basic notions of parameterized algorithms, and branching algorithms. Rele-vant details for this two subjects can be found in (Cygan et al. 2015) and (Fomin and Kratsch 2010) respectively. In the paper, we study the M AXIMUM SATISFIABILITY prob-lem, for short M AX SAT. In the problem, one is given a for-mula F in CNF, integer k′ and the goal is to check if at least 
+
+k′ clauses can be satisfied in F . If we restrict our inputs to formulas where each variable appears at most s times we call such problem (n, s )-M AX SAT. We also consider P ARTIAL 
+
+MAXIMUM SATISFIABILITY problem, in this problem com-paring with M AX SAT we additionally have hard clauses that must be satisfied, i.e. we need to check if there is an assign-ment that satisfies all hard clauses and at least k′ clauses. Main focus of our paper is the M AXIMUM SATISFIABILITY 
+
+problem parameterized above matching. In this problem, we are given a formula F , an integer k and our goal is to check if we can satisfy at least ν(GF )+ k clauses in F , where ν(GF )
+
+is the size of the maximum matching in a variable-clause The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 7919
+
+graph GF , defined in the introduction. In future, sometimes we use shorthand ν(F ) instead of ν(GF ). For just presented problem we use shorthand (ν(F ) + k)-SAT. Similarly, if additionally we have hard clauses, we use shorthand Partial 
+
+(ν(F )+ k)-SAT. Throughout the whole paper, we denote the overall number of clauses in the input formula by m and the number of variables by n. If we apply reduction rule to an in-stance of Partial (ν(F )+ k)-SAT we say that initial instance has a formula F and a new instance has a formula F ′. More-over, a parameter of the initial instance is k and a parame-ter of a new instance is k′. As the key of our advances for MAX SAT is improvement for the (n−k)-S ET COVER prob-lem. We define the latter problem here. In the (n − k)-S ET 
+
+COVER problem we are given a universe U = {1, 2, . . . , n },a family F = {S1, S 2, . . . , S m} such that Si ⊂ U for any 
+
+1 ≤ i ≤ m, an integer k, and the goal is to check if there are 
+
+i1, i 2, . . . .i n−k such that Si1 ∪ Si2 ∪ · · · ∪ Sin−k = U.We also employ theorems about graphs and the Satisfia-bility problem listed below. 
+
+Theorem 1 (Szeider (2004)) . If a formula F contains n
+
+variables, n + 1 clause and ν(F ) = n then we can check in time O(n3) if F is satisfiable or not. 
+
+Theorem 2 (generalization of Hall’s lemma) . Let d ≥ 0, G
+
+– bipartite graph with parts A, B , such that for any X ⊆ A
+
+we have |N (X)| ≥ | X| − d. If M is a maximum matching in G then |M | ≥ | A| − d.
+
+Theorem 3 (Hopcroft and Karp (1973)) . Let G be a bipar-tite graph with bipartition V1 and V2, on n vertices and m
+
+edges. Then we can find a maximum matching of G in time 
+
+O(m√n). Furthermore, in time O(m√n) either we can find a matching saturating V1 or an inclusion-wise minimal set 
+
+X ⊂ V1 such that |N (X)| < |X|.
+
+Theorem 4 (Gallai–Edmonds decomposition) . For any graph G, we can split in polynomial time its vertices into three sets C, B, D such that for any maximum matching 
+
+M in G, we have: (i) there is no edge going from the set 
+
+C to the set D; (ii) all connected components of G[C] have an even number of vertices and contain perfect matching; (iii) all connected components in G[D] consist of an odd number of vertices and are factor-critical; (iv) matching M
+
+induces a perfect matching in C, an almost perfect match-ing in each connected component of G[D] (almost perfect matching cover all vertices except one vertex); (v) matching 
+
+M to each vertex from the set B assign its unique connected component of G[D] with which the vertex is connected by an edge from M .
+
+Theorem 5 (Fomin and Kratsch (2010), Corollary 3.25) .
+
+Pnj=0 
+
+Pmin(2 j,n )
+
+> k=j
+
+ n−jk−j
+
+ = O(poly (n) · φn), here and later 
+
+φ denotes 12 (√5 + 1) .
+
+Due to space constraints all proofs of Section ”Partial Maximum Satisfiability” are deferred to the full version. 
+
+## Partial Maximum Satisfiability 
+
+Crowston et al. (2014) essentially proved the following the-orem. 
+
+Theorem 6 ( Crowston et al. (2014)) . If (n−k)-SET COVER 
+
+admits an algorithm with running time f (k) = Ω(2 k) then 
+
+(ν(F ) + k)-SAT admits O∗(f (k)) -time algorithm. 
+
+Inspired by Reduction and Branching rules from (Crow-ston et al. 2014), we construct adapted Reduction and Branching rules for Partial (ν(F ) + k)-SAT such that even-tually for some special cases of Partial (ν(F ) + k)-SAT we obtain the same upper bound as for (ν(F ) + k)-SAT. Note that existence of such modification is somewhat surprising as generally existence of hard clauses makes problem signif-icantly more difficult from theoretical point of view. In the following example we show that the presence of only one short hard clause significantly changes computational com-plexity of a problem. Consider a family of formulas that have the following type xC 1∧xC 2∧· · ·∧ xC m∧x∧x. It is obvious that we can satisfy maximum m+1 clause in such formulas, and it is enough to set x = 1 to do this. Hence, M AX SAT is solvable in polynomial time on this type of instances. It is enough to check that an input instance match the format and count the overall number of clauses. However, if we consider PARTIAL MAX SAT on this type of instances and mark x as a hard clause then essentially we have to solve M AX SAT on the formula C1 ∧ · · · ∧ Cm where there is no restric-tion on clauses C1, C 2, . . . , C m at all. Therefore P ARTIAL 
+
+MAX SAT restricted to these instances cannot be solved us-ing 2o(m) time assuming the Exponential Time Hypothesis. Hence, this example provides us with an exponential gap be-tween the running time of algorithms for M AX SAT and the running time for P ARTIAL MAX SAT assuming ETH. We prove the following theorem in this section. 
+
+Theorem 7. If (n−k)-SET COVER is solvable in O∗(f (k)) 
+
+time where f (k) ≥ 2k then Partial (ν(F ) + k)-SAT ad-mits a O∗(f (k)) time algorithm on instances where all hard clauses have length at most 2. Moreover, under the same as-sumption Partial (ν(F ) + k)-SAT admits O∗(f (k) + 2 k ·
+
+1.12226 h) time algorithm on formulas with h hard clauses. 
+
+Before we present proof of the above theorem, we provide several Reduction rules and prove their correctness. If Re-duction rule R is applied to an instance (F, k ) and produces an instance (F ′, k ′) then we say that R is correct if: (i) (F, k )
+
+is a Y ES -instance if and only if (F ′, k ′) is a Y ES -instance; (ii) k′ ≤ k; (iii) number of hard clauses in F ′ is not larger then number of hard clauses in F ; (iv) if all hard clauses in 
+
+F have length at most 2 then all hard clauses in F ′ also have length at most 2. Similarly, for correctness of a Branching rule that produces two instances (F1, k 1), (F2, k 2) we re-quire: (i) (F, k ) is a Y ES -instance if and only if (F1, k 1) or 
+
+(F2, k 2) are Y ES -instance instances; (ii) k1, k 2 < k ; (iii)the number of hard clauses in F1, F 2 is not larger then the num-ber of hard clauses in F ; (iv) if all hard clauses in F have length at most 2 then all hard clauses in F1, F 2 have length at most 2.
+
+Lemma 1. Let M be a maximum matching in a variable-clause graph of a formula F , and let πM be a satisfying assignment that correspond to this matching (clauses from 
+
+M are satisfied by variables from M ). If πH is a satisfying assignment that satisfies all hard clauses in F then in poly-nomial time we can construct a truth assignment π such that The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 7920
+
+π satisfies all hard clauses and overall number of satisfied clauses is at least ν(F ).
+
+Previous lemma implies our first Reduction rule. 
+
+Reduction rule 1. If k ≤ 0, and all hard clauses have length at most 2 then solve the instance in polynomial time. Otherwise, solve the instance in time O∗(1 .2226 h) where h
+
+is the total number of hard clauses in F .
+
+Reduction rule 2. If formula contains a clause C = llC ′
+
+for some literal l then delete the clause. Decrease the pa-rameter by one if the matching size in the variable-clause graph did not change, and leave the parameter unchanged if the matching size decreased by one. 
+
+Reduction rule 3. If there is a literal l such that literal l
+
+does not appear in F then set l = 1 and recompute the value of the parameter. 
+
+Reduction rule 4. If there is variable x such that F contains hard clauses x and x then return NO.
+
+Reduction rule 5. If formula contains hard clause l where 
+
+l is some literal, then set l = 1 and recompute the value of the parameter. 
+
+Reduction rule 6 (Resolution) . If F contains a (1 , 1) -variable x with clauses xC, xD then we replace these two clauses with clause CD . Moreover, we mark the new clause as a hard clause if and only if both clauses xC, xD were marked as hard. After that we recompute the value of the parameter depending on the change of the maximum match-ing. 
+
+We call a bipartite graph G with parts A, B t -expanding if for each X ⊆ A, X ̸ = ∅ we have |NG(X)| ≥ | X| + t. Sim-ilarly, we call a formula F t -expanding if the corresponding variable-graph GF is t-expanding. 
+
+Reduction rule 7. If the variable-clause graph G of the for-mula F is not 1-expanding i.e. there is a set of variables C
+
+such that |NG(C)| ≤ | C| then find such inclusion minimal set C and assign values to the variables from C so that all clauses from |NG(C)| are satisfied. 
+
+From now on we can assume that for the input formula F
+
+the variable-clause graph is 1-expanding. If variable-clause graph G of the formula F is not 2-expanding then we find a set of variables S such that 
+
+|NG(S)| = |S| + 1 . We can find such set in polynomial time by Lemma 8 in (Crowston et al. 2014). Denote by FS aformula that we get if we delete all variables from F except for the variables from the set S. We apply Theorem 1 to the formula FS and check if FS is satisfiable. 
+
+Reduction rule 8. If FS is satisfiable, then we assign values to the variables from S such that all clauses in N (S) are satisfied. 
+
+Reduction rule 9. If FS is not satisfiable we delete from the formula F the set of clauses corresponding to NG(S) and add a new clause which contains all literals from all clauses of NG(S) except literals of variables from the set S. Let us call the new clauses C. We mark C as hard if and only if all clauses in NG(S) are hard. 
+
+After application of all Reduction Rules listed above we apply branching rules. Before we present the branching rules, we prove the following lemma. 
+
+Lemma 2. If formula F has 2-expanding variable-clause graph and x is (a, 1+)-variable with a > 1 then ν(Fx=1 ) ≥
+
+ν(F ) − a + 1 .
+
+Branching rule 1. If k > 0 and there is (2 +, 2+)-variable 
+
+x in F then we consider two branchings x = 0 and x = 1 .In both branchings we recompute the value of the parameter and it drops at least by one. 
+
+If Branching rule 1 is not applicable, we try to apply the following Branching rule. 
+
+Branching rule 2. If the formula F contains a clause xyC 
+
+then consider two branchings F [x = 1] and F [y = 1] . In both branchings we recompute the value of the parameter and it drops at least by one. 
+
+Note that if none of the above rules is applicable, then negative literals appear exactly once (as for each variable x
+
+literal x appears at least the same number of times as literal 
+
+x), and each clause contains at most one negative literal. If 
+
+F has this type, then we assign to it the following directed graph DF : for each variable x we introduce a vertex vx, for each clause xy 1 . . . y k we introduce edges vxvy1 , . . . , v xvyk .
+
+Reduction rule 10. If DF contains a cycle vz0 vz1 . . . v zℓ
+
+then set z0 = z1 = · · · = zℓ = 1 .
+
+Lemma 3. If none of the above rules is applicable to the formula F , then Partial (ν(F ) + k)-SAT and (ν(F ) + k)-
+
+SAT are equivalent on the formula F . Formally, if π satisfies 
+
+k clauses in F then there is an assignment π′ that satisfies 
+
+k clauses in F and all hard clauses in F . Moreover, given π
+
+we can find π′ in polynomial time. 
+
+The above lemma helps us to reduce Partial (ν(F ) + k)-SAT to (ν(F ) + k)-SAT. Now, we can apply all reductions from (Crowston et al. 2014) without any adaptation. The following Reduction rule was presented in (Crowston et al. 2014) as Lemma 11. 
+
+Reduction rule 11 (Crowston et al.) . If there is a vari-able x such that F contains clauses xC 1, . . . , xC i, xD 
+
+(this is an exhaustive list of all clauses containing variable 
+
+x) and D is non-empty. Then replace these clauses with 
+
+xC 1D, . . . , xC iD, x correspondingly. 
+
+After exhaustive application of all rules above all vari-ables are (i, 1) -variables and for each variable x there is a clause x and it is the only occurrence of the literal x.Now, we show how to transform our current instance of 
+
+(ν(F ) + k)-SAT into (n − k)-S ET COVER . First of all, note that for the current instance there is an optimal matching that satisfies all clauses with positive literals. Indeed all clauses with negative literals contain only one literal i.e. can be ex-pressed as x. Moreover, all such clauses are not hard as oth-erwise Reduction rule 5 is applicable. So, if clauses with positive literal x is not satisfied then we can flip value of x.In this case we satisfy at least one clause and at most one clause become unsatisfiable and this is not a hard clause. Therefore, from now on we are looking for an assignment that satisfies all positive clauses. Note that matching in the The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 7921
+
+variable-clause graph has size n as we simply can match each variable xi with the clause xi. Our reduction works in the following way: (i) for each positive clause Cj we create an element j; (ii) for each variable xi we create a set Si, the set Si contains an element j if and only if xi ∈ Cj . So, our instance of S ET COVER has universe U of size n′ = m − n,and a family of covering sets F of size m′ = n. Note that we can satisfy ν(F )+ k = n+k clauses in F if and only if there is a covering containing at most n′−k = m−n−k sets in the constructed S ET COVER instance. Indeed, if π is an assign-ment satisfying n+k clauses and all positive clauses, then at least (n + k) − (m − n) = 2 n + k − m variables are set to 0.Hence, there is at most n−(2 n+k−m) = m−n−k = n′−k
+
+variables that are set 1, and family {Si|π(xi) = 1 } cov-ers the whole U. Moreover, if sets Si1 , S i2 , . . . , S ip cover 
+
+U, then an assignment with xi1 = xi2 = · · · = xip = 1 
+
+and all other variables set to 0 satisfy C1, . . . , C m−n and 
+
+n − p clauses from x1, x 2, . . . , x n. Hence, covering with 
+
+p = n′ − (n′ − p) = n′ − k′ sets was converted into a assign-ment satisfying m−n+( n−p) = ν(F )+ n′ −p = ν(F )+ k′.Similar reduction was described in (Crowston et al. 2014)), so more details can he found there. Hence, in order to solve Partial (ν(F ) + k)-SAT it is enough to solve (n − k)-S ET 
+
+COVER .In order to transform Partial (ν(F ) + k)-SAT to (n − k)-SET COVER we use Reduction rules and Branching rules. Note that Reduction rules can by applied in polynomial time. All of the Branching rules have two cases and parameter decreases by 1 in both cases. Hence, all of the branching factors are 2. After exhaustive application of the reduction and branching rules either we obtain an instance with k = 0 
+
+or we reduce the problem to (n − k)-S ET COVER . Hence, we proved Theorem 7. 
+
+## Algorithm for (n − k)-S ET COVER 
+
+In this section we present O∗(2 32 k) time algorithm for 
+
+(n − k)-S ET COVER . By Theorem 7, this result implies that 
+
+(ν(F ) + k)-SAT admits an O∗(2 32 k) time algorithm. 
+
+Theorem 8. (n − k)-S ET COVER admits an O∗(2 32 k) time algorithm. Proof. First of all our algorithm checks if each element is contained at least in one set. If it is not the case then we can immediately output N O. After that, our algorithm execute a simple greedy procedure. The procedure goes through all sets in arbitrary order and picks a set S′ into cover if the set 
+
+S′ cover at least 3 new elements. The greedy procedure stops when each of the remaining sets covers at most two new elements. We denote by A the subset of all covered elements at the greedy step, and by R we denote the set of all sets that were picked during the procedure. Note that if A ≥ 32 k then there is a set cover of size at most n − k. Indeed, there are n − | A| uncovered elements, it is obvious that they can be covered by n − | A| sets (roughly speaking for each element we have a special set covering it). Hence, our covering contains at most |R| + n − | A| sets. Recall that each set in R covers at least 3 new elements, hence, we have that R ≤ 13 |A|. Hence, our covering is of size at most |R| + n − | A| ≤ n − 23 |A| ≤ n − k.It means that from now on we can assume that |A| ≤ 32 k,and |R| ≤ 12 k.Now we consider elements from the set V = U \ A. By the definition of the set A we have that each set from the family F covers at most two elements in V . We construct graph G based on V and F. Each vertex in G corresponds to an element from the set V . Vertices u, v in G are connected by an edge if there is a W ∈ F that contains both elements from V that correspond to vertices u, v .Denote by M a maximum matching in the graph G. Note that if |M | ≥ k − | A| + |R| then our instance of (n − k)-S ET 
+
+COVER is a Y ES -instance. Indeed, consider a covering that contains all sets from R, sets that correspond to edges from the matching M , and for each yet uncovered element, we use a new set. Note that the number of elements not covered by sets from R and sets corresponding to edges from M is exactly n − | A| − 2|M |. So, overall constructed covering contains |R| + |M | + ( n − | A| − 2|M |) = n + |R| − | A| − |M | ≤ n + |R| − | A| − (k − | A| + |R|) = n − k sets. Therefore, from now on without loss of generality, we can assume that |M | < k − | A| + |R|.Now, for the graph G, we find a set B described in Gallai-Edmonds decomposition (Theorem 4). Recall that all edges in M cover at most one vertex from B and all vertices in B are covered by M . Hence, |B| ≤ | M |. Let H be a connected component in the graph G \ B. We know that 
+
+M covers almost all vertices in H (at most one vertex is not covered) solely by edges fully contained in H. Hence, 
+
+|V (H)| ≤ 2( |M | − | B|) + 1 ≤ 2( k − | A| + |R| − | B|) + 1 .Denote by A′ = A ∪ B, V ′ = V \ B. We order vertices in 
+
+V ′ such that vertices of each connected component in G[V ′]
+
+are consecutive in the ordering. Let us denote the ordering by π.Now our algorithm employs dynamic programming. We fill in some cells in the table dp indexed by a subset X ⊆
+
+A′ and a subset Y ⊆ V ′. Our goal is to store in the cell 
+
+dp (X, Y ) a minimum number of sets from F that are needed to cover the set X ∪ Y . We note that we compute values not in all cells of the table dp and we do not create a whole table in a memory to store the data. We compute the values only in those cells that will be required to compute the value 
+
+dp (A′, V ′).We perform a computation of values in the table dp (·, ·)
+
+in the following way. First of all we initialize dp (∅, ∅) = 0 ,undefined values we treat as +∞. Knowing the value in the cell dp (X, Y ) we take the smallest element v (smallest with respect to the ordering π) in V ′ \ Y . For each subset S ∈F such that v ∈ S we update a value in the cell dp (X ∪
+
+(S ∩ A′), Y ∪ (S ∩ V ′)) with the value min {dp (X ∪ (S ∩
+
+A′), Y ∪ (S ∩ V ′)) , dp (X, Y ) + 1 }. After that we go to the next cell dp (X, Y ) such that: (i) value dp (X, Y ) was already updated; (ii) value of minimum element in V ′ \ Y is the smallest among all potential pairs dp (X, Y ). Finally, when we exhaust all elements from V ′ we fix some ordering σ
+
+on F, and in order σ for all S ∈ F and all X ⊆ A′ we update answers in cells dp (X ∪ (S ∩ A′), V ′) with value The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+> 7922
+
+dp (X, V ′) + 1 , i,e. we run simple dynamic programming for a set cover with the second coordinate being fixed with the value V ′.
+
+Claim 1. After execution of the algorithm the cell 
+
+dp (A′, V ′) stores a minimum number of sets from F re-quired to cover the set U = A′ ∪ V ′.Proof. First of all note that the value of the smallest element uncovered by a set Y never decreases. Indeed, staying in the cell dp (X, Y ) we update values only in cells (X′, Y ′) such that Y ⊊ Y ′.Let A ⊆ F be an optimum answer. We order sets in A
+
+in the following way: (i) let S′ 
+
+> 1
+
+∈ A be an arbitrary set con-taining the smallest element in V ′; (ii) let S′ 
+
+> 2
+
+∈ A be an arbitrary set containing the smallest element in V ′ \ S′
+
+> 1
+
+; (iii) let S′ 
+
+> 2
+
+∈ A be arbitrary set containing the smallest element in V ′ \ (S′ 
+
+> 1
+
+∪ S′
+
+> 2
+
+); (iv) and so on until we cover all ele-ments in V ′; (v) after that we list the rest of sets from A in order σ. We assume that we obtain the following ordering 
+
+S′
+
+> 1
+
+, S ′
+
+> 2
+
+, . . . , S ′|A| . Denote by Ti = Sij=1 S′ 
+
+> j
+
+.We prove that dp (Ti ∩ A′, T i ∩ V ′) ≤ i by induction. It is obvious for i = 0 , dp (∅, ∅) = 0 = i. If V ′̸ ⊆ Ti−1, then by definition of S′ 
+
+> i
+
+staying in cell (Ti−1 ∩ A′, T i−1 ∩ V ′),we update dp (( Ti−1 ∪ Si) ∩ A′, (Ti−1 ∪ Si) ∩ V ′) = ( Ti ∩
+
+A′, T i ∩V ′) with the value dp (Ti−1 ∩A′, T i−1 ∩V ′)+1 ≤ i.If V ′ ⊆ Ti−1, then being in cell dp (Ti−1 ∩A′, V ′) we update cell dp (( Ti−1 ∪ S′
+
+> i
+
+) ∩ A′, V ′) = ( Ti, V ′) with the value 
+
+dp (Ti ∩ A′, V ′) + 1 . Moreover, at this point we know that 
+
+dp (Ti−1 ∩ A′, V ′) ≤ i − 1.Therefore, dp (A′, V ′) ≤ |A| . Note, that we always can construct a covering with at most dp (A′, V ′) sets simply an-alyzing which sets we used in dynamic programming step. Hence, dp (A′, V ′) = |A| .Essentially above claim proves the correctness of the al-gorithm. It is left to prove an upper bound on the running time. First of all, note that running time of the last phase of the dynamic programming when the second coordinate Y
+
+equals to V ′ is O∗(2 |A′|) (essentially this is standard dy-namic programming for the S ET COVER problem). Recall that π order all vertices of V ′ such that connected components of G[V ′] induce a consecutive blocks in the π.So, essentially π also induce an ordering on connected com-ponents of G[V ′]. Let us denote connected components of 
+
+G[V ′] by H1, H 2, . . . , H r . We can assume that all vertices in Hi are smaller than all vertices in Hj if i < j .Note that the running time of our algorithm up to poly-nomial time is equal to the number of updated cells in the table dp (·, ·). Let (X, Y ) be one of such cells. If the small-est vertex outside of Y belongs to Hi then Y contains only vertices from connected components H1, H 2, . . . H i.Moreover, Y contains all vertices from H1, H 2, . . . H i−1.Let us denote by f (Hi) a number of all Y ′ ⊆ Hi such that there is X and the cell (X, Y ′ ∪ Si−1 
+
+> j=1
+
+Hj ) was up-dated. It is easy to see that the overall number of updated cells is at most 2|A′|(f (H1) + f (H2) + · · · + f (Hr )) ≤
+
+r2|A′| · max i f (Hi) = O∗(2 |A′| max i f (Hi)) . Now we pro-vide an upper bound on the number f (Hi). Let π defines the following ordering vi
+
+> 1
+
+, v i
+
+> 2
+
+, . . . v i 
+
+> |Hi|
+
+on the vertices of the connected component Hi. Note that if Y ′ ⊆ Hi with de-scribed properties, and {vi
+
+> 1
+
+, v i
+
+> 2
+
+, . . . , v ij } ⊆ Y ′, vij+1 ̸ ∈ Y ′
+
+then |Y ′| ≤ 2j. Indeed we always increase the second co-ordinate by some set with at most two elements and one of this elements is currently the smallest uncovered element. So, each Yi with cell (X, Y ′ ∪ Si−1 
+
+> j=1
+
+Hj ) being updated can be constructed in the following way: fix some j, take first 
+
+j elements from the Hi, and take at most j elements from the set Hi \ { vi
+
+> 1
+
+, v i
+
+> 2
+
+, . . . , v ij }. Therefore the total number of all such Y ′ is at most: P|Hi|
+
+> j=0
+
+Pmin(2 j, |Hi|)
+
+> k=j
+
+ |Hi|− jk−j
+
+ ≤
+
+P |Hi|
+
+> 2
+> j=0
+
+Pmin(2 j, |Hi|)
+
+> k=j
+
+ |Hi|− jk−j
+
+ + P|Hi| 
+
+> j=|Hi|
+> 2
+
+P|Hi|
+
+> k=j
+
+ |Hi|− jk−j
+
+.
+
+Note that P|Hi| 
+
+> j=|Hi|
+> 2
+
+P|Hi|
+
+> k=j
+
+ |Hi|− jk−j
+
+ ≤ |Hi|2 |Hi| 
+
+> 2
+
+. By Theorem 5 we have that P |Hi|
+
+> 2
+> j=0
+
+Pmin(2 j, |Hi|)
+
+> k=j
+
+ |Hi|− jk−j
+
+ ≤O∗(φ|Hi|). Since, √2 < φ we have that f (Hi) ≤O∗(φ|Hi|). Therefore, overall running time of the algo-rithm is O∗(φmax i |Hi|2|A′|). It is left to bound the expres-sion in terms of k. In order to do that we compute loga-rithm base 2 of this expression log 2
+
+
+
+φmax i |Hi|2|A′|
+
+
+
+=
+
+|A′| + (max i |Hi|) log 2 φ. 
+
+Recall that |A′| = |A| + |B|, and |Hi| ≤ 2( k − | A| +
+
+|R| − | B|) + 1 . Hence, the above expression is bounded by 
+
+|A| + |B| + (2( k − | A| + |R| − | B| + 1) log 2 φ =
+
+|A| · (1 − 2 log 2 φ) + |B| · (1 − 2 log 2 φ) + |R| · 2 log 2 φ ++ k · 2 log 2 φ + log 2 φ. 
+
+Since, 1 − 2 log 2 φ < 0, the expression is not larger than 
+
+|A| · (1 − 2 log 2 φ) + |R| · 2 log 2 φ + k · 2 log 2 φ + log 2 φ. 
+
+Since, |A| ≥ 3|R| and 1 − 2 log 2 φ < 0 the above ex-pression can be bounded by: |R| · 3(1 − 2 log 2 φ) + |R| · 
+
+2 log 2 φ + k · 2 log 2 φ + log 2 φ == |R| · (3 − 4 log 2 φ) + k · 2 log 2 φ + log 2 φ ≤≤ k 
+
+> 2
+
+· (3 − 4 log 2 φ) + k · 2 log 2 φ + log 2 φ = 3k 
+
+> 2
+
++ log 2 φ. 
+
+Therefore the running time of our algorithm is at most 
+
+O∗(2 32 k) and we proved the desired claim. 
+
+## Natural Parameterization 
+
+In order to obtain an improvement for (n, 3) -M AX SAT, and 
+
+(n, 4) -M AX SAT we employ the following theorem. 
+
+Theorem 9. (Belova and Bliznets 2020; Brilliantov, Alferov, and Bliznets 2023) Assume that MAXSAT parameterized above matching can be solved in O∗(ck 
+
+> 1
+
+) time, (n, s )-MAXSAT can be solved in O∗(cn 
+
+> 2
+
+) and c = c2    
+
+> log c1log c1+log c2
+
+.In this case, for CNF formulas where each variable appears at most s times we can check if at least k′ clauses are satis-fiable in O∗(ck′
+
+) time. 
+
+Using Theorems 6, 8, 9, we get the following result. 
+
+Theorem 10. (n, 3) -MAX SAT admits O∗(1 .14977 k′
+
+),
+
+O∗(1 .14977 m) time algorithms. (n, 4) -MAX SAT can be solved in O∗(1 .27895 k′
+
+) running time. Here, k′ denotes number of clauses that we need to satisfy. The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+7923 This theorem improves previous known upper bounds for (n, 3) -M AX SAT which were O∗(1 .1554 k′
+
+) and 
+
+O∗(1 .1554 m) (Brilliantov, Alferov, and Bliznets 2023). It also improves upper bounds O∗(1 .2872 m) (Xiao 2022), 
+
+O∗(1 .3248 k′
+
+) (Chen, Xu, and Wang 2017) which fol-lows for (n, 4) -M AX SAT from algorithms for general MAX SAT. 
+
+## Experiments 
+
+In this section, we present the experiments conducted to evaluate the performance of our implemented algorithm in C++. The primary objective of these experiments was to as-sess the algorithm’s efficiency in solving various instances of the MaxSAT problem for which solver was designed. To do this we consider performance of our algorithm and open-source solvers on specially generated instances. More infor-mation about implementation and environment details can be found in the full version. 
+
+Generated Tests 
+
+The generator used to test the capabilities of the algorithm accepts three parameters: a, b, and k. It creates a formula with ν(F ) = ab and at most ab + k satisfiable clauses. There are ab variables in the test: 
+
+x1,1, . . . , x 1,b , . . . , x 2,1, . . . , x 2,b , . . . , x a, 1, . . . , x a,b .For each variable xi,j , the clause xi,j is added. For each 
+
+1 ⩽ i ⩽ a, the clause xi, 1...x i,b is added. Furthermore, we create k clauses more, and for each variable, its positive literal is added to a random subset of these clauses. Note that we can match each variable xi,j with the clause 
+
+xi,j , so ν(F ) = ab . Moreover, we claim that in this assign-ments we can satisfy at most ab + k clauses. Indeed, let the optimal satisfying assignment satisfy c clauses of the form 
+
+xi, 1 . . . x i,b . Then, out of the clauses xi,j , at least c must be unsatisfied. Therefore, the optimal satisfying assignment satisfies at most k + c + ( ab − c) = k + ab clauses. 
+
+Baselines 
+
+We considered the following solvers (all participants of MaxSat Evaluations 2022): 
+
+cash-w-maxsat-coreplus (Lei et al. 2022), 
+
+cgss (Ihalainen, Berg, and J”arvisalo 2021), 
+
+eval-max-sat (Avellaneda, Bilodeau-Savaria, and Normand 2022), exact (Devriendt 2022), max-cdcl ,
+
+w-max-cdcl (Coll et al. 2022a), max-hs (Bacchus 2022), open-wbo (Martins, Manquinho, and Lynce 2014), 
+
+uwr-max-sat-scip , uwr-max-sat (Piotr´ ow 2020), 
+
+w-max-cdcl-band-all (Coll et al. 2022b). 
+
+Results 
+
+We conducted a comparison on generated tests . Environ-ment details can be found in the full version. As illustrated in Fig. 1 the results clearly demonstrate the superior per-formance of our algorithm over the competing solvers. To carry out the comparison, we set the parameters a and k to fixed values and linearly increased the parameter b. Demon-strating running time on practice of our algorithm matches theoretical upper bound provided for the algorithm. 0 10000 20000 30000 40000 50000  
+
+> 0
+> 5000
+> 10000
+> 15000
+> 20000
+> 25000
+> 30000 our algorithm open-wbo-glucose cash-w-maxsat-coreplus uwr-max-sat-scip exact cgss open-wbo-mergesat eval-max-sat w-max-cdcl max-cdcl w-max-cdcl-band-all max-hs uwr-max-sat
+
+Figure 1: Computational time of various MaxSAT solvers on generated instances with 100 ≤ b ≤ 50000 , a = 20 , k =10 . The absence of the point on the graph means that the corresponding algorithm spent more than 30s for the certain instance. Y-axis in milliseconds For majority of instances from MaxSAT Evaluations 2022 application of our solver is problematic. As usually for these instances value of the parameter is very large. Besides, we do not implement any heuristics that sometimes significantly speed up computations in practice even though they do not have any proven guarantee. 
+
+## Conclusion 
+
+Our findings lead to improvement of algorithms for the fol-lowing problems (ν(F ) + k)-SAT, (n − k)-S ET COVER .The new running time is O∗(2 3k 
+
+> 2
+
+). We also show that the same upper bound holds for Partial (ν(F ) + k)-SAT if all hard clauses have length at most 2. If this is not the case then we can solve Partial (ν(F ) + k)-SAT in time 
+
+O∗(2 3k 
+
+> 2
+
++ 2 k · 1.12226 h) where h is the number of hard clauses in the input formula. Moreover, we establish record upper bounds for (n, 3) -M AX SAT and (n, 4) -M AX SAT if we measure the running times in terms of the overall num-ber of clauses or in terms of the number of clauses that we need to satisfy. Note that recent algorithms for M AX SAT in terms of the number of clauses that needs to be satisfied re-duce problem to the case when only (4 , 1) , (3 , 1) variables appear in the formula. Here, we showed that instead we can try to reduce the problem to an instance where each variable appears at most 4 times, as for such subproblem we have an algorithm. Moreover, we implemented our algorithm and tested it versus state-of-the-art M AX SAT solvers. On instances for which our algorithm was designed it significantly outper-forms competitors. Hence, including ideas of our algorithm as subroutines or subprocedures in modern solvers might further extend area of their applicability. 
+
+## Acknowledgements 
+
+Research is partially supported by Huawei (grant TC20231108096). The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24) 
+
+7924 Research of Ivan Bliznets is supported by the project CRACKNP that has received funding from the European Re-search Council (ERC) under the European Union’s Horizon 2020 research and innovation program (grant agreement No 853234). 
+
+## References 
+
+Alferov, V.; and Bliznets, I. 2021. New Length Dependent Algorithm for Maximum Satisfiability Problem. In Proceed-ings of the AAAI Conference on Artificial Intelligence , vol-ume 35, 3634–3641. Avellaneda, F.; Bilodeau-Savaria, C.-E.; and Normand, L. 2022. Weighted version of EvalMaxSAT 2022. In MaxSAT Evaluation , volume 16, 12. Bacchus, F. 2022. MaxHS in the 2022 MaxSat Evaluation. In MaxSAT Evaluation , volume 16, 17–18. Bansal, N.; and Raman, V. 1999. Upper bounds for MaxSat: Further improved. In International symposium on algo-rithms and computation , 247–258. Springer. Basavaraju, M.; Francis, M. C.; Ramanujan, M.; and Saurabh, S. 2016. Partially polynomial kernels for set cover and test cover. SIAM Journal on Discrete Mathematics ,30(3): 1401–1423. Belova, T.; and Bliznets, I. 2020. Algorithms for (n, 3)-MAXSAT and parameterization above the all-true assign-ment. Theoretical Computer Science , 803: 222–233. Biere, A.; Heule, M.; and van Maaren, H. 2021. Handbook of satisfiability . IOS press. Brilliantov, K.; Alferov, V.; and Bliznets, I. 2023. Im-proved Algorithms for Maximum Satisfiability and Its Spe-cial Cases. In Proceedings of the AAAI Conference on Arti-ficial Intelligence , volume 37, 3898–3905. Chen, J.; and Kanj, I. A. 2004. Improved exact algorithms for Max-Sat. Discrete Applied Mathematics , 142(1-3): 17– 27. Chen, J.; Xu, C.; and Wang, J. 2015. Dealing with 4-variables by resolution: an improved MaxSAT algorithm. In Workshop on Algorithms and Data Structures , 178–188. Springer. Chen, J.; Xu, C.; and Wang, J. 2017. Dealing with 4-variables by resolution: an improved MaxSAT algorithm. 
+
+Theoretical Computer Science , 670: 33–44. Coll, J.; Li, S.; Li, C.-M.; Manya, F.; Habet, D.; and He, K. 2022a. MaxCDCL and WMaxCDCL in MaxSAT Evalua-tion 2022. In MaxSAT Evaluation , volume 16, 15–16. Coll, J.; Li, S.; Li, C.-M.; Manya, F.; Habet, D.; and He, K. 2022b. WMaxCDCL-BandAll in MaxSAT Evaluation 2022. In MaxSAT Evaluation , volume 16. Crowston, R.; Gutin, G.; Jones, M.; Raman, V.; Saurabh, S.; and Yeo, A. 2014. Fixed-parameter tractability of satisfying beyond the number of variables. Algorithmica , 68(3): 739– 757. Cygan, M.; Fomin, F. V.; Kowalik, Ł.; Lokshtanov, D.; Marx, D.; Pilipczuk, M.; Pilipczuk, M.; and Saurabh, S. 2015. Parameterized algorithms , volume 5. Springer. Devriendt, J. 2022. Exact: evaluating a pseudo-Boolean solver on MaxSAT problems. In MaxSAT Evaluation , vol-ume 16, 13–14. Fomin, F. V.; and Kratsch, D. 2010. Exact Exponential Algo-rithms . Texts in Theoretical Computer Science. An EATCS Series. Springer. ISBN 978-3-642-16532-0. Gutin, G.; and Mnich, M. 2022. A survey on graph problems parameterized above and below guaranteed values. arXiv preprint arXiv:2207.12278 .Hopcroft, J. E.; and Karp, R. M. 1973. An nˆ5/2 algorithm for maximum matchings in bipartite graphs. SIAM Journal on computing , 2(4): 225–231. Ihalainen, H.; Berg, J.; and J”arvisalo, M. 2021. Refined Core Relaxation for Core-Guided MaxSAT Solving. In 
+
+CP , volume 210 of LIPIcs , 28:1–28:19. Schloss Dagstuhl - Leibniz-Zentrum f”ur Informatik. Lei, Z.; Wang, Y.; Pan, S.; Cai, S.; and Yin, M. 2022. CASHWMaxSAT-CorePlus: Solver Description. In 
+
+MaxSAT Evaluation , volume 16, 8. Mahajan, M.; and Raman, V. 1999. Parameterizing above guaranteed values: MaxSat and MaxCut. J. Algorithms ,31(2): 335–354. Marek, V. W. 2009. Introduction to mathematics of satisfia-bility . CRC Press. Martins, R.; Manquinho, V.; and Lynce, I. 2014. Open-WBO: A Modular MaxSAT Solver,. In Sinz, C.; and Egly, U., eds., Theory and Applications of Satisfiability Testing – SAT 2014 , 438–445. Cham: Springer International Publish-ing. ISBN 978-3-319-09284-3. Piotr´ ow, M. 2020. UWrMaxSat: Efficient Solver for MaxSAT and Pseudo-Boolean Problems. In 32nd IEEE In-ternational Conference on Tools with Artificial Intelligence, ICTAI 2020, Baltimore, MD, USA, November 9-11, 2020 ,132–136. IEEE. Szeider, S. 2004. Minimal unsatisfiable formulas with bounded clause-variable difference are fixed-parameter tractable. Journal of Computer and System Sciences , 69(4): 656–674. Xiao, M. 2022. An Exact MaxSAT Algorithm: Further Ob-servations and Further Improvements. In Raedt, L. D., ed., 
+
+Proceedings of the Thirty-First International Joint Confer-ence on Artificial Intelligence, IJCAI-22 , 1887–1893. Inter-national Joint Conferences on Artificial Intelligence Organi-zation. Main Track. Xu, C.; Li, W.; Yang, Y.; Chen, J.; and Wang, J. 2019. Res-olution and domination: an improved exact MaxSAT algo-rithm. In Proceedings of the 28th International Joint Con-ference on Artificial Intelligence , 1191–1197. AAAI Press. The Thirty-Eighth AAAI Conference on Artificial Intelligence (AAAI-24)
