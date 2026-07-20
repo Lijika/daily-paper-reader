@@ -25,3 +25,60 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: sat-bva-cnf
+      description: 查找SAT求解中BVA方法、CNF预处理、辅助变量引入和公式压缩相关论文，关注局限和改进方向。
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: bounded variable addition
+          keyword_cn: 有界变量添加
+          query: bounded variable addition SAT solving
+        - keyword: conjunctive normal form preprocessing
+          keyword_cn: 合取范式预处理
+          query: CNF preprocessing SAT
+        - keyword: auxiliary variable introduction
+          keyword_cn: 辅助变量引入
+          query: auxiliary variable introduction SAT
+        - keyword: formula compression
+          keyword_cn: 公式压缩
+          query: formula compression SAT
+        - keyword: Blocked Variable Addition
+          keyword_cn: 阻塞变量添加
+          query: SAT solving techniques
+        - keyword: CNF formula reduction
+          keyword_cn: CNF公式化简
+          query: CNF formula reduction methods
+      intent_queries:
+        - query: Identify limitations of BVA and explore novel SAT preprocessing techniques
+          query_cn: 识别BVA的局限性，探索新的SAT预处理技术
+          enabled: true
+          source: manual
+          note: ''
+        - query: limitations of bounded variable addition in SAT solving
+          query_cn: 有界变量添加在SAT求解中的局限性
+          enabled: true
+          source: manual
+          note: ''
+        - query: auxiliary variable introduction techniques and challenges
+          query_cn: 辅助变量引入技术及其挑战
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-07-20T12:08:14.324Z'
+source_backends:
+  arxiv:
+    papers_table: arxiv_papers
+    use_vector_rpc: true
+    vector_rpc: match_arxiv_papers
+    vector_rpc_exact: match_arxiv_papers_exact
+    use_bm25_rpc: true
+    bm25_rpc: match_arxiv_papers_bm25
+    sync_table: arxiv_sync_status
+    sync_success_value: success
+    schema: public
+    kind: supabase
+    enabled: true
+    url: https://lyucdwgefyfbmaiopjbk.supabase.co
+    anon_key: sb_publishable_lX-oi64Uxyd7SIVv3_w2Uw_MTOojeKq
