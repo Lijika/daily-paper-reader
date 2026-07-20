@@ -1,0 +1,557 @@
+Title: Verification of a DPLL Transition System in Rocq
+
+URL Source: https://arxiv.org/pdf/2607.14999v1
+
+Published Time: Fri, 17 Jul 2026 01:38:36 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# Verification of a DPLL Transition System in Rocq 
+
+Julia Dijkstra 1[0009 −0000 −6191 −8534] and Benedikt Ahrens 1[0000 −0002 −6786 −4538] 
+
+Delft University of Technology, Netherlands 
+
+juliadijkstra97@gmail.com B.P.Ahrens@tudelft.nl 
+
+Abstract. We present a formal verification of an abstract transition-system presentation of the Davis-Putnam-Logemann-Loveland (DPLL) procedure in the Rocq proof assistant. Following Nieuwenhuis et al., SAT solving is modeled as a set of rule-based transitions between states rather than as a concrete algorithm. We formalize the syntax and semantics of propositional formulas, define the classical and base DPLL transition systems, and prove their key metatheoretic properties. In particular, we establish correctness and completeness with respect to satisfiability, and we prove termination by showing that the transition relation is well-founded. The formalization extends the original abstract system by also including the pure literal rule. Building on the verified transition system, we introduce an abstract notion of strategy and derive a terminating solver from any strategy satisfying suitable conditions. We then imple-ment a concrete strategy in Rocq and show that it satisfies the strategy specification. 
+
+# 1 Introduction 
+
+The Satisfiability (SAT) problem asks whether a Boolean formula admits an as-signment of truth values to its variables that makes the formula true. Despite this simple formulation, SAT is a central problem in both theoretical computer sci-ence and practical computing. It was the first problem shown to be NP-complete [8], and its generality makes it a natural target for encoding a wide range of combinatorial problems. As a result, improvements in SAT solving can often be translated into improvements for many other computational tasks. SAT solvers are algorithms designed to decide this problem. Through sophis-ticated heuristics and search algorithms, they navigate enormous search spaces and make even very large SAT instances tractable [10]. Beyond optimization and planning tasks, SAT solvers have become critical tools for verifying large mathematical proofs that are infeasible to check by hand, such as the Boolean Pythagorean Triples problem [6] resulting in a 200-terabyte proof. Another ex-ample is Schur Number Five [5], producing a proof of roughly 2 petabytes. These applications make it important to ensure the correctness of SAT solvers themselves since even small bugs could compromise the validity of the results they produce [3]. Interactive theorem provers (ITPs), such as Rocq [1] or Isabelle arXiv:2607.14999v1 [cs.LO] 16 Jul 2026 2 J. Dijkstra and B. Ahrens 
+
+[13], provide a way to formally verify such systems and obtain strong guarantees about their behavior. In Rocq, definitions, theorem statements, and proofs are written in a formal language, and completed proofs are checked by a small trusted kernel. This means that the results established in this paper are justified not only by informal mathematical argument, but also by machine-checked proof terms. The central objective of this paper is to formalize and verify, in Rocq, the ab-stract transition-system presentation of SAT solving introduced by Nieuwenhuis et al. [12]. This presentation captures the Davis–Putnam–Logemann–Loveland (DPLL) procedure not as an executable algorithm, but as a collection of transi-tions between solver states. One contribution of this paper is to formalize these transition rules in Rocq and establish their key metatheoretic properties, namely correctness, completeness, and termination. This objective is motivated by two considerations. First, the transition-system view gives a compact and transparent account of SAT solving, which makes it particularly suitable for formal reason-ing. Second, it provides a natural starting point for later extensions toward more expressive frameworks such as DPLL(T), and therefore a useful basis for future verification efforts. Closely related work has already been carried out in Isabelle/HOL. In par-ticular, Blanchette et al. [2] formalize abstract DPLL and CDCL calculi based on Nieuwenhuis et al. and refine them toward executable solvers. Compared to that work, we contribute an abstract notion of strategy for SAT solving, and in-stantiate this framework with a concrete strategy that is subsequently extracted to OCaml. From this perspective, the aim of the paper is not to verify a highly opti-mized modern SAT solver directly, but rather to verify the correctness of an abstract model of SAT solving from which concrete solving procedures can later be derived. In doing so, the paper connects the abstract theory of DPLL with a machine-checked formalization in Rocq, and thereby provides a small but trust-worthy verified core on which further extensions can build. Throughout the pa-per, references to formal objects are presented using hyperlink macros that allow the reader to move directly from the informal exposition to the corresponding definition, lemma, or theorem in the generated Rocq documentation. The paper is organized as follows. Section 2 presents the necessary back-ground on propositional logic and satisfiability. Section 3 then introduces the transition system of Nieuwenhuis et al. [12] and its formalization, including proofs of correctness, completeness, and termination. Building on this, Section 4 shows how solving procedures can be derived from the transition system using strategies and presents a concrete implementation of such a strategy. Finally, Section 5 discusses the scope, limitations, and future directions of the formal-ization. Summarizing the contributions of this work, we 
+
+– prove an if-and-only-if characterization of satisfiability. Compared to Nieuwen-huis et al. [12], we not only show that derivations to a final non-fail state give a model, but also that, conversely, every satisfiable formula gives rise to such Verification of a DPLL Transition System in Rocq 3
+
+a derivation. For that converse direction we introduce a new normalization procedure. 
+
+– include the pure literal rule in our transition system. This rule is part of the original DPLL procedure, but Nieuwenhuis et al. [12] leave it out of their transition system. To add this rule, we strengthen the entailment develop-ment, see Definition 37 and Lemma 38. 
+
+– introduce an abstract notion of strategy, which lets one derive verified solvers from the transition system. We also give one concrete implementation of such a strategy, and extract and test it on a collection of SAT benchmarks. 
+
+– formalize the whole development in Rocq. For reproducibility, the full Rocq formalization is publicly available in the RocqSAT repository 1, and HTML documentation is available on GitHub Pages 2.The formalization depends on Rocq 9.0 . In its current form, the development contains 187 lemmas, 7 theorems, 75 definitions, and 14 examples. Of these 75 definitions, 30 are standard Rocq definitions, 36 are Equations definitions, and 9 are inductive Rocq definitions. Altogether, the formalization consists of 3555 lines of code, of which 2403 lines are proof scripts between Proof. and Qed. 
+
+Throughout the paper, definitions and results are accompanied by a link to the HTML documentation of the corresponding Rocq identifier (e.g., ). The repository also contains the extracted solver for Ocaml and several sam-ple SAT problems on which to try the solver. 
+
+# 2 Propositional Logic 
+
+We begin by recalling the standard definition of satisfiability for propositional formulas. The notions introduced in this section are classical and can be found in standard textbooks on logic and formal reasoning, such as Huth and Ryan’s 
+
+Logic in Computer Science [7]. We first introduce the basic syntactic elements used to construct propositional formulas. For the following definitions we fix a finite set of propositional symbols P .
+
+Definition 1 ( ). Elements p ∈ P are called atoms .Remark 2. Since P is finite, it is isomorphic to a finite subset of the natural numbers. Consequently, we may identify atoms with elements of N.A literal corresponds to either a positive or a negative occurrence of an atom, enabling formulas to represent both assertions and their negations. 
+
+Definition 3 ( , ). A literal over P is either an atom p ∈ P or its negation 
+
+¬p, where negation is the involutive function that flips the sign. 
+
+Literals can then be combined into clauses .   
+
+> 1https://anonymous.4open.science/r/RocqSAT-2415
+> 2https://vlamonster.github.io/RocqSAT/toc 4J. Dijkstra and B. Ahrens
+
+Definition 4 ( ). A clause is a finite disjunction of literals, written l1 ∨. . . ∨ln.
+
+Formulas are often expressed in conjunctive normal form . This form is con-venient for reasoning about satisfiability and is the standard input for many SAT-solvers. Although this may appear to be a restriction, it does not lose gen-erality, since every propositional formula can be transformed into an equivalent formula in conjunctive normal form. 
+
+Definition 5 ( ). A propositional formula in conjunctive normal form 
+
+(CNF) is a finite conjunction of clauses, written c1 ∧ . . . ∧ ck.Remark 6. The Rocq formalization represents clauses and formulas as lists, with-out specifying an evaluation procedure. The evaluation semantics are provided by the definition of partial assignments and Definitions 10 to 12. 
+
+Definition 7. Let f be a formula. A partial assignment m for f is a subset of literals appearing in f such that {p, ¬p}̸ ⊆ m for all propositional variables 
+
+p ∈ P .
+
+While this set-based definition of partial assignments is natural, it is cumber-some for formal verification. We instead represent partial assignments as lists. This choice is motivated by the fact that the list type supports well-behaved induction principles, which facilitate formal reasoning, and also allows a partial assignment to be interpreted as a trace of assignments. Each literal is also annotated with a type Ann . We add the superscript d to a literal, writing ld, to indicate that it is a decision literal . These annotations will be ignored during evaluation, but are essential for defining and reasoning about the DPLL transition rules. 
+
+Definition 8 ( ). A partial assignment is a list of annotated literals. 
+
+To recover set-like behavior, we require an additional property. 
+
+Definition 9. A partial assignment m is well-formed in a formula f if it is both duplicate-free , so that {p, ¬p}̸ ⊆ m for all p ∈ P , and bounded 
+
+by f , so that every literal in m appears in f .
+
+Let m be a partial assignment. We define a three-valued evaluation function [[ ·]] m : Lit + Clause + CNF → { T, F, U}.
+
+In a slight abuse of notation, we write l ∈ m to mean that l appears in m before 
+
+any occurrence of ¬l, evaluating the list from head to tail. Note that this notation coincides with its standard definition for well-formed partial assignments. 
+
+Definition 10 ( ). For a literal l, we define 
+
+[[ l]] m =
+
+
+
+T if l ∈ m, 
+
+F if ¬l ∈ m, 
+
+U otherwise. Verification of a DPLL Transition System in Rocq 5
+
+Definition 11 ( ). For a clause c, we define 
+
+[[ c]] m =
+
+
+
+T if some l ∈ c satisfies [[ l]] m = T,
+
+F if all l ∈ c satisfy [[ l]] m = F,
+
+U otherwise. 
+
+Definition 12 ( ). For a CNF formula f , we define 
+
+[[ f ]] m =
+
+
+
+T if all c ∈ f satisfy [[ c]] m = T,
+
+F if some c ∈ f satisfies [[ c]] m = F,
+
+U otherwise. 
+
+One benefit of the list-based representation is that evaluation is defined for arbitrary lists of literals, not only for well-formed partial assignments. This lets us reason about more general lists throughout the formalization, while only introducing well-formedness assumptions in the lemmas that require them. By contrast, in a set-based approach, a set containing both x and ¬x cannot be evaluated without imposing an additional well-formedness condition. 
+
+Example 13. Consider the partial assignment m = ¬xx . This partial assignment is not well-formed, since it is not duplicate-free. However, it still provides a well-defined evaluation for all literals, with [[ x]] m = T and [[ ¬x]] m = F.
+
+Definition 14. A formula f is satisfiable if there exists a partial assignment 
+
+m that satisfies f . Such an assignment is called a model of f , written m |= f .If no such assignment exists, f is unsatisfiable .
+
+# 3 Transition Systems 
+
+We now introduce the transition system framework used to describe the DPLL procedure. 
+
+Definition 15 ( ). A state is either the distinguished state fail or a pair of the form m ∥ f , where m is a partial assignment and f is a formula. 
+
+Having defined states, we now formalize how one state can evolve into another. 
+
+Definition 16. A transition rule =⇒ is a relation on states. Given two states 
+
+s and s′, we say s =⇒ s′ is a transition from s to s′.
+
+To model the DPLL procedure, we consider a collection of transition rules. In the following definitions, let T denote such a set of transition rules. 
+
+Definition 17. A transition system =⇒T on T is a relation on states, where two states are related if one of the transition rules in T applies. 
+
+To state later lemmas and theorems, we consider sequences of transitions, mo-tivating the reflexive–transitive and transitive closures of the transition system. 6 J. Dijkstra and B. Ahrens 
+
+Definition 18 ( ). Let =⇒∗ 
+
+> T
+
+be the reflexive-transitive closure of =⇒T . Se-quences of transitions under =⇒∗ 
+
+> T
+
+are called derivations .
+
+Definition 19 ( ). Let =⇒+ 
+
+> T
+
+be the transitive closure of =⇒T . Sequences of transitions under =⇒+ 
+
+> T
+
+are called strict derivations .
+
+Finally, to reason about termination, we introduce the notion of a final state. 
+
+Definition 20 ( , ). A state is final in T if there exists no state s′ such that 
+
+s =⇒T s′.
+
+3.1 Transition System for DPLL 
+
+We now specialize the general transition-system framework to the DPLL proce-dure. Following Nieuwenhuis et al. [12], we describe DPLL as a set of transition rules on states. We first give an informal overview of this transition-system view, before defining the rules formally. In this formulation, the solver gradually extends a partial assignment until it either finds a satisfying assignment or reaches a conflict, applying any rule whose conditions are satisfied. The UnitPropagate rule applies when a clause has become unit, meaning that all but one of its literals have been assigned false, so the remaining literal must be assigned true to satisfy the clause. The 
+
+Pure rule assigns a pure literal, that is, a literal whose negation does not occur in the formula, since doing so cannot create a conflict. The Decide rule makes a branching choice by assigning a previously undefined literal as a decision literal. If a conflict is reached, then Backtrack returns to an earlier decision point, undoes later assignments, and flips that decision, with the flipped literal no longer marked as a decision literal. If no earlier decision remains to be undone, 
+
+Fail applies, indicating that the formula is unsatisfiable. This is formalized by the following transition rules:                                                                              
+
+> UnitPropagate: m∥f∧(c∨l)=⇒m l ∥f∧(c∨l)if
+> (
+> cis false in mlis undefined in m
+> Decide: m∥f=⇒m l d∥fif
+> (
+> lor ¬loccurs in a clause of flis undefined in m
+> Fail: m∥f∧c=⇒fail if
+> (
+> cis false in mmcontains no decision literals Backtrack: m l dn∥f∧c=⇒m¬l∥f∧cif
+> (
+> cis false in m l dnncontains no decision literals Pure: m∥f=⇒m l ∥fif
+> 
+> loccurs in a clause of f
+> ¬loccurs in no clause of flis undefined in m
+
+We now distinguish between two transition systems. We refer to the transition system containing all of the rules above as the classical DPLL system. We also define the base DPLL system as the subsystem containing only Decide , Fail ,and Backtrack . We will later show that this smaller system is still sufficient for defining a complete solving procedure. Verification of a DPLL Transition System in Rocq 7
+
+Definition 21 ( ). The classical DPLL system is a transition system on 
+
+C := {UnitPropagate , Decide , Fail , Backtrack , Pure }.
+
+Definition 22 ( ). The base DPLL system is a transition system on 
+
+B := {Decide , Fail , Backtrack }.
+
+Remark 23. Since most of our work concerns the classical DPLL system, the subscript C is often omitted. By slight abuse of notation, = ⇒ is then used to refer both to the transition system and to its underlying transition rules. We now provide some examples of how this transition system can be applied. 
+
+Example 24. Consider the formula f = ( x1∨x2)∧(x1∨x3)∧(x2∨x3)∧(¬x2∨¬ x3). In the following derivation, we hide any clauses that are already true under the current partial assignment and write them as ( . . . ). Then the transition rules can be applied as follows: 
+
+∅ ∥ (x1 ∨ x2) ∧ (x1 ∨ x3) ∧ (x2 ∨ x3) ∧ (¬x2 ∨ ¬ x3)=⇒ x1 ∥ . . . ∧ (x2 ∨ x3) ∧ (¬x2 ∨ ¬ x3) (Pure) =⇒ x1xd 
+
+> 2
+
+∥ . . . ∧ (¬x2 ∨ ¬ x3) (Decide) =⇒ x1xd
+
+> 2
+
+¬x3 ∥ . . . (UnitPropagate) The first step applies Pure , since x1 occurs only positively in the formula. The second step applies Decide , choosing x2 as a decision literal. After this, the clause (¬x2 ∨ ¬ x3) becomes unit, so UnitPropagate assigns ¬x3. The resulting state is final, since every remaining clause is already satisfied and no rule applies. Since this final state is not fail , Theorem 26 implies that the partial assignment 
+
+x1xd
+
+> 2
+
+¬x3 is a model of f . This can be easily verified. 
+
+Example 25. Consider the formula f = x1 ∧ (¬x1 ∨ x2) ∧ (¬x1 ∨ ¬ x2). Again, we replace clauses already true under the current partial assignment by ( . . . ). Then the transition rules can be applied as follows: 
+
+∅ ∥ x1 ∧ (¬x1 ∨ x2) ∧ (¬x1 ∨ ¬ x2)=⇒ xd 
+
+> 1
+
+∥ . . . ∧ (¬x1 ∨ x2) ∧ (¬x1 ∨ ¬ x2) (Decide) =⇒ xd
+
+> 1
+
+x2 ∥ . . . ∧ (¬x1 ∨ ¬ x2) (UnitPropagate) =⇒ ¬x1 ∥ x1 ∧ . . . (Backtrack) =⇒ fail (Fail) The first step applies Decide , choosing x1 as a decision literal. After this, the clause ( ¬x1 ∨ x2) becomes unit, so UnitPropagate assigns x2. This makes the clause ( ¬x1 ∨ ¬ x2) false, so Backtrack undoes the assignments made after the last decision and flips that decision, yielding the state ¬x1 ∥ x1 ∧ . . . . Since this state contains no decision literals and the clause x1 is false, the Fail rule applies. Since we derived fail , Theorem 43 implies f is unsatisfiable. 8 J. Dijkstra and B. Ahrens 
+
+3.2 Correctness 
+
+We show that the classical DPLL transition system is sound and complete with respect to satisfiability. In particular, we prove that the existence of a derivation from the initial state to a final state precisely characterizes whether a formula is satisfiable or unsatisfiable. We first show that every final state encodes a model of the formula. 
+
+Theorem 26 ( ). Let m be a partial assignment and f a formula such that the state m ∥ f is well-formed. If m ∥ f is a final state, then m is a model of f .
+
+Next, we show that if there exists a partial assignment m satisfying f , then there exists a partial assignment m′ such that there is a derivation from the initial state ∅ ∥ f to a final state m′ ∥ f . To establish this, we use a process called 
+
+normalization . This process has four steps. First, we totalize the partial assignment, so that every literal occurring in f is defined. Next, we convert propagation annotations to decision annotations. We then bound the partial assignment by f , removing any literals whose atoms do not occur in f .Finally, we deduplicate the partial assignment, making it duplicate-free. 
+
+Example 27 (normalization). Consider the formula f = ( x1 ∨ x2) ∧ x3 together with the partial assignment m = ¬x1x1xd
+
+> 3
+
+x4. We illustrate normalization by applying its steps to m.
+
+¬x1x1xd
+
+> 3
+
+x4 −→ ¬ x1x1xd
+
+> 3
+
+x4x2 (totalize) 
+
+−→ ¬ xd
+
+> 1
+
+xd
+
+> 1
+
+xd
+
+> 3
+
+xd
+
+> 4
+
+xd 
+
+> 2
+
+(convert propagations) 
+
+−→ ¬ xd
+
+> 1
+
+xd
+
+> 1
+
+xd
+
+> 3
+
+xd 
+
+> 2
+
+(bound) 
+
+−→ xd
+
+> 1
+
+xd
+
+> 3
+
+xd 
+
+> 2
+
+(dedupe) Since the original partial assignment m is a model of f , this example also illus-trates one of the invariants of the normalization procedure, namely that normal-ization is model preserving. To show that the normalized state can be reached from the initial state and is final, we first establish the invariants of this normalization procedure. Each step establishes a new invariant that is preserved by all later steps, which gives rise to a number of intermediate lemmas. For brevity, we only state the results for the complete normalization procedure. First, normalization preserves the property of being a model of f .
+
+Lemma 28 ( ). Let m be a partial assignment and f be a formula. If m
+
+satisfies f , and m′ is obtained by normalizing m, then m′ also satisfies f .
+
+After totalization, every literal occurring in f is defined. 
+
+Lemma 29 ( ). Let m be a partial assignment and f be a formula. If m′ is obtained by normalizing m, then every literal in f is defined in m′.
+
+After converting all annotations, every literal is a decision literal. Verification of a DPLL Transition System in Rocq 9
+
+Lemma 30 ( ). Let m be a partial assignment. If m′ is obtained by normal-izing m, then every literal in m′ is a decision literal. 
+
+After bounding, the partial assignment is bounded by f .
+
+Lemma 31 ( ). Let m be a partial assignment and f be a formula. If m′ is obtained by normalizing m, then m′ is bounded by f .
+
+Finally, after deduplication, the partial assignment is duplicate-free. 
+
+Lemma 32 ( ). Let m be a partial assignment. If m′ is obtained by normal-izing m, then m′ is duplicate-free. 
+
+It remains to show that a derivation to the normalized state exists. For this, we first prove an auxiliary lemma showing that every well-formed partial assignment consisting only of decision literals can be reached from the initial state ∅ ∥ f .
+
+Lemma 33 ( ). Let m be a partial assignment and f be a formula. If m is well-formed in f , and every literal in m is a decision literal, then there exists a derivation from the initial state ∅ ∥ f to the state m ∥ f .
+
+We obtain the desired result by specializing this lemma to the normalized partial assignment. 
+
+Corollary 34 ( ). Let m be a partial assignment and f be a formula. If m′ is obtained by normalizing m, then there exists a derivation from the initial state 
+
+∅ ∥ f to the state m′ ∥ f .
+
+We now show that satisfiability is reflected in the existence of a derivation to a final state. The forward direction follows directly from Theorem 26. The converse direction, however, does not appear in this form in Nieuwenhuis et al. [12], and is proved here using the normalization procedure introduced above. 
+
+Theorem 35 ( ). Let f be a formula. There exists a derivation from the initial state ∅ ∥ f to some final state m ∥ f if and only if f is satisfiable. 
+
+There is an analogous theorem for unsatisfiability, but before stating and proving it, we first introduce the notions of model-preserving literals and locally model-preserving literals , which we will need in order to define entailment .
+
+Definition 36. Let f be a formula and l a literal. We say that l is model-preserving in f if, for every partial assignment m′ satisfying f , the partial assignment m′l satisfies f . For a partial assignment m, we say that l is lo-cally model-preserving in f relative to m if, for every partial assignment m′
+
+satisfying both m and f , the partial assignment m′l satisfies f .
+
+We can now define entailment . Intuitively, this property expresses that propa-gated literals appearing in the tails of partial assignments derived by the tran-sition rules are logical consequences of the literals that precede them. 
+
+Definition 37 ( ). Let m be a partial assignment and f a formula. We say that f entails m, or that m is entailed by f , if one of the following holds: 10 J. Dijkstra and B. Ahrens 
+
+1. Every model of f satisfies m, and m contains no decision literals. 2. The partial assignment m can be written as m′ldn, where every model sat-isfying m′ld satisfies n, the tail n contains no decision literals, and m′ is entailed by f .3. The partial assignment m can be written as m′ln , where l is model-preserving in f , every model satisfying m′l satisfies n, n contains no decision literals, and m′ is entailed by f .
+
+This definition is loosely based on the one given by Nieuwenhuis et al. [12], with the addition of the third case involving model-preserving literals. This extra case is needed to account for the Pure rule in our transition system. One could go a step further and strengthen the classical Pure rule by considering a literal pure whenever it appears with only one polarity among the clauses that remain undefined under a given partial assignment. In that setting, the third case would need to use locally model-preserving literals instead. We now wish to relate entailment to unsatisfiability. For this, we show two things. Firstly, entailment is preserved by the transition system. Secondly, for partial assignments containing no decision literals, entailment coincides with logical entailment. We show the second first. 
+
+Lemma 38 ( ). Let m and m′ be partial assignments and f a formula. If m
+
+contains no decisions, m′ is a model of f , and f entails m, then m′m is also a model of f .Remark 39. The conclusion of the entailment lemma may seem unusual, since it gives no guarantee that m′m is well-formed. This is not a problem for the results that follow. In fact, reasoning about such extensions will be useful in later proofs. The next lemma shows that entailment is preserved under the transition system. Since a full formal proof depends on a number of technical lemmas, we only give some intuition for the argument here. The proof proceeds by case analysis on the applied transition rule. For Fail , the assumptions lead directly to a contradiction. For Decide and Pure , the second and third cases of the entailment definition apply directly. The argument for the Backtrack and UnitPropagate rules is more subtle, since they require unpacking how the original entailment was constructed. The key idea is that repeatedly unpacking this construction must eventually lead either to a contradiction or to a point where one of the entailment cases applies. 
+
+Lemma 40 ( ). Let m and m′ be partial assignments and f a formula. If there is a transition from m ∥ f to m′ ∥ f , and f entails m, then f also entails m′.
+
+It follows immediately that the same holds not only for transitions, but also for derivations. 
+
+Lemma 41 ( ). Let m and m′ be partial assignments and f a formula. If there is a derivation from m ∥ f to m′ ∥ f , and f entails m, then f entails m′.Verification of a DPLL Transition System in Rocq 11 
+
+Before the main result, we first state one final lemma about derivations to fail .
+
+Lemma 42 ( ). Let m be a partial assignment and f a formula. If there exists a derivation from m ∥ f to fail , then there exists a partial assignment m′ such that there is a derivation from m ∥ f to m′ ∥ f , and a transition from m′ ∥ f to 
+
+fail .
+
+We now have all the tools needed to show how unsatisfiability is characterized by the fail state. The reverse direction relies on a result we will show in the next subsection. This theorem corresponds closely to part (1) of Theorem 2.12 in Nieuwenhuis et al. [12]. 
+
+Theorem 43 ( ). Let f be a formula. There exists a derivation from the initial state ∅ ∥ f to the fail state if and only if f is unsatisfiable. Remark 44. If one wishes to extend the transition system with Learn and Forget 
+
+rules, the formula component of states may change. In that setting, a stronger notion of equivalence would be needed to prove this result. 
+
+3.3 Termination 
+
+To show termination of any procedure based on the transition system introduced above, we use the standard notions of accessibility and well-foundedness . In-tuitively, an element is accessible if all elements below it are themselves accessi-ble, where the notion of below is determined by the relation under consideration. A relation is well-founded if every element is accessible, that is, if accessibility can always be established by a finite proof. This provides a convenient way to prove termination, since once the transition relation is shown to be well-founded, every sequence of transitions must eventually terminate. In the Rocq standard library, these notions are represented by the propositions Acc and well founded .      
+
+> Listing 1.1. The Acc proposition from the Rocq standard library
+> Inductive Acc (x : A) : Prop := | Acc_intro : (forall y : A, R y x -> Acc y) -> Acc x.
+> Listing 1.2. The well founded proposition from the Rocq standard library
+> Definition well_founded := forall a : A, Acc a.
+
+For the termination arguments below, we use several standard definitions and lemmas concerning relations from the standard library, including definitions of inclusion of relations, closure operations on relations, and commutation of relations. We now introduce a well-founded relation on bounded lists of natural numbers that will be used in the termination argument. 
+
+Definition 45 ( ). Let t be a natural number. We define PrefixLt t to be the relation on lists of natural numbers of length at most t. We say that m is smaller 12 J. Dijkstra and B. Ahrens 
+
+than m′ in the prefix order if m and m′ agree on a common prefix and, at the first position where they differ, the entry of m is smaller than the corresponding entry of m′.
+
+Note that this is not quite the standard lexicographic order on lists. In the standard lexicographic order, a list can be smaller simply because it is shorter. By contrast, PrefixLt t only compares lists at the first position where they differ. It follows from the well-foundedness of < on the natural numbers that this relation is well-founded for every choice of t.
+
+Lemma 46 ( ). For every t ∈ N, PrefixLt t is well-founded. 
+
+We now formalize the termination argument used by Nieuwenhuis et al. to show that the classical DPLL system is well-founded. The idea is to equip states with two measures, score and score total , and to show that every transition rule decreases with respect to one of them. More precisely, we will prove that all transition rules except Fail decrease with respect to the lexicographic product of these measures, together with the prefix order and the standard order < on the natural numbers. 
+
+Definition 47 ( ). Let f be a formula with t distinct variables, and let m be a well-formed partial assignment in f of the form 
+
+m = m0 ld 
+
+> 1
+
+m1 . . . l dn mn,
+
+where, for each i, the segment mi contains no decision literals. The score of m
+
+is the list 
+
+t − length m0 :: t − length m1 :: . . . :: t − length mn,
+
+padded with additional occurrences of t at the end until the resulting list has length t.
+
+Definition 48 ( ). Let f be a formula with t distinct variables, and let m be a partial assignment. The score total of m is t − length m. 
+
+We briefly illustrate these measures on the transition rules from Example 25. For convenience, we write TotalLt for the standard order < on the natural num-bers. The key point is that along each transition, the measure score decreases with respect to PrefixLt , and if score remains unchanged, then score total 
+
+decreases with respect to TotalLt .
+
+Example 49. Consider the formula f = x1 ∧ (¬x1 ∨ x2) ∧ (¬x1 ∨ ¬ x2). This formula has two distinct variables, so t = 2. Following the derived states from Example 25, the corresponding values of score and score total are: 
+
+score f ∅ = 2 :: 2 , score total f ∅ = 2 
+
+score f xd 
+
+> 1
+
+= 2 :: 2 , score total f xd 
+
+> 1
+
+= 1 (Decide) 
+
+score f xd
+
+> 1
+
+x2 = 2 :: 1 , score total f xd
+
+> 1
+
+x2 = 0 (UnitPropagate) 
+
+score f ¬x1 = 1 :: 2 , score total f ¬x1 = 1 (Backtrack) Verification of a DPLL Transition System in Rocq 13 
+
+The Decide step leaves score unchanged and decreases score total . By con-trast, the UnitPropagate and Backtrack steps decrease score itself. To complete the termination argument, it remains to account for the state fail .For this purpose, we introduce the relation FailLt , which holds exactly when the left-hand side is fail and the right-hand side is a non-fail state. In this way, 
+
+fail becomes smaller than every non-fail state, which leads to the following relation on states. 
+
+Definition 50 ( ). Let f be a formula. We define the relation ≪f on states by 
+
+≪f = FailLt + ( PrefixLt score , TotalLt score total ),
+
+using the union + and the lexicographic product ( , ) of relations. Here, the bound for PrefixLt score given by the number of distinct atoms in f .
+
+It follows that this relation is well-founded. 
+
+Lemma 51 ( ). For every formula f , the relation ≪f is well-founded. 
+
+Finally, we show that = ⇒ is well-founded. The key observation is that, for every state, there exists a formula f such that the transition relation is included in 
+
+≪f . The claim then follows, using the well-foundedness of ≪f established above. 
+
+Theorem 52 ( ). The relation =⇒ is well-founded. 
+
+# 4 Solve Procedures 
+
+The transition system from the previous section provides an abstract description of DPLL and establishes its key properties, in particular correctness, complete-ness, and termination. We now show how to turn this abstract system into a solving procedure. The main idea is to equip the transition system with a strat-egy that determines, for each non-final state, which transition to take next. We then obtain a solver based on such a strategy by repeatedly applying it until a final state is reached. 
+
+4.1 Abstract Solve Procedure 
+
+We formalize this by introducing strategies as functions from states to optional successor states, where None indicates a final state, and that satisfy the following conditions. 
+
+Definition 53 ( ). A function next : State → option State is a strategy if it satisfies: 
+
+– next fail = None .
+
+– For all states s, if next s = None , then s is final in B.
+
+– For all states s and s′, if next s = Some s′, then s =⇒+ s′.14 J. Dijkstra and B. Ahrens 
+
+We highlight two aspects of this definition that will be important in what follows. First, we require only that a strategy step follows a strict derivation, rather than a single transition. This allows a strategy to combine several transition steps into one, for example by making multiple decisions at once. Although efficiency is not the main focus of this paper, this flexibility is still useful, since it allows the abstract notion of strategy to cover a broader range of solving procedures. Second, the requirement that next returns None only on states that are final in B is sufficient because the rules in B already capture the essential search structure of DPLL. The additional rules UnitPropagate and Pure do not lead to fundamentally new search states. Rather, they only allow certain literals to be assigned by propagation instead of by explicit decision, which can speed up the search. Thus, being final in B is equivalent to being final in C, as stated in the following lemma. 
+
+Lemma 54 ( ). A state is final in C if and only if it is final in B.
+
+Given a strategy next , we define the induced solver by iterating next from the initial state until a final state is reached. This solver is well-defined, since its iteration must terminate. Each application of next yields a step in the tran-sitive closure = ⇒+ of the transition relation. Because = ⇒ is well-founded by Theorem 52, = ⇒+ is well-founded as well. Hence the iteration of next cannot produce an infinite sequence of states. 
+
+Definition 55 ( ). Let next be a strategy. We define solve (next ) : CNF →
+
+State to be the solver that maps a formula f to the state obtained by repeatedly applying next to the initial state ∅ ∥ f until next returns None .
+
+By Lemma 54, any state returned by solve is final. It therefore follows from Theorems 26 and 43 that the solver behaves as expected. If solve returns fail ,then the formula f is unsatisfiable, while if it returns a non-fail state of the form m ∥ f , then m is a model of f .
+
+4.2 Concrete Solve Procedure 
+
+We now instantiate the abstract notion of strategy by defining a concrete func-tion next state . This function covers all transition rules of the classical DPLL system except for Pure . It first checks whether the current state contains a con-flict. If so, it determines whether there is a decision literal to backtrack to. If there is none, it applies Fail . Otherwise, it applies Backtrack . If no conflict is present, it tries to find a unit clause, and if one is found, it applies UnitProp-agate . Only if no conflict and no unit clause are found does it apply Decide .In this way, next state yields a deterministic instance of the abstract strategy introduced above. Listing 1.3 gives a simplified overview of this function, with the proof objects witnessing well-formedness omitted for readability. Here, ++p denotes concate-nation with a propagated literal, and ++d denotes concatenation with a decision literal. Verification of a DPLL Transition System in Rocq 15        
+
+> Listing 1.3. The concrete strategy next state
+> Equations next_state (s: State): option State := next_state fail := None; next_state (state m f) := match find_conflict m f with | Some c => match split_last_decision m with | None => Some fail | Some (m’, l) => Some (state (m’ ++p ¬l) f) end | _ => match find_unit m f with | Some (c, l) => Some (state (m ++p l) f) | None => match find_decision m f with | Some l => Some (state (m ++d l) f) | None => None end end end.
+
+It remains to show that next state is indeed a strategy. For this, we verify two properties. First, next state is sound with respect to = ⇒, meaning that when-ever it returns a successor state, that successor is obtained by a single transition step, and hence by a strict derivation. Second, next state is complete with re-spect to = ⇒B , meaning that whenever a transition in the base DPLL system is possible, next state returns some successor state. Together with the fact that 
+
+next state fail = None , this is enough to conclude that next state satisfies the definition of a strategy. These two properties are stated in the following lemmas. 
+
+Lemma 56 ( ). Let s and s′ be states. If next state s = Some s′, then there is a transition from s to s′.
+
+Lemma 57 ( ). Let s and s′ be states. If there is a transition from s to s′ in the base DPLL system, then there exists a state s′′ such that next state s =
+
+Some s′′ .
+
+4.3 Extraction to OCaml 
+
+In addition to the formalization of the transition system and solving procedures, the concrete solver was also extracted to OCaml using Rocq’s extraction mecha-nism. For this purpose, the basic datatypes bool , list , and nat were mapped to their OCaml counterparts using the extraction directives shown in Listing 1.4.   
+
+> Listing 1.4. Extraction directives used for the OCaml solver
+> Extract Inductive bool => "bool" [ "true" "false" ]. Extract Inductive list => "list" [ "[]" "(::)" ]. 16 J. Dijkstra and B. Ahrens
+> Extract Inductive nat => "int" [ "0" "(fun x -> x + 1)" ] "(fun zero succ n -> if n=0 then zero () else succ (n-1))".
+
+The extracted solver, together with a small runner and instructions for how to execute it, is available in the repository. To validate the extracted solver, we tested it on a number of simple SAT instances, many of them taken from Gregory Duck’s collection of SAT exam-ples [4]. For all instances on which the solver finished, it produced the correct result. The largest example it was able to handle was zebra.cnf , which has 155 variables and 1135 clauses. Of course, the size of a SAT instance does not necessarily correspond directly to its difficulty, so this number should only be taken as a rough indication. The current extracted solver does not scale well to larger instances. The main expected reason is the choice of data structures in the formalization and in the concrete strategy. Currently, many operations require traversing lists, which leads to linear-time access. A more efficient im-plementation would use data structures supporting constant-time lookup, such as arrays or similarly indexed data structures. This would likely improve the practical performance substantially. 
+
+# 5 Discussion 
+
+In this paper, we formalized the DPLL transition system of Nieuwenhuis et al. [12] in Rocq. The formalization covers the core correctness, completeness, and termination results for DPLL, and extends the original development by also formalizing the pure literal rule. Together, these results show that the transition-system presentation of DPLL can be mechanized in an interactive theorem prover while preserving the intended semantic guarantees of the abstract solver. At the same time, the results of this paper should be understood as an ab-stract verified core for SAT solving. The formalization establishes correctness, completeness, and termination for the DPLL transition system, and derives both an abstract solver and a concrete strategy from it. This gives strong guarantees about the logical correctness of the procedure, but it does not yet amount to a verification of the behavior of modern industrial SAT solvers. In particular, the paper focuses on an abstract transition-system presentation and on a sim-ple verified strategy, rather than on the highly optimized algorithms and data structures used in practice. A first limitation is therefore the scope of the transition system itself. The formalization covers classical DPLL together with the pure literal rule, but it does not yet include extensions that are central to modern SAT solving, such as non-chronological backtracking, clause learning, clause forgetting, and restarts [9,2]. These mechanisms are precisely what make modern CDCL-based solvers effective on large benchmark instances. As in Blanchette et al. [2], learn and backjump are best treated together, since combining them ensures that the solver continues to make progress after new clauses are learned. Relatedly, this paper Verification of a DPLL Transition System in Rocq 17 
+
+does not yet cover the second part of Nieuwenhuis et al. [12], namely the exten-sion from SAT to DPLL(T). The current formalization can therefore be seen as addressing the propositional core of their work, while leaving the SMT-oriented generalization for future work. A second limitation concerns the concrete strategy derived from the transi-tion system. Although it is formally verified as a strategy, it is intentionally sim-ple and is not designed for performance. In particular, the function next state 
+
+does not implement the Pure rule. More generally, no serious experimental eval-uation of the extracted solver has been carried out beyond testing correctness on small SAT instances. Thus, the current solver should be understood as a verified proof of concept rather than as a practically competitive SAT solver. Future work could improve this strategy by incorporating techniques used in practical SAT solvers, such as the two-watched-literal scheme for efficient unit propagation and the VSIDS branching heuristic for choosing decision literals [11]. There are also limitations in the structure of the formalization itself. Cur-rently, transition systems are treated as large relations rather than as modular collections of transition rules. This is sufficient for the results proved here, but it tends to produce large proofs that proceed by repeated case analysis over all rules at once. A more modular organization, for example in the style used by Mari´ c [9], could make the formalization easier to extend and maintain by splitting larger arguments into smaller lemmas for individual rules. Finally, several natural extensions remain open. One possibility is to enrich the transition system with additional rules that bring it closer to modern SAT solvers, in particular backjumping, learning, forgetting, and restarts. Another possibility is to use the present formalization as a basis for a verified SMT solver, since the framework of Nieuwenhuis et al. [12] is designed to generalize from SAT to DPLL(T). More abstract notions of solving procedure could also be considered, for example by letting strategies operate on states together with auxiliary context, allowing preprocessing steps and more efficient bookkeeping while still fitting into the same general framework. 
+
+# References           
+
+> 1. Rocq: The Rocq Prover. https://github.com/rocq-prover/rocq (2025), ac-cessed: 2025-12-08 2. Blanchette, J.C., Fleury, M., Lammich, P., Weidenbach, C.: A Verified SAT Solver Framework with Learn, Forget, Restart, and Incrementality. Journal of Automated Reasoning 61 (1), 333–365 (2018) 3. Darbari, A., Fischer, B., Marques-Silva, J.: Industrial-Strength Certified SAT Solving through Verified SAT Proof Checking. In: Cavalcanti, A., D´ eharbe, D., Gaudel, M., Woodcock, J. (eds.) Theoretical Aspects of Computing - ICTAC 2010, 7th International Colloquium, Natal, Rio Grande do Norte, Brazil, September 1-3, 2010. Proceedings. Lecture Notes in Computer Science, vol. 6255, pp. 260– 274. Springer (2010). https://doi.org/10.1007/978-3-642-14808-8_18 ,https: //doi.org/10.1007/978-3-642-14808-8_18
+> 4. Duck, G.: Javascript sat solver, https://www.comp.nus.edu.sg/~gregory/sat/
+
+18 J. Dijkstra and B. Ahrens 5. Heule, M.J.H.: Schur number five. In: McIlraith, S.A., Weinberger, K.Q. (eds.) Proceedings of the Thirty-Second AAAI Conference on Artificial Intelligence, (AAAI-18), the 30th innovative Applications of Artificial Intelligence (IAAI-18), and the 8th AAAI Symposium on Educational Advances in Artificial Intelli-gence (EAAI-18), New Orleans, Louisiana, USA, February 2-7, 2018. pp. 6598– 6606. AAAI Press (2018). https://doi.org/10.1609/AAAI.V32I1.12209 , https: //doi.org/10.1609/aaai.v32i1.12209 
+
+6. Heule, M.J.H., Kullmann, O., Marek, V.W.: Solving and verifying the boolean pythagorean triples problem via cube-and-conquer. In: Creignou, N., Berre, D.L. (eds.) Theory and Applications of Satisfiability Testing - SAT 2016 -19th International Conference, Bordeaux, France, July 5-8, 2016, Proceedings. Lecture Notes in Computer Science, vol. 9710, pp. 228–245. Springer (2016). 
+
+https://doi.org/10.1007/978-3-319-40970-2_15 , https://doi.org/10.1007/ 978-3-319-40970-2_15 
+
+7. Huth, M., Ryan, M.D.: Logic in computer science - modelling and reasoning about systems (2. ed.). Cambridge University Press (2004) 8. Karp, R.M.: Reducibility among combinatorial problems. In: 50 Years of Integer Programming 1958-2008: from the Early Years to the State-of-the-Art, pp. 219– 241. Springer (2009) 9. Mari´ c, F.: Formal verification of a modern SAT solver by shallow em-bedding into Isabelle/HOL. Theoretical Computer Science 411 (50), 4333– 4356 (2010). https://doi.org/https://doi.org/10.1016/j.tcs.2010.09.014 ,
+
+https://www.sciencedirect.com/science/article/pii/S0304397510004937 
+
+10. Marques-Silva, J., Lynce, I.: SAT solvers. In: Bordeaux, L., Hamadi, Y., Kohli, P. (eds.) Tractability: Practical Approaches to Hard Problems, pp. 331–349. Cam-bridge University Press (2014). https://doi.org/10.1017/CBO9781139177801. 013 , https://doi.org/10.1017/CBO9781139177801.013 
+
+11. Moskewicz, M.W., Madigan, C.F., Zhao, Y., Zhang, L., Malik, S.: Chaff: Engineer-ing an efficient SAT solver. In: Proceedings of the 38th annual Design Automation Conference. pp. 530–535 (2001). https://doi.org/10.1145/378239.379017 
+
+12. Nieuwenhuis, R., Oliveras, A., Tinelli, C.: Solving SAT and SAT modulo theories: From an abstract Davis–Putnam–Logemann–Loveland procedure to DPLL (T). Journal of the ACM (JACM) 53 (6), 937–977 (2006) 13. Nipkow, T., Wenzel, M., Paulson, L.C.: Isabelle/HOL: a proof assistant for higher-order logic. Springer (2002)

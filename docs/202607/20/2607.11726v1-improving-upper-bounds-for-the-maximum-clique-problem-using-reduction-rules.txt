@@ -1,0 +1,2049 @@
+Title: Improving Upper Bounds for the Maximum Clique Problem using Reduction Rules
+
+URL Source: https://arxiv.org/pdf/2607.11726v1
+
+Published Time: Tue, 14 Jul 2026 03:22:42 GMT
+
+Number of Pages: 40
+
+Markdown Content:
+# Improving Upper Bounds for the Maximum Clique Problem using Reduction Rules 
+
+Aljaˇ z Krpan ∗† Janez Povh ‡
+
+Abstract 
+
+We study the interaction between reduction rules and upper-bound functions for the Max-imum Clique Problem (MCP). We show how MCP upper-bound functions can strengthen classical core and truss reductions by replacing local size conditions with upper-bound tests. This leads to the ( k, ω u)-core, the ( k, ω u)-truss, and the more general ( k, d, ω u)-truss, where the parameter d controls the trade-off between stronger reductions and additional computa-tional cost. For each of these notions, we prove clique-preservation properties, correctness of the corresponding peeling algorithm, and running-time bounds. Based on these reductions, we introduce a general framework for improving upper-bound values for MCP. We give two concrete instantiations of the framework: one that uses only the combined truss and core reductions, and one that combines the truss and core reductions with repeated applications of structions. Computational experiments on 73 benchmark graphs show that the proposed reductions can substantially improve several standard upper-bound functions and that com-bining multiple reduction methods can be beneficial in practice. In particular, the combination of structions, truss and core reductions with a DSatur-based bound often reached SDP-level upper-bound values faster than direct SDP computation; on the tested graphs with edge den-sity below 0 .7, it did so in every case. Using the truss and core reduction with the Lov´ asz theta upper-bound function, we also improve the previously best certified integer upper-bound values for three difficult DIMACS instances whose exact clique numbers are not known. In particular, we improve upper-bound values for graph C500.9 from 83 to 73, for graph C1000.9 
+
+from 122 to 115, and for graph C2000.9 from 177 to 168. 
+
+Keywords: Maximum Clique Problem; upper bounds; reductions; core decomposition; truss decomposition; structions; DIMACS benchmarks. 
+
+MSC 2020: Primary 05C85; Secondary 05C69, 90C27, 68R10, 68W40. 
+
+# 1 Introduction 
+
+1.1 Motivation 
+
+The Maximum Clique Problem (MCP) is among the most extensively studied problems in graph theory and combinatorial optimization. Given a graph G, the MCP asks to determine the clique number ω(G), that is, the size of a largest subset of pairwise adjacent vertices. In the constructive variant, one also asks to output such a clique. Since MCP is NP-hard [25], it has received sustained attention in both theoretical and applied research. Practical instances arise in numerous areas, including bioinformatics (e.g., protein–protein interaction prediction) [55], social network analy-sis (e.g., community detection) [17], and structural biology or drug design (e.g., local structure alignment) [28]. 
+
+> ∗
+
+Faculty of mathematics and physics, University of Ljubljana, Slovenia krpan.aljaz@gmail.com 
+
+> †
+
+Rudolfovo, Science and Technology Centre Novo mesto, Slovenia 
+
+> ‡
+
+Rudolfovo, Science and Technology Centre Novo mesto, Slovenia janez.povh@rudolfovo.eu 
+
+1arXiv:2607.11726v1 [math.CO] 13 Jul 2026 Since MCP is NP-hard, practical algorithms often rely on techniques that reduce the search space. Two important tools for this purpose are reduction rules and upper-bound functions. Reduction rules simplify the input graph while preserving the clique sizes relevant to the problem, and are widely used in preprocessing, exact solvers, and local-search algorithms [12, 42, 52]. On the other hand, upper-bound functions certify that a graph cannot contain a clique larger than a certain value, without necessarily finding a maximum clique. A common example of this is pruning in branch-and-bound algorithms. In this paper, we study the interaction between reductions and upper-bound functions. On one hand, upper-bound functions can make reductions stronger. For example, the usual k-core and 
+
+k-truss reductions use neighborhood sizes as simple upper bounds when deciding which vertices or edges to keep. We replace these simple estimates by general MCP upper-bound functions, which can make the reductions more selective. On the other hand, reductions can improve upper-bound values. If a reduction preserves all cliques of a target size, then computing an upper bound on the reduced graph can certify that the original graph has no clique of that size. Since the reduced graph is usually smaller or structurally simpler, the upper bound may also be tighter or easier to compute. Together, these observations show that reductions and upper-bound functions can interact in useful ways. In this paper, we use this connection, on one hand, to strengthen reduction rules and, on the other hand, to design reduction-based procedures for improving upper-bound values. 
+
+1.2 Our contribution 
+
+In this paper, we study the relationship between reduction rules and upper-bound functions for MCP. We analyze how tighter upper-bound values can produce stronger reductions and how re-duction rules can, in turn, improve existing upper-bound values. Based on this relationship, we propose a general framework for improving MCP upper-bound values. We support our theoretical results with an extensive computational study. The main contributions of this work are summarized as follows: 
+
+• Strengthening reduction rules using upper-bound functions: We show how exist-ing upper-bound functions can be used inside the k-core and k-truss reductions. For cores, this fits into the known framework of generalized cores [3]; the contribution here is to use this viewpoint with MCP upper-bound functions, giving the ( k, ω u)-core, and to connect it to clique-preserving reductions used for upper-bound value improvement. For trusses, we transfer the same idea from vertices to edges, obtaining the ( k, ω u)-truss, which can pro-vide stronger reductions. We further extend the ( k, ω u)-truss to the ( k, d, ω u)-truss. The additional parameter d allows us to trade additional computational time for stronger reduc-tions. For these three notions, we prove clique-preservation properties, correctness of the corresponding peeling algorithms, and running-time bounds. 
+
+• Improving MCP upper-bound values using reduction rules: We propose a general algorithmic framework for improving upper-bound values for MCP using reduction rules. This framework is an important contribution because it gives a systematic way to identify and construct new upper-bound improvement algorithms from suitable reductions and upper-bound functions. We demonstrate this by giving two concrete instantiations, one based on truss and core reductions and one combining truss and core reductions with a known reduction called structions. By comparing the two instantiations, we observe that combining different types of reductions can be beneficial in practice. 
+
+• Algorithmic development and empirical evaluation: We implement the proposed re-ductions and upper-bound improvement framework as practical algorithms. We conduct an extensive computational study on 73 benchmark graphs, showing that the proposed reduc-tions can substantially improve existing upper-bound values. Across all benchmark graphs, this instantiation often reaches SDP-level bounds faster than computing the corresponding 2SDP bound directly; on graphs with density below 0 .7, it does so in all tested cases. The strongest experimental outcome is that, using the truss and core instantiation with the Lov´ asz theta upper-bound function, we improved the previously best known upper-bound values for three difficult DIMACS instances whose optimal clique numbers are not known. 
+
+1.3 Notation 
+
+In this paper, we let G denote the class of all finite, simple, undirected graphs. We use the convention N0 = {0, 1, 2, . . . }.Throughout the paper, G = ( V (G), E (G)) denotes an element of G, where |V (G)| = n and 
+
+|E(G)| = m. When the graph is clear from the context, we simply write G = ( V, E ). We write uv 
+
+for the edge joining vertices u and v. For a vertex v ∈ V (G), its neighborhood in G is 
+
+NG(v) := {u ∈ V (G) | uv ∈ E(G)}.
+
+When G is clear from the context, we write N (v) instead of NG(v). We write H ⊆ G if H is a subgraph of G. For S ⊆ V (G), we denote by G[S] the subgraph of 
+
+G induced by S. The graph obtained by deleting a vertex v is denoted by G \ v, and the graph obtained by deleting an edge uv is denoted by G \ uv . The complement of G is denoted by G.We assume that every graph considered in this paper has vertices labeled by distinct natural numbers, and we use the natural order of these labels as the fixed vertex ordering. This assumption is without loss of generality, since any finite graph can be labeled in this way. Subgraphs inherit the labels and hence the ordering. If v ∈ V (G), we define the forward neighborhood of v by 
+
+N + 
+
+> G
+
+(v) := {u ∈ NG(v) | v < u }.
+
+When G is clear from the context, we write N +(v) instead of N + 
+
+> G
+
+(v). If a different ordering is used, this will be stated explicitly. Throughout the paper, pick and remove (Q) denotes an operation that removes and returns an element from a given set Q. In the analysis of our algorithms, we assume that this operation takes O(1) time, which can be achieved, for example, by using a stack or a queue. 
+
+1.4 Outline 
+
+The rest of the paper is organized as follows. In Section 2, we discuss selected related work on reduction techniques, upper-bound functions, and methods for improving upper-bound values. In Section 3, we recall the MCP upper-bound functions used later in the paper. Sections 4 and 5 intro-duce the ( k, ω u)-core, the ( k, ω u)-truss, and the ( k, d, ω u)-truss, together with results on existence, uniqueness, clique preservation, and correctness and complexity of the corresponding algorithms. The longer correctness and complexity proofs for the ( k, d, ω u)-truss are given separately in Sec-tion 6. In Section 7, we describe the practical reduction procedures used in the experiments, including the combined truss and core reduction and the repeated use of structions. Section 8 presents the general framework for improving MCP upper-bound values using reductions, together with two concrete instantiations. In Section 9, we evaluate these instantiations on several upper-bound functions and benchmark graphs, and we also report improved upper-bound values for three DIMACS instances whose exact clique numbers are not known. Finally, Section 10 summarizes the main findings and discusses directions for future work. 
+
+# 2 Related Work 
+
+This section is not intended to be a comprehensive survey. Instead, we discuss selected works on reduction techniques, upper-bound functions, and methods for improving upper-bound values that are closely related to the topics considered in this paper. For a broader survey of recent approaches to MCP, we refer the reader to [35]. 32.1 Reduction techniques 
+
+Reduction techniques for MCP are typically studied alongside those for the Maximum Indepen-dent Set (MIS) and Minimum Vertex Cover (MinVC) problems, since standard complement-based transformations yield polynomial-time equivalences between these three problems. A comprehen-sive survey of reduction techniques for the maximum weighted independent set problem is provided in [18]. Through the standard complement transformation between MCP and MIS, many of these reductions are also relevant to MCP. Although that survey focuses on weighted variants, its results directly apply to the unweighted setting by assigning weight 1 to every vertex. The comprehensive survey on MCP contains an extensive list of reduction and kernelization techniques for MCP and related problems [35, Section 2.2]. One work from this line of research that we want to highlight is [19], which develops a scalable preprocessing framework for the Maximum Independent Set problem by combining several reduction rules. The efficiency of their approach comes not only from parallelization, but also from implementation techniques such as dependency checking and reduction tracking, which avoid unnecessary reduction tests and stop kernelization when further reductions become less productive. A different application-oriented use of prepro-cessing appears in [50], where MCP is used to solve a scheduling problem and a large number of simple preprocessing techniques is applied to the resulting MCP instances before running the solver. Reduction rules were also used dynamically inside solving procedures, rather than only as preprocessing, for example in branch-and-reduce algorithms for the related Minimum Vertex Cover problem [1]. Two concepts that are often used as reduction rules are the k-core and the k-truss. The k-core was introduced in [46] and has since become a standard tool in network analysis. For broader discussions of k-core decompositions, we refer the reader to [26, 33, 44]. In MCP, degeneracy and core-based bounds are used to reduce the search space in exact algorithms [42, 52]. Generalized cores, based on vertex property functions, were introduced in [3]. The ( k, ω u)-core used in this paper can be viewed as an MCP-specific instance of this framework when ωu is increasing. The k-truss is a triangle-based cohesive subgraph notion. A closely related notion, called k-dense subgraphs, was introduced by Saito and Yamada [40]. The k-truss model was later introduced by Cohen [10]. Similar to k-core, the k-truss is also used as a reduction tool in MCP algorithms, for example in [32]. Efficient truss-decomposition algorithms and implementations have been studied in [53] and [23]. A general clique-based framework is given by nucleus decompositions [45]. In this framework, lower-order cliques are required to be contained in sufficiently many higher-order cliques, and both the k-core and the k-truss appear as special cases. Other generalizations of truss decompositions also exist, for example generalizations based on higher-order neighborhoods [8]. Our ( k, ω u)-truss and ( k, d, ω u)-truss are different from nucleus decompositions and from these other truss generalizations. Our ( k, ω u)-truss and ( k, d, ω u)-truss differ from existing truss gen-eralizations because they incorporate an increasing upper-bound function. Together with the corresponding core-based notions, they yield reductions for improving MCP upper bounds. 
+
+2.2 Improving upper-bound values 
+
+Improved upper-bound values for MCP are one of the main contributions of our paper. The work most closely related to ours is the study [15] from 2008, where the Sequential Elimination Algorithm (SEA) was introduced. Given any upper-bound function, SEA iteratively removes vertices according to upper bounds computed on their neighborhoods and updates a global upper-bound value for ω(G). In [11], the authors build directly on this framework and propose a repeated version of SEA, in which the original sequential scheme is applied multiple times on suitable subgraphs, yielding empirically stronger upper-bound values. A closely related formulation was later given in [49] under the name DISCARDING. It uses the same neighborhood-based elimination principle to construct a vertex deletion order and derive a global upper bound, with particular emphasis on coloring-based bounds and parallel implementation. 4Other related work mainly focuses on strengthening particular upper-bound functions by ex-ploiting their specific structural properties. For example, the coloring upper-bound function has been strengthened by infra-chromatic upper bounds [41, 43], which can yield tighter upper-bound values. Another line of research aims to use upper-bound information more efficiently within branch-and-bound solvers by reusing previously computed information or by strengthening the pruning step; examples include incremental MaxSAT reasoning [21] and the incremental upper bound IncUB proposed in [29]. For bounds themselves, a wide variety of results for the clique number and the independence number has been proposed in the literature. For overviews of different families of such bounds, we refer the reader to [7, 27, 34, 54]. 
+
+# 3 Upper-bound functions for the Maximum Clique Problem 
+
+In this section, we first formally define the Maximum Clique Problem (MCP). We then introduce several upper-bound functions for its optimal value, which will be used later in the paper. 
+
+Definition 1. Let G = ( V, E ) ∈ G . A set S ⊆ V is a clique in G if every two distinct vertices in 
+
+S are adjacent, that is, 
+
+uv ∈ E for all distinct u, v ∈ S. 
+
+The clique number of G is defined as 
+
+ω(G) := max  
+
+> S⊆VSis a clique
+
+|S|.
+
+The Maximum Clique Problem asks for a clique S ⊆ V such that |S| = ω(G). We now define upper-bound functions and upper-bound values for the clique number. 
+
+Definition 2. A function ωu : G → N0 is an MCP upper-bound function if, for every graph 
+
+G = ( V, E ) ∈ G ,
+
+ω(G) ≤ ωu(G) ≤ | V |.
+
+Any integer U satisfying ω(G) ≤ U ≤ | V | is called an upper-bound value on ω(G). The restriction ωu(G) ∈ N0 is assumed without loss of generality. If an upper-bound function 
+
+ωu 
+
+> 0
+
+returns real values, we can replace it by ⌊ωu 
+
+> 0
+
+(G)⌋, since the clique number ω(G) is an integer. Similarly, the condition ωu(G) ≤ | V | is assumed without loss of generality, since |V | is the trivial upper-bound value for the clique number. Therefore, if an upper-bound function ωu 
+
+> 0
+
+does not satisfy these conditions, we can replace it in constant time by 
+
+ωu(G) := min {⌊ ωu 
+
+> 0
+
+(G)⌋, |V |} .
+
+The resulting upper-bound function is never weaker than ωu 
+
+> 0
+
+.In the generalized core and truss definitions introduced later, uniqueness of the largest subgraph is not automatic for an arbitrary upper-bound function. To ensure that these definitions are well-defined, we require the upper-bound function to be monotone with respect to taking subgraphs. 
+
+Definition 3. Let ωu : G → N0 be an MCP upper-bound function. We say that ωu is increasing if, for all graphs G, G ′ ∈ G ,
+
+G ⊆ G′ =⇒ ωu(G) ≤ ωu(G′).
+
+We also use an edge-sensitivity property to distinguish upper-bound functions whose value can change under edge deletion; this will allow us to state more precise running-time bounds for the corresponding reduction algorithms. 5Definition 4. Let ωu be an MCP upper-bound function. We say that ωu is edge-sensitive if there exists a graph G = ( V, E ) ∈ G and an edge uv ∈ E such that 
+
+ωu(G)̸ = ωu(G \ uv ).
+
+In the following, we list the MCP upper-bound functions that will be used in this paper. They are ordered approximately by their computational cost. 1. Trivial: The trivial upper-bound function returns n = |V |, since ω(G) ≤ n. If n = |V | is already stored, this value is computed in O(1) time; otherwise, computing it requires O(n)time. 2. Density: Since every clique of size ω(G) contains  ω(G)2
+
+ edges, we have  ω(G)2
+
+ ≤ m. Hence, 
+
+ω(G) ≤
+
+ 1 + √1 + 8 m
+
+2
+
+
+
+.
+
+If m = |E| is already stored, this upper-bound value is computed in O(1) time; otherwise, computing it requires O(n + m) time. 3. Degree: Every vertex in a maximum clique has at least ω(G) − 1 neighbors. Therefore, 
+
+ω(G) ≤ ∆( G) + 1 .
+
+If the maximum degree ∆( G) is not already stored, this upper-bound value can be computed in O(n + m) time. 4. DSatur coloring: Any proper coloring of G with c colors gives an upper-bound value c,since all vertices of a clique must receive distinct colors. We compute such a coloring using the DSatur heuristic introduced in [6]. A straightforward implementation has time complexity 
+
+O(n2). Although priority-queue implementations may be preferable on sparse graphs, we use the straightforward implementation in our experiments, since our most difficult instances are dense. 5. Lov´ asz theta: The Lov´ asz theta function gives an upper-bound function ϑ(G) for the independence number α(G); see [30]. For MCP, we therefore obtain ω(G) = α(G) ≤ ⌊ ϑ(G)⌋.Computing this upper-bound value requires solving a semidefinite programming problem and is therefore computationally expensive. Let m = |E(G)|. Using standard primal-dual interior-point methods, an ε-accurate solution can be computed in polynomial time; for example, short-step path-following methods have complexity bounds of the order O(( m3 +
+
+m2n2 + mn 3)√n log(1 /ε )) floating-point operations; see, for example, [37]. Since m = O(n2)in the worst case, this gives the worst-case bound O(n6.5 log(1 /ε )). 6. Vector coloring: Another SDP-based upper-bound function for the MCP arises from the vector chromatic number χv (G), introduced by Karger, Motwani, and Sudan [24]. It satisfies 
+
+ω(G) ≤ χv (G) ≤ ϑ(G), where the second inequality follows from the fact that the strict vector chromatic number coincides with the Lov´ asz theta function of the complement graph [24, Theorem 8.2]. The first inequality is immediate, since any clique of size k requires k mutually constrained vectors in any vector k-coloring of G. Computing χv (G) also requires solving a semidefinite programming problem. Here the linear constraints are associated with the edges of G, so let m = |E(G)|. Using the same class of interior-point methods as for the Lov´ asz theta function, an ε-accurate solution can be computed in O(( m3 +m2n2 +mn 3)√n log(1 /ε )) floating-point operations. Since m = O(n2) in the worst case, this again gives the worst-case bound O(n6.5 log(1 /ε )). 6Thus, vector coloring can give an upper-bound value for ω(G) at least as tight as the Lov´ asz theta value. In practice, however, the relative cost depends on graph density: the Lov´ asz theta bound for MCP is computed on G, while vector coloring is computed on G. Hence, Lov´ asz theta is often more feasible on dense graphs, whereas vector coloring can be preferable on sparse graphs. All upper-bound functions considered in this paper are edge-sensitive, with the exception of the trivial upper-bound function. It is immediate that the trivial, density, and degree upper-bound functions are increasing. The upper-bound function ωu(G) = ⌊ϑ(G)⌋ is increasing with respect to taking subgraphs. Indeed, Lov´ asz observes in [31, Section 11.1] that if G′ is an induced subgraph of G, then ϑ(G′) ≤ ϑ(G), while if G′ is a spanning subgraph of G, then ϑ(G′) ≥ ϑ(G). Let H ⊆ G and let S = V (H). Since G[S] is a spanning subgraph of H, we have ϑ(H) ≤ ϑ(G[S]) . Moreover, G[S] is an induced subgraph of G, and hence ϑ(G[S]) ≤ ϑ(G). Therefore, 
+
+ωu(H) = ⌊ϑ(H)⌋ ≤ ⌊ ϑ(G[S]) ⌋ ≤ ⌊ ϑ(G)⌋ = ωu(G).
+
+The upper-bound function ωu(G) = ⌊χv (G)⌋ is also increasing with respect to taking subgraphs. Indeed, in the SDP formulation of vector coloring, the matrix variables are indexed by vertices, while the linear constraints are imposed only on entries corresponding to adjacent pairs of vertices. Thus, if H ⊆ G, the formulation for H is obtained by keeping only the rows and columns indexed by V (H), together with the edge constraints corresponding to E(H). Equivalently, any feasible solution for G restricts to a principal submatrix feasible for H; this principal submatrix remains positive semidefinite, and all edge constraints of H are inherited from G. Hence χv (H) ≤ χv (G), and therefore ωu(H) ≤ ωu(G). In contrast, the DSatur upper-bound function is not guaranteed to be increasing. Because DSatur is a heuristic, adding edges may change the coloring order and can lead to a coloring with fewer colors, and therefore to a smaller upper-bound value. 
+
+# 4 The k-core and (k, ω u)-core 
+
+In this section, we first recall the classical k-core reduction and its connection to the Maximum Clique Problem. We then introduce a stronger variant, called the ( k, ω u)-core, where the degree condition is replaced by a general upper-bound function for the clique number of the neighborhood. 
+
+4.1 The k-core 
+
+The concept of a k-core is well known and was originally introduced in [46]. Its connection to MCP follows from a simple necessary condition: every vertex in a clique of size k has at least k − 1neighbors among the other vertices of the clique. 
+
+Definition 5. Let G = ( V, E ) be a graph and let k ≥ 0 be an integer. A k-core of G is a largest induced subgraph G′ = G[V ′] such that |NG′ (v)| ≥ k for every vertex v ∈ V ′.Existence is immediate, since G is finite and the empty induced subgraph satisfies the condition vacuously. Uniqueness follows from the following proposition: 
+
+Proposition 6. A k-core of a graph is unique. Proof. Let C1 = G[V1] and C2 = G[V2] be two k-cores of G. Then G[V1 ∪ V2] also has minimum degree at least k, since each vertex keeps all its neighbors from either C1 or C2. Because C1 and 
+
+C2 have maximum order among such induced subgraphs, we have |V1 ∪ V2| = |V1| = |V2|. Hence 
+
+V1 = V2, and therefore C1 = C2.7By Proposition 6, we may refer to a k-core of G as the k-core of G. The k-core can be computed by the standard peeling procedure shown in Algorithm 1, which repeatedly removes vertices whose current degree is smaller than k.
+
+Algorithm 1: k-core computation                                          
+
+> Input :Graph G= ( V, E ), integer k≥0
+> Output: The k-core of G
+> 1core (G, k )
+> 2QV←V
+> 3while QV̸=∅do
+> 4v←pick and remove (QV)
+> 5if |NG(v)|< k then
+> 6QV←QV∪NG(v)
+> 7G←G\v
+> 8end
+> 9end
+> 10 return G
+
+Proposition 7. The function core (G, k ) computes the k-core of the graph G in time O(n + m).Proof. The algorithm removes exactly those vertices whose degree in the current graph is smaller than k. Whenever a vertex is removed, only its neighbors can have their degree decreased, and therefore these vertices are inserted back into QV . Hence, when the algorithm terminates, every remaining vertex has degree at least k.It remains to show that no vertex belonging to a k-core is removed. Let L be the largest induced subgraph with minimum degree at least k, and suppose that the algorithm removes a vertex of 
+
+L. Let w be the first such vertex, and let H be the current graph right before the moment when 
+
+w is removed. Since no vertex of L was removed before w, we have NL(w) ⊆ NH (w). Thus 
+
+|NH (w)| ≥ | NL(w)| ≥ k, which contradicts the rule by which w is removed from H. Therefore all vertices of L remain in G′. Since every vertex of G′ has degree at least k in G′, and L is a largest induced subgraph with this property, G′ cannot contain any vertex outside L. Hence G′ = L.For the running time, assume that the current degree of each vertex is maintained throughout the algorithm; initially, QV contains n vertices. Whenever a vertex v is removed, all vertices in 
+
+N (v) are inserted into QV . Thus the total number of insertions caused by removals is at most P 
+
+> v∈V
+
+|N (v)| = 2 m. We charge each such insertion to the later iteration in which the same vertex is processed by pick and remove . Hence the cost of inserting a vertex into QV and later processing it is counted together as O(1). Therefore the total running time is O(n + m). The following proposition gives the reduction property that makes the k-core useful for MCP: 
+
+Proposition 8. Let G = ( V, E ) be a graph, let K ⊆ V be a set of size k ≥ 1, and let G′ =
+
+core (G, k − 1) . Then: 
+
+K is a clique in G ⇐⇒ K is a clique in G′.
+
+Proof. The implication ( ⇐) follows directly from G′ ⊆ G. For ( ⇒), suppose that K is a clique in 
+
+G, but K is not contained in G′. Let v ∈ K be the first vertex of K removed by the algorithm. At the moment when v is removed, all other vertices of K are still present. Hence v has at least 
+
+k − 1 neighbors in the current graph, contradicting the rule that only vertices with fewer than k − 1neighbors are removed. Therefore K ⊆ V (G′), and since G′ is an induced subgraph of G, K is a clique in G′.8By computing the ( k − 1)-core of a graph, we can reduce the graph while preserving all cliques of size k. Consequently, all cliques of size at least k are also preserved. 
+
+4.2 The (k, ω u)-core 
+
+We first consider an MCP-specific instance of generalized cores [3], obtained by replacing the usual degree condition with an upper-bound condition on the neighborhood. We observe that the condition |N (v)| < k uses the size of the neighborhood N (v) as a trivial upper-bound value for the clique number of the induced subgraph G[N (v)]. Indeed, if a clique of size k + 1 contains a vertex 
+
+v, then the remaining k vertices must form a clique inside G[N (v)]. This observation suggests a natural improvement: instead of using |N (v)|, we can apply an MCP upper-bound function, as defined in Definition 2, to the neighborhood subgraph G[N (v)], denoted by ωu(G[N (v)]). In this way, we may obtain a more selective core and therefore a stronger reduction. For simplicity, when the graph G is clear from the context, we write ωu(N (v)), instead of ωu(G[NG(v)]). This idea leads to the definition of the ( k, ω u)-core. 
+
+Definition 9. Let G = ( V, E ) be a graph, let k ≥ 0 be an integer, and let ωu be an MCP upper-bound function. A ( k, ω u)-core of G is a largest induced subgraph G′ = G[V ′] such that 
+
+ωu(G′[NG′ (v)]) ≥ k for every vertex v ∈ V ′.Thus, when ωu is increasing, the ( k, ω u)-core is an instance of the generalized-core frame-work [3]. We nevertheless state the definition and prove the needed properties in our setting, both for completeness and because similar ideas are later used to generalize the k-truss. As before, existence is immediate, since G is finite and the empty induced subgraph satisfies the condition vacuously. If ωu is increasing, uniqueness follows from the following proposition: 
+
+Proposition 10. If ωu is increasing, then a (k, ω u)-core of a graph is unique. Proof. Let C1 = G[V1] and C2 = G[V2] be two ( k, ω u)-cores of G. Consider C = G[V1 ∪ V2]. For every v ∈ V1, we have C1[NC1 (v)] ⊆ C[NC (v)], and since ωu is increasing, ωu(C[NC (v)]) ≥
+
+ωu(C1[NC1 (v)]) ≥ k. The same argument holds for every v ∈ V2 as well. Hence C satisfies the (k, ω u)-core condition. Since C1 and C2 have maximum order among induced subgraphs satisfying this condition, |V1 ∪ V2| = |V1| = |V2|. Therefore V1 = V2, and so C1 = C2.When ωu is increasing, Proposition 10 allows us to refer to a ( k, ω u)-core of G as the ( k, ω u)-core of G. The ( k, ω u)-core can be computed by the peeling procedure shown in Algorithm 2, where the degree test |NG(v)| < k from Algorithm 1 is replaced by the upper-bound value test 
+
+ωu(NG(v)) < k .
+
+Algorithm 2: (k, ω u)-core computation                                            
+
+> Input :Graph G= ( V, E ), integer k≥0, MCP upper-bound function ωu
+> Output: (k, ω u)-core of G, if ωuis increasing
+> 1core (G, k, ω u)
+> 2QV←V
+> 3while QV̸=∅do
+> 4v←pick and remove (QV)
+> 5if ωu(NG(v)) < k then
+> 6QV←QV∪NG(v)
+> 7G←G\v
+> 8end
+> 9end
+> 10 return G
+
+9Proposition 11. Let G′ = core (G, k, ω u). Then the following holds: 
+
+• If ωu is increasing, then G′ is the (k, ω u)-core of G.
+
+• The running time is O(n + wm ), where w is the amortized time for one computation of ωu.Proof. The algorithm removes exactly those vertices v for which ωu(NG(v)) < k in the current graph. Whenever a vertex is removed, only its neighbors can have their neighborhoods changed, and therefore these vertices are inserted back into QV . Hence, when the algorithm terminates, every remaining vertex v satisfies ωu(NG(v)) ≥ k.It remains to show that, if ωu is increasing, no vertex belonging to a ( k, ω u)-core is removed. Let L be the largest induced subgraph satisfying the ( k, ω u)-core condition, and suppose that the algorithm removes a vertex of L. Let w be the first such vertex, and let H be the current graph right before the moment when w is removed. Since no vertex of L was removed before w, we have 
+
+L[NL(w)] ⊆ H[NH (w)]. Since ωu is increasing, ωu(NH (w)) ≥ ωu(NL(w)) ≥ k, which contradicts the rule by which w is removed from H. Therefore all vertices of L remain in G′. Since G′ satisfies 
+
+ωu(G′[NG′ (v)]) ≥ k for every vertex v ∈ V (G′), and L is a largest induced subgraph with this property, G′ cannot contain any vertex outside L. Hence G′ = L.For the running-time analysis, the case k = 0 is immediate, since no vertex is removed. Assume therefore that k > 0. Isolated vertices can be detected and removed in O(n + m) time. After this preprocessing, n = O(m). Initially, QV contains n vertices. Whenever a vertex v is removed, all vertices in NG(v) are inserted into QV . Thus the total number of insertions caused by removals is at most P 
+
+> v∈V
+
+|NG(v)| = 2 m. We charge each such insertion to the later iteration in which the same vertex is processed by pick and remove . Hence the cost of inserting a vertex into QV ,later processing it, and computing ωu is counted together as O(w). The edge-based part therefore takes O(wm ) time. Since w = Ω(1), adding the preprocessing term gives the total running time 
+
+O(n + wm ). The following proposition gives the reduction property that makes the ( k, ω u)-core useful for MCP: 
+
+Proposition 12. Let G = ( V, E ) be a graph, let ωu be an MCP upper-bound function, let K ⊆ V
+
+be a set of size k ≥ 1, and let G′ = core (G, k − 1, ω u). Then: 
+
+K is a clique in G ⇐⇒ K is a clique in G′.
+
+Proof. The implication ( ⇐) follows directly from G′ ⊆ G. For ( ⇒), suppose that K is a clique in 
+
+G, but K is not contained in G′. Let v ∈ K be the first vertex of K removed by the algorithm, and let H be the current graph immediately before v is removed. At this moment, all other vertices of 
+
+K are still present. Hence NH (v) contains a clique of size k − 1, and therefore ωu(NH (v)) ≥ k − 1. This contradicts the rule that only vertices with ωu(NH (v)) < k − 1 are removed. Therefore 
+
+K ⊆ V (G′), and since G′ is an induced subgraph of G, K is a clique in G′.By computing the ( k − 1, ω u)-core of a graph, we can reduce the graph while preserving all cliques of size k. Consequently, all cliques of size at least k are also preserved. 
+
+Remark 13. Proposition 12 does not assume that ωu is increasing. The increasing property is needed only to prove that Algorithm 2 returns the largest induced subgraph satisfying the ( k, ω u)-core condition. When the algorithm is used only as a reduction for MCP, it is sufficient that all cliques of size k are preserved. Hence any valid MCP upper-bound function can be used for this purpose, even if it is not increasing. 10 5 The (k, ω u)-truss and (k, d, ω u)-truss 
+
+In this section, we introduce the ( k, d, ω u)-truss , a natural generalization of the ( k, ω u)-truss. This structure serves as an important building block for the algorithms presented in the rest of the paper. We start with the concept of the k-truss , which was first introduced in [40] and later formalized in [10]. Closely related notions also appear under the names k-community [51] and triangle-core [39]. It is defined in a similar way to the k-core: 
+
+Definition 14. Let G = ( V, E ) be a graph and let k ≥ 0 be an integer. A k-truss of G is a largest spanning subgraph G′ = ( V, E ′), where E′ ⊆ E, such that |NG′ (u) ∩ NG′ (v)| ≥ k for every edge 
+
+uv ∈ E′.This parameterization differs from the standard one in the truss literature, where a k-truss usually requires each edge to be contained in at least k − 2 triangles. We use the shifted parame-terization in order to keep the notation consistent with the k-core definition, where the parameter denotes the required local support. As with the k-core, we can use ωu to obtain a more general definition: 
+
+Definition 15. Let G = ( V, E ) be a graph, let k ≥ 0 be an integer, and let ωu be an MCP upper-bound function. A ( k, ω u)-truss of G is a largest spanning subgraph G′ = ( V, E ′), where 
+
+E′ ⊆ E, such that ωu(G′[NG′ (u) ∩ NG′ (v)]) ≥ k for every edge uv ∈ E′.Instead of treating this case separately, we now introduce a more general notion and prove the main results for that general setting. The above ( k, ω u)-truss will then be recovered as the special case d = 0. 
+
+5.1 The (k, d, ω u)-truss 
+
+Our second major contribution in this paper is a generalization of this notion, which we call the (k, d, ω u)-truss. The idea is to test whether an edge can still participate in a clique of the target size by looking for a ( d + 2)-clique containing the edge whose common neighborhood has a sufficiently large upper-bound value. 
+
+Definition 16. Let G = ( V, E ) be a graph, let uv ∈ E, let k, d ∈ N0 with 0 ≤ d ≤ k, and let ωu
+
+be an MCP upper-bound function. For a ( d + 2)-clique K = {u, v, w 1, . . . , w d}, define 
+
+WG(K) := \
+
+> x∈K
+
+NG(x).
+
+We define CG,k,d,ω u (u, v ) as the following condition: 
+
+CG,k,d,ω u (u, v ) := ∃(d + 2)-clique K = {u, v, w 1, . . . , w d} : ωu(G[WG(K)]) ≥ k − d. 
+
+If CG,k,d,ω u (u, v ) holds, then any such clique K is called a witnessing clique for the edge uv , and 
+
+WG(K) is called the witnessing common neighborhood of K.Thus, CG,k,d,ω u (u, v ) holds if the edge uv can be extended by d vertices, and the remaining common neighborhood still has upper-bound value at least k − d.
+
+Definition 17. Let G = ( V, E ) be a graph, let k, d ∈ N0 with 0 ≤ d ≤ k, and let ωu be an MCP upper-bound function. A ( k, d, ω u)-truss of G is a largest spanning subgraph G′ = ( V, E ′), where 
+
+E′ ⊆ E, such that CG′,k,d,ω u (u, v ) holds for every edge uv ∈ E′.11 By setting d = 0, the definition reduces to the ( k, ω u)-truss. The parameter d gives a trade-off between running time and the strength of the reduction: larger values of d may give stronger reductions, but require more computational time. As in the core case, existence is immediate, since G is finite and the empty spanning sub-graph satisfies the condition vacuously. If ωu is increasing, uniqueness follows from the following proposition: 
+
+Proposition 18. If ωu is increasing, then a (k, d, ω u)-truss of a graph is unique. Proof. Let T1 = ( V, E 1) and T2 = ( V, E 2) be two ( k, d, ω u)-trusses of G, and let T = ( V, E 1 ∪ E2). We show that T also satisfies the ( k, d, ω u)-truss condition. Let uv ∈ E1 ∪ E2. If uv ∈ E1, then 
+
+CT1,k,d,ω u (u, v ) holds. Hence there exists a witnessing clique K for uv in T1, so ωu(T1[WT1 (K)]) ≥
+
+k − d. Since T1 ⊆ T , the same clique K is present in T , and WT1 (K) ⊆ WT (K). Because ωu
+
+is increasing, CT,k,d,ω u (u, v ) also holds. The case uv ∈ E2 is analogous. Therefore T satisfies the ( k, d, ω u)-truss condition. Since T1 and T2 have maximum size among spanning subgraphs satisfying this condition, |E1 ∪ E2| = |E1| = |E2|. Hence E1 = E2, and therefore T1 = T2.Thus, when ωu is increasing, we may refer to the unique ( k, d, ω u)-truss of G as the ( k, d, ω u)-truss of G.The computation follows the same peeling principle as for the k-core: edges that do not satisfy the condition are removed, and only edges whose condition may have changed are inserted back into the queue. Algorithm 3 computes the ( k, d, ω u)-truss. The correctness and running-time analysis of the algorithm are given in the following proposition: 
+
+Proposition 19. Let G′ = truss (G, k, d, ω u), let n = |V (G)|, let m = |E(G)|, let w be the amortized time for one computation of ωu, and let ws be the space used for one computation of 
+
+ωu. Then the following holds: 
+
+• If ωu is increasing, then G′ is the (k, d, ω u)-truss of G.
+
+• Assuming space complexity O(n + m + ws)
+
+– If d > 0 or ωu is edge-sensitive, then the running time is O
+
+
+
+n + ( √m + w) m d+4 2
+
+
+
+.
+
+– If d = 0 and ωu is not edge-sensitive, then the running time is O
+
+
+
+n + ( √m + w) m 32
+
+
+
+.
+
+• Assuming space complexity O(n + m d+3 2 + ws)
+
+– If d > 0 or ωu is edge-sensitive, then the running time is O
+
+
+
+n + wm d+4 2
+
+
+
+.
+
+– If d = 0 and ωu is not edge-sensitive, then the running time is O
+
+
+
+n + wm 32
+
+
+
+.Proof. The proof is given in Section 6. Let us compare our ( k, 0, ω u)-truss algorithm with the specialized algorithm for computing the k-truss from [53], in the case where ωu(G) := |V (G)|. Recall that this trivial upper-bound function is not edge-sensitive, since deleting an edge does not change the number of vertices. For this comparison, we use the higher-space version of our algorithm. In this setting, ωu can be evaluated in amortized O(1) time, since the size of the set W can be maintained throughout the algorithm. Therefore, for d = 0, our algorithm runs in time O(n + m3/2), matching the asymptotic running time of the specialized k-truss algorithm from [53]. The specialized algorithm has space complexity O(m + n). In general, our higher-space version uses O(n + m3/2 + ws) space, because it precomputes and maintains the common neighborhood 
+
+N (u) ∩ N (v) for every edge uv . However, in the special case ωu(G) := |V (G)|, it is enough to 12 Algorithm 3: (k, d, ω u)-truss computation 
+
+Input : Graph G = ( V, E ), integers k, d with 0 ≤ d ≤ k, MCP upper-bound function ωu
+
+Output: (k, d, ω u)-truss of G, if ωu is increasing  
+
+> 1
+
+const global k, d, ω u 
+
+> 2
+
+cond (v1, v 2, G ) 
+
+> 3
+
+c-rec (R, W, B ) 
+
+> 4
+
+if |R| = d then return ωu(G[W ]) ≥ k − d 
+
+> 5
+
+return W 
+
+> v∈B
+
+c-rec (R ∪ { v}, W ∩ NG(v), B ∩ N + 
+
+> G
+
+(v))  
+
+> 6
+
+S ← NG(v1) ∩ NG(v2) 
+
+> 7
+
+return c-rec (∅, S, S ) 
+
+> 8
+
+truss (G, k, d, ω u) 
+
+> 9
+
+Set const global variables k, d, ω u 
+
+> 10
+
+QE ← E 
+
+> 11
+
+while QE̸ = ∅ do  
+
+> 12
+
+v1v2 ← pick and remove (QE ) 
+
+> 13
+
+if ¬cond (v1, v 2, G ) then  
+
+> 14
+
+S ← NG(v1) ∩ NG(v2) 
+
+> 15
+
+QE ← QE ∪ { wv 1, wv 2 | w ∈ S} 
+
+> 16
+
+if d > 0 or ωu is edge-sensitive then  
+
+> 17
+
+QE ← QE ∪ { w1w2 | w1 ∈ S, w 2 ∈ S ∩ NG(w1)} 
+
+> 18
+
+end  
+
+> 19
+
+G ← G \ v1v2 
+
+> 20
+
+end  
+
+> 21
+
+end  
+
+> 22
+
+return G
+
+maintain only the value |N (u) ∩ N (v)| for every edge uv . Since ws = O(1), in this special case, the space complexity can also be reduced to O(n + m). The following proposition gives the reduction property that makes the ( k, d, ω u)-truss useful for MCP: 
+
+Proposition 20. Let G = ( V, E ) be a graph, let ωu be an MCP upper-bound function, let K ⊆ V
+
+be a set of size k, let 0 ≤ d ≤ k − 2, and let G′ = truss (G, k − 2, d, ω u). Then: 
+
+K is a clique in G ⇐⇒ K is a clique in G′.
+
+Proof. The implication ( ⇐) follows directly from G′ ⊆ G. For ( ⇒), suppose that K is a clique in G, but K is not a clique in G′. Since G′ is a spanning subgraph of G, some edge of K was removed by the algorithm. Let uv be the first edge of K removed, and let H be the current graph right before uv is removed. At this moment, all other edges of K are still present. Choose any 
+
+d vertices w1, . . . , w d from K \ { u, v }, and let K′ = {u, v, w 1, . . . , w d}. Then K′ is a ( d + 2)-clique in H. The remaining k − d − 2 vertices of K form a clique in H[WH (K′)], and therefore 
+
+ωu(H[WH (K′)]) ≥ k − d − 2. Hence CH,k −2,d,ω u (u, v ) holds, contradicting the rule by which uv is removed. Therefore all edges of K remain in G′, and so K is a clique in G′.By applying truss (G, k − 2, d, ω u), we can reduce the graph while preserving all cliques of size 
+
+k. Consequently, all cliques of size at least k are also preserved. For the same reason as in Remark 13, Proposition 20 does not require the assumption that ωu
+
+is increasing. 13 6 Correctness and complexity of the (k, d, ω u)-truss 
+
+In this section, we prove the correctness and time-complexity bounds for Algorithm 3. We give these proofs in a separate section because they are long and technical. Readers who are not interested in these details may skip this section, since it does not contain material that is crucial for understanding the later parts of the paper. Before proving correctness and the time-complexity bounds, we need the following lemmas. 
+
+Lemma 21. Let Ck denote the number of k-cliques in a graph G with m edges. For every integer 
+
+k ≥ 2, we have Ck = O(mk/ 2).Proof. In [14, Claim 3] it is shown that 
+
+Ck ≤ m
+
+ √mk − 2
+
+
+
+.
+
+Since  xr
+
+ ≤ xr for x ≥ 0 and r ≥ 0, we get 
+
+Ck ≤ m
+
+ √mk − 2
+
+
+
+≤ m(√m)k−2 = mk/ 2.
+
+Therefore Ck = O(mk/ 2). 
+
+Lemma 22. Let G = ( V, E ) be a graph with m edges. For every edge uv ∈ E, define 
+
+auv := min {| NG(u)|, |NG(v)|} .
+
+Then X
+
+> uv ∈E
+
+auv = O(m3/2) and X
+
+> uv ∈E
+
+a2 
+
+> uv
+
+= O(m2).
+
+Proof. The first bound follows from the standard degree-splitting argument used in [9]. We include the argument for completeness, since the second bound is a simple variation of the same proof. Orient every edge uv ∈ E from the endpoint with smaller neighborhood to the endpoint with larger neighborhood, breaking ties arbitrarily. Let d+(v) be the number of edges oriented out of 
+
+v. Then X
+
+> uv ∈E
+
+auv = X
+
+> v∈V
+
+|NG(v)|d+(v).
+
+Let t = √2m. If |NG(v)| ≤ t, then |NG(v)|d+(v) ≤ td +(v). Summing over all such vertices gives at most tm = O(m3/2). If |NG(v)| > t , then every outgoing neighbor of v has degree at least |NG(v)|,so d+(v) ≤ 2m/ |NG(v)|. Hence |NG(v)|d+(v) ≤ 2m. Since there are at most 2 m/t = O(√m)vertices with degree larger than t, their total contribution is O(m3/2). This proves the first bound. For the second bound, using the same orientation gives 
+
+X
+
+> uv ∈E
+
+a2 
+
+> uv
+
+= X
+
+> v∈V
+
+|NG(v)|2d+(v).
+
+If |NG(v)| ≤ t, then |NG(v)|2d+(v) ≤ t2d+(v) = 2 m d +(v). Summing over these vertices gives 
+
+O(m2). If |NG(v)| > t , then again d+(v) ≤ 2m/ |NG(v)|, and therefore 
+
+|NG(v)|2d+(v) ≤ 2m|NG(v)|.
+
+Summing over all vertices gives at most 2 m P 
+
+> v∈V
+
+|NG(v)| = 4 m2. Hence the second bound also follows. 14 Lemma 23. For every integer k ≥ 1, let Kk denote the set of all k-cliques in G. Then 
+
+X
+
+> C∈K k
+
+min  
+
+> v∈C
+
+deg G(v) = O
+
+
+
+m(k+1) /2
+
+.
+
+Proof. The case k = 1 is immediate, since P 
+
+> v∈V
+
+deg G(v) = 2 m.For k = 2, the desired bound follows directly from the first bound of Lemma 22. Assume k ≥ 3. Order the vertices by nondecreasing degree, breaking ties arbitrarily, and let 
+
+N +(v) be the set of neighbors of v that appear after v in this order. Every k-clique has a unique first vertex v in this order. This vertex has minimum degree in the clique, and the remaining k − 1 vertices form a ( k − 1)-clique in G[N +(v)]. Therefore 
+
+X
+
+> K∈K k
+
+min  
+
+> u∈K
+
+deg G(u) = X
+
+> v∈V
+
+deg G(v) {K ∈ K k−1 | K ⊆ N +(v)} .
+
+Let Ck−1 := |K k−1|. Since G[N +(v)] is an induced subgraph of G, it contains at most Ck−1 cliques of size k − 1. Hence, by Lemma 21 and since k − 1 ≥ 2, 
+
+X
+
+> K∈K k
+
+min  
+
+> u∈K
+
+deg G(u) ≤ X
+
+> v∈V
+
+deg G(v)Ck−1 = 2 mC k−1 = O
+
+
+
+m · m(k−1) /2
+
+= O
+
+
+
+m(k+1) /2
+
+.
+
+Now we can start proving Proposition 19. 
+
+6.1 Correctness 
+
+We first prove the correctness statement from Proposition 19: if ωu is increasing, then the graph 
+
+G′ returned by Algorithm 3 is the ( k, d, ω u)-truss of G.We begin by showing that CG,k,d,ω u is computed by cond . Consider a fixed edge uv . We first show that the recursion in cond (u, v, G ) considers each ( d + 2)-clique containing uv exactly once. Let K = {u, v, w 1, . . . , w d} be such a clique, and assume that the vertices w1, . . . , w d are ordered increasingly according to their labels. Initially, the branching set is B = NG(u) ∩ NG(v), and therefore it contains all vertices w1, . . . , w d. After the recursion chooses w1, the next branching set becomes B ∩ N + 
+
+> G
+
+(w1), which still contains w2, . . . , w d, since K is a clique and w1 < w 2 < · · · < w d.Repeating this argument, the recursion has a branch that chooses w1, . . . , w d in this order. The branch is unique, because after choosing wj , the recursion keeps only forward neighbors of wj . Hence no later step can choose a vertex that appears before wj , and every ( d + 2)-clique containing uv is considered exactly once. It remains to check that the tested set is correct. Let R denote the set of vertices selected by the recursion in cond . During the recursion, the set W is maintained as 
+
+W = NG(u) ∩ NG(v) ∩ \
+
+> x∈R
+
+NG(x).
+
+Hence, when |R| = d, the set W is exactly the witnessing common neighborhood WG({u, v } ∪ R). Therefore the procedure tests whether 
+
+ωu(G[WG({u, v } ∪ R)]) ≥ k − d, 
+
+as required in Definition 16. Consequently, cond (u, v, G ) returns true exactly when CG,k,d,ω u (u, v )holds. Thus the algorithm removes exactly those edges for which the ( k, d, ω u)-truss condition is not satisfied in the current graph. Initially, all edges are inserted into QE , so every edge is checked at least once. If an edge is checked and not removed, then it has a witnessing clique. Later edge removals may destroy such 15 a witness, and then the edge has to be checked again. We therefore have to show that every edge whose condition may change is inserted back into QE .Consider one iteration in which the algorithm removes the edge v1v2, and let S = NG(v1) ∩
+
+NG(v2) be its common neighborhood before removal. Suppose that deleting v1v2 can change the condition CG,k,d,ω u (x, y ) of an edge xy ̸ ∈ QE from true to false. Then, before the deletion, xy has a witnessing clique; let Kxy be one such clique in the sense of Definition 16. Write Wxy := WG(Kxy ). The condition CG,k,d,ω u (x, y ) depends only on the existence of Kxy and on the value of ωu on 
+
+G[Wxy ]. Therefore this particular witness can be invalidated only if v1v2 is an edge of G[Kxy ∪Wxy ]. We claim that, if the condition of an edge xy ̸ = v1v2 can be affected by deleting v1v2, then xy 
+
+belongs to one of the two sets inserted into QE by the algorithm. Let 
+
+U1 := {wv 1, wv 2 | w ∈ S}, U2 := {w1w2 | w1 ∈ S, w 2 ∈ S ∩ NG(w1)}.
+
+We show that xy ∈ U1 ∪ U2. We verify the claim by considering the possible positions of v1 and 
+
+v2 in Kxy ∪ Wxy :
+
+• If both v1 and v2 belong to Kxy , then every other vertex of Kxy is adjacent to both v1 and 
+
+v2, and therefore belongs to S = NG(v1) ∩ NG(v2). Since xy ̸ = v1v2, either xy is incident to one of v1, v 2, in which case xy ∈ U1, or both endpoints of xy belong to S, in which case 
+
+xy ∈ U2. In the special case d = 0, the second update is not needed here, since Kxy = {x, y },and therefore this case can occur only for the removed edge xy = v1v2.
+
+• Suppose that one endpoint of v1v2 belongs to Kxy and the other belongs to Wxy . Without loss of generality, let v1 ∈ Kxy and v2 ∈ Wxy . If xy is of the form v1y or xv 1, then the other endpoint, y or x, is adjacent to both v1 and v2, and therefore xy ∈ U1. Otherwise, both x
+
+and y are different from v1. Since Kxy is a clique and v2 ∈ Wxy , both x and y are adjacent to v1 and v2. Hence x, y ∈ S, so xy ∈ U2. In the special case d = 0, the second update is not needed here, since Kxy = {x, y }, so only the possibility where xy contains v1 can occur, and this is covered by the first update. 
+
+• If both v1 and v2 belong to Wxy , then both are adjacent to every vertex of Kxy , in particular to x and y. Hence x, y ∈ S, so xy ∈ U2. In the special case where ωu is not edge-sensitive, the second update is not needed here, since deleting an edge inside G[Wxy ] cannot change the value of ωu(G[Wxy ]). Thus every potentially affected edge different from v1v2 is inserted into QE by the first update or by the second update. It remains to show that, if ωu is increasing, no edge belonging to the ( k, d, ω u)-truss is removed. Let L be a largest spanning subgraph of G such that CL,k,d,ω u (u, v ) holds for every edge uv ∈ E(L), and suppose that the algorithm removes an edge of L. Let uv be the first such edge, and let H be the current graph right before the moment when uv is removed. Since no edge of L was removed before uv , we have L ⊆ H. Let Kuv be a witnessing clique for uv in L, and let WL(Kuv ) be its witnessing common neighborhood. Since L ⊆ H, the clique Kuv is also present in H, and 
+
+WL(Kuv ) ⊆ WH (Kuv ). Since ωu is increasing, the same clique also witnesses CH,k,d,ω u (u, v ), contradicting the rule by which uv is removed from H. Therefore all edges of L remain in the output graph G′. Since G′ satisfies CG′,k,d,ω u (u, v ) for every edge uv ∈ E(G′), and L is a largest spanning subgraph with this property, the output cannot contain any edge outside L. Hence 
+
+G′ = L.
+
+6.2 Complexity 
+
+For the purpose of the running-time analysis, we ignore isolated vertices in the edge-based part of the algorithm. They can be detected and ignored in O(n + m) time. Hence the final running-time bounds include an additional O(n + m) term for this preprocessing step. 16 We first bound the number of processed edge occurrences. The initial queue contains m edges. We bound the number of insertions into QE after the initial one by summing over all edge removals, since the update rules are applied only when an edge is removed. First consider the update 
+
+QE ← QE ∪ { wv 1, wv 2 | w ∈ NG(v1) ∩ NG(v2)}
+
+performed when the edge v1v2 is removed. This update inserts at most 2 |NG(v1) ∩ NG(v2)| edges. For every w ∈ NG(v1) ∩ NG(v2), the vertices {v1, v 2, w } form a triangle in the graph before the removal of v1v2, and the update inserts the two remaining edges of this triangle. We charge these insertions to that triangle. Each original triangle is charged at most once, namely when its first edge is removed. Hence the total number of insertions caused by this update is O(C3) = O(m3/2), where the last equality follows from Lemma 21. If d > 0 or ωu is edge-sensitive, the algorithm also performs the update 
+
+QE ← QE ∪ { w1w2 | w1 ∈ S, w 2 ∈ S ∩ NG(w1)},
+
+where S = NG(v1) ∩ NG(v2). For a fixed removed edge v1v2, this update inserts all edges inside 
+
+G[S]. For every inserted edge w1w2, the set {v1, v 2, w 1, w 2} forms a 4-clique in the graph before the removal. By the same charging argument as above, each original 4-clique is charged at most once. Hence the total number of insertions caused by this update is O(C4) = O(m2), where the last equality follows from Lemma 21. Thus the algorithm processes O(m2) edge occurrences when this second update is used, and O(m3/2) edge occurrences when d = 0 and ωu is not edge-sensitive. We have now bounded the total number of edge occurrences processed by the algorithm. It remains to bound the time needed to process one such occurrence, which depends on the amount of space allocated to the algorithm. 
+
+Assuming space complexity O(n + m + ws)We now prove the running-time bounds for the O(n + m + ws)-space implementation: 
+
+• if d > 0 or ωu is edge-sensitive, then the running time is O(n + ( w + √m)m(d+4) /2); 
+
+• if d = 0 and ωu is not edge-sensitive, then the running time is O(n + ( w + √m)m3/2). First assume that d > 0 or that ωu is edge-sensitive. In this case the second queue update is used, and by the preceding argument the algorithm processes at most O(m2) edge occurrences. We now bound the amortized cost of processing one such occurrence. We analyse one call of cond . We will analyse it by considering the number of nodes in the recursive tree. We have to prove two thing, the cost of all ωu computations, and the cost of all intersections W ∩ NG(v). Since intersections B ∩ N + 
+
+> G
+
+(v) are always intersecting sets that are not larger than intersections W ∩ NG(v), we don’t have to consider them since they don’t increase asymptotic time complexity. We first bound the cost of the ωu-computations in one call of cond . Such computations are performed only at leaves of the recursion, that is, when |R| = d. For a fixed processed edge uv ,each leaf corresponds uniquely to a d-clique R in G[NG(u) ∩ NG(v)]. Equivalently, {u, v } ∪ R is a (d + 2)-clique containing uv .If d = 0, there is only one leaf, and hence the cost of the ωu-computation is O(w) per call. If d = 1, then one call computes ωu once for each vertex in NG(u) ∩ NG(v). We bound this cost amortized over the whole algorithm. An edge can be processed at most O(m) times, since it can be inserted into the queue only after an edge removal. Moreover, 
+
+X
+
+> uv ∈E
+
+|NG(u) ∩ NG(v)| = 3 C3 = O(m3/2)17 by Lemma 21. Therefore the total number of ωu-computations over all calls is at most 
+
+O m X
+
+> uv ∈E
+
+|NG(u) ∩ NG(v)|
+
+!
+
+= O(m5/2).
+
+Thus their total cost is O(wm 5/2), or O(wm 1/2) amortized per processed edge occurrence. Finally, suppose that d ≥ 2. For a fixed call of cond , the number of leaves is at most the number of d-cliques in G. By Lemma 21, this number is O(md/ 2). Hence, for every d ≥ 0, the amortized cost of the ωu-computations per processed edge occurrence is O(wm d/ 2). We next bound the cost of the intersections. First consider the initial intersection NG(v1) ∩ NG(v2) computed before the recursive call. We compute it by scanning the smaller neighborhood and testing membership in the other one in constant time. Thus, for an edge uv , this costs 
+
+O(min {| NG(u)|, |NG(v)|} ) .
+
+Since the graph only loses edges during the algorithm, this cost is bounded by the same quantity in the original graph. Moreover, each edge can be processed at most O(m) times. Hence the total cost of all such initial intersections is at most 
+
+O m X
+
+> uv ∈E
+
+min {| NG(u)|, |NG(v)|} 
+
+!
+
+= O(m5/2),
+
+by Lemma 22. Since in the present case the algorithm processes at most O(m2) edge occurrences, this corresponds to an O(√m) amortized contribution per processed edge occurrence. We now bound the cost of the intersections W ∩ NG(v) computed inside the recursive calls. Consider a clique R chosen by the recursion, where 1 ≤ | R| ≤ d. The intersection that creates the node corresponding to R has the form W ′ ∩ NG(x), where x ∈ R is the last added vertex. Since we are intersecting W ′ with NG(x), where W ′ ⊆ NG(y) for every y ∈ R \ { x}, the cost of this intersection is O(min y∈R deg G(y)). Since each recursive node is represented by a unique clique R,the total time used for these intersections is bounded by Lemma 23: 
+
+> d
+
+X
+
+> r=1
+
+X
+
+> R∈K r
+
+min  
+
+> v∈R
+
+deg G(v) = 
+
+> d
+
+X
+
+> r=1
+
+O
+
+
+
+m(r+1) /2
+
+= O
+
+
+
+m(d+1) /2
+
+.
+
+The last equality follows because this is a geometric sum dominated by its last term. Thus the total cost of the initial intersection and all recursive intersections in one call of cond is O(m(d+1) /2). Combining the amortized cost of the ωu-computations with the amortized cost of the intersec-tions, the amortized cost per processed edge occurrence is 
+
+O
+
+
+
+wm d/ 2 + m(d+1) /2
+
+= O
+
+
+
+(w + √m)md/ 2
+
+.
+
+Since, in the present case, the algorithm processes O(m2) edge occurrences, together with the preprocessing step for isolated vertices, the total running time is 
+
+O
+
+
+
+n + ( w + √m)m(d+4) /2
+
+.
+
+It remains to consider the case d = 0 where ωu is not edge-sensitive. Then the recursion has no internal intersections and only one ωu-computation is performed per call. For an edge e = uv ,let ae = min {| NG(u)|, |NG(v)|} and te = |NG(u) ∩ NG(v)|, where both quantities are taken in the original graph. The edge e is processed once initially, and later it can be inserted into QE only when one of the other two edges of a triangle containing e is removed. Hence e is processed at 18 most O(1 + te) times. Each computation of NG(u) ∩ NG(v) costs at most O(ae), since the graph only loses edges during the algorithm. Therefore the total cost of all initial intersections is 
+
+O X
+
+> e∈E
+
+(1 + te)ae
+
+!
+
+≤ O X
+
+> e∈E
+
+ae + X
+
+> e∈E
+
+a2
+
+> e
+
+!
+
+= O(m2),
+
+by Lemma 22, using te ≤ ae. Since the algorithm processes O(m3/2) edge occurrences, the total cost of the ωu-computations is O(wm 3/2). Together with the preprocessing step for isolated vertices, the total running time is 
+
+O
+
+
+
+n + ( w + √m)m3/2
+
+.
+
+Assuming space complexity O(n + m d+3 2 + ws)Finally, we prove the running-time bounds for the higher-space implementation with space com-plexity O(n + m(d+3) /2 + ws): 
+
+• if d > 0 or ωu is edge-sensitive, then the running time is O(n + wm (d+4) /2); 
+
+• if d = 0 and ωu is not edge-sensitive, then the running time is O(n + wm 3/2). With increased space usage, we precompute and maintain the common neighborhoods needed at the last recursion level of cond . For every clique K of size d + 2, we store WG(K) = T 
+
+> v∈K
+
+NG(v).
+
+The sets are stored in a dictionary indexed by K, so the corresponding common neighborhood can be obtained by an O(1)-time lookup. The space usage is bounded by the total number of stored vertex occurrences. We store each clique according to the order of the vertex labels, and therefore each clique has a unique represen-tation in the dictionary. Thus each common neighborhood is stored only once. If |K| = d + 2, then every vertex x ∈ WG(K) gives a ( d + 3)-clique K ∪ { x}. Conversely, each ( d + 3)-clique contributes to at most d + 3 such stored occurrences, so the total number of stored occurrences is at most (d + 3) Cd+3 , where Ck denotes the number of k-cliques in G. From the proof of Lemma 21, we have Ck ≤ m √mk−2
+
+. Hence the total number of stored vertex occurrences is at most (d + 3) Cd+3 ≤ (d + 3) m
+
+ √md + 1 
+
+
+
+≤ d + 3 (d + 1)! m(d+3) /2 = O
+
+
+
+m(d+3) /2
+
+.
+
+Thus the total space needed is O(n + m(d+3) /2 + ws). The same bound applies to preprocessing and maintenance time. The common neighborhoods are computed once at the beginning and then updated during the peeling process. By Lemma 23, the total time needed to construct all stored common neighborhoods is O(m(d+3) /2). Since the graph only loses vertices and edges, stored common neighborhoods only lose elements. When an edge uv is removed, the affected stored sets can be found by enumerating the relevant cliques in 
+
+NG(u) ∩ NG(v). The stored cliques that contain both u and v are deleted, and this deletion is charged to the corresponding clique, while for stored cliques containing exactly one of u and v,the other endpoint is removed from the corresponding common neighborhood. Each such update can be charged to a stored vertex occurrence that disappears after the deletion. Hence each stored occurrence is updated at most once, and the total update time is also O(m(d+3) /2). It remains to bound the cost of the calls to cond . Since the common neighborhoods at the last recursion level are stored, the algorithm does not recompute the final intersections W ∩ NG(v). Thus the intersection cost is the same as in the O(n + m + ws)-space implementation, but with one recursion level less. By Lemma 23, this gives an amortized intersection cost of O(md/ 2) per processed edge occurrence. The number of leaves in one call is still at most O(md/ 2), and therefore the cost of the ωu-computations in one call is O(wm d/ 2). Hence the amortized cost per processed edge occurrence is O((1 + w)md/ 2) = O(wm d/ 2). 19 If d > 0 or ωu is edge-sensitive, then the algorithm processes O(m2) edge occurrences. To-gether with the preprocessing step for isolated vertices and the update cost for the stored common neighborhoods, this gives 
+
+O
+
+
+
+n + m(d+3) /2 + m2 · md/ 2 + wm 2 · md/ 2
+
+= O
+
+
+
+n + wm (d+4) /2
+
+,
+
+where we use that w = Ω(1). The ωu-computations now remain the dominant term, so storing common neighborhoods for additional recursion levels would not improve the stated asymptotic bound. In the special case d = 0 and ωu is not edge-sensitive, the common neighborhoods of edges are stored. Therefore each call to cond only performs one lookup and one computation of ωu.Since the algorithm processes O(m3/2) edge occurrences, together with the preprocessing step for isolated vertices, the total running time is 
+
+O
+
+
+
+n + m3/2 + wm 3/2
+
+= O
+
+
+
+n + wm 3/2
+
+.
+
+# 7 Practical implementations of reduction methods 
+
+In this section, we describe the practical implementations of the reduction methods used later in our framework for improving upper-bound values. We consider two reduction methods. The first combines the truss and core reductions developed above, while the second is based on repeated applications of structions. These implementations are designed for the computational experiments and will serve as the concrete reduction procedures used by the upper-bound value improvement algorithm. 
+
+7.1 Combining (k, ω u)-core and (k, d, ω u)-truss 
+
+While the ( k, ω u)-core and the ( k, d, ω u)-truss both give valid reductions when applied separately, they remove different parts of the graph: the core removes vertices, while the truss removes edges. In practice, we want to reduce both vertices and edges. We therefore combine the two procedures by alternating calls to core and truss , as shown in Algorithm 4. Note that the cond mod is modified in this implementation in order to prune the recursion earlier, before all branches reach depth d. We did not use this version in Definition 16, because the resulting condition would depend on the order in which vertices are processed. Therefore, we define the theoretical condition in a vertex-order-independent way, while the modified version is only an implementation choice used to speed up the algorithm in our setting. As shown below, this modification still preserves the clique-preservation property, which is the only property needed in our experiments. Also note that both core and truss are slightly modified so that they both update QE and 
+
+QV sets. This allows us to prove that the combined procedure has the same asymptotic running time as the truss procedure alone. Another small implementation detail is the dictionary L, which stores previously found witness-ing cliques. When an edge is checked again, the algorithm first tests whether the stored witness is still valid. If it is, the full recursive search can be skipped. This does not change the asymptotic running time, but since checking a stored witness is cheaper than searching for one, it can provide practical speedups. In this implementation, we use the O(n+m+ws)-space version of the truss procedure. We could also use the higher-space version if desired, since it gives a better theoretical running-time bound. However, it can be more limiting in practice because it stores many common neighborhoods. Moreover, when the computation of ωu costs more than √m, the two bounds are essentially governed by the same cost of computing ωu, so the practical benefit of the higher-space version is smaller. The higher-space version is included mainly for theoretical completeness and to show that, 20 in the special case d = 0 with the trivial upper-bound function, our general algorithm matches the asymptotic running time of specialized state-of-the-art truss algorithms. The O(n + m + ws)-space version is therefore less demanding in memory and is the one used in our implementation. Strictly speaking, the combined implementation uses O(n + ( d + 1) m + ws) space, because the dictionary 
+
+L stores at most one witnessing clique for each edge, and each such witness contains O(d + 2) vertices. This is still acceptable in practice, because d is small in the intended applications. 
+
+Algorithm 4: The truss and core computation 
+
+Input : Graph G = ( V, E ), integers k, d with 0 ≤ d ≤ k, MCP upper-bound function ωu
+
+Output: Subgraph G′ of G 
+
+> 1
+
+global Set of vertices QV , set of edges QE , dictionary of witnessing cliques L 
+
+> 2
+
+const global k, d, ω u 
+
+> 3
+
+cond mod (v1, v 2, G ) 
+
+> 4
+
+c-rec (R, W, B ) 
+
+> 5
+
+if ωu(G[W ]) < k − d then return false  
+
+> 6
+
+if |R| = d then  
+
+> 7
+
+if L[v1v2] = ∅ then ∀uv ∈ E(G[R ∪ { v1, v 2}]) : L[uv ] ← R ∪ { v1, v 2} 
+
+> 8
+
+return true  
+
+> 9
+
+end  
+
+> 10
+
+return W 
+
+> v∈B
+
+c-rec (R ∪ { v}, W ∩ NG(v), B ∩ N + 
+
+> G
+
+(v))  
+
+> 11
+
+S ← NG(v1) ∩ NG(v2) 
+
+> 12
+
+return c-rec (∅, S, S ) 
+
+> 13
+
+core (G, k, ω u) 
+
+> 14
+
+while QV̸ = ∅ do  
+
+> 15
+
+v ← pick and remove (QV ) 
+
+> 16
+
+if v ∈ V and ωu(NG(v)) < k then  
+
+> 17
+
+QV ← QV ∪ NG(v) 
+
+> 18
+
+QE ← QE ∪ { w1w2 | w1 ∈ NG(v), w 2 ∈ NG(v) ∩ NG(w1)} 
+
+> 19
+
+G ← G \ v 
+
+> 20
+
+end  
+
+> 21
+
+end  
+
+> 22
+
+truss (G, k, d, ω u) 
+
+> 23
+
+while QE̸ = ∅ do  
+
+> 24
+
+v1v2 ← pick and remove (QE ) 
+
+> 25
+
+if L[v1v2] is not a witness for v1v2 then L[v1v2] ← ∅  
+
+> 26
+
+if v1v2 ∈ E and L[v1v2] = ∅ and ¬cond mod (v1, v 2, G ) then  
+
+> 27
+
+S ← NG(v1) ∩ NG(v2) 
+
+> 28
+
+QV ← QV ∪ { v1, v 2} ∪ S 
+
+> 29
+
+QE ← QE ∪ { wv 1, wv 2 | w ∈ S} 
+
+> 30
+
+if d > 0 then  
+
+> 31
+
+QE ← QE ∪ { w1w2 | w1 ∈ S, w 2 ∈ S ∩ NG(w1)} 
+
+> 32
+
+end  
+
+> 33
+
+G ← G \ v1v2 
+
+> 34
+
+end  
+
+> 35
+
+end  
+
+> 36
+
+truss core (G, k, d, ω u) 
+
+> 37
+
+QV ← V, Q E ← E 
+
+> 38
+
+while QV̸ = ∅ or QE̸ = ∅ do  
+
+> 39
+
+core (G, k, ω u) 
+
+> 40
+
+if k ≥ 1 then truss (G, k − 1, d, ω u) 
+
+> 41
+
+end  
+
+> 42
+
+return G
+
+21 Proposition 24. Let G′ = truss core (G, k, d, ω u), let n = |V (G)|, let m = |E(G)|, let w be the amortized time for one computation of ωu, and let ws be the space used for one computation of ωu.Assume that the algorithm is implemented with O(n + ( d + 1) m + ws) space. Then the following running-time bounds hold: 
+
+• If d > 0 or ωu is edge-sensitive, then the running time is O
+
+
+
+n + ( w + √m)m d+4 2
+
+
+
+.
+
+• If d = 0 and ωu is not edge-sensitive, then the running time is O
+
+
+
+n + ( w + √m)m 32
+
+
+
+.Proof. We use the O(n+m+ws)-space running-time bounds for Algorithm 3 and the running-time bound for Algorithm 2. The modified procedure cond mod only prunes branches earlier, so its cost is bounded by the cost of the original truss procedure. The dictionary L also does not change this bound: it only stores witnesses found during calls to cond mod . When such a witness is found, recording the witnessing clique can be charged to the recursive call branch that found it. Later, checking whether L[v1v2] is still a valid witness is only the verification part of a full call to 
+
+cond mod , since the search for a witness is skipped. Hence the overhead of L is dominated by the cost of cond mod .Next, consider the extra queue updates. When core removes a vertex v, it inserts into QE all edges inside NG(v), since these are exactly the edges whose common neighborhood contains v, and therefore their condition may be affected by the removal of v. Each such edge, together with v,forms a triangle. Each triangle can be charged only once in this way, namely when its first vertex is removed. Thus the total number of these insertions is O(C3) = O(m3/2). When truss removes an edge v1v2, it inserts v1, v2, and the vertices in NG(v1) ∩ NG(v2) into 
+
+QV , since a vertex v can be affected by the removal of an edge only if one endpoint of the removed edge is v, or if both endpoints of the removed edge belong to NG(v). The endpoint insertions contribute O(m) in total, while the common-neighbor insertions can again be charged to triangles, giving O(C3) = O(m3/2) insertions. Therefore the additional work caused by the interaction between the two queues is dominated by the truss running time. Hence, if d > 0 or ωu is edge-sensitive, the running time remains 
+
+O
+
+
+
+n +  w + √m m d+4 2
+
+
+
+.
+
+If d = 0 and ωu is not edge-sensitive, the second truss update is not used, and the same argument gives 
+
+O
+
+
+
+n +  w + √m m 32
+
+
+
+.
+
+Proposition 25. Let G = ( V, E ) be a graph, let ωu be an MCP upper-bound function, let K ⊆ V
+
+be a set of size k, let 0 ≤ d ≤ k − 2, and let G′ = truss core (G, k − 1, d, ω u). Then: 
+
+K is a clique in G ⇐⇒ K is a clique in G′.
+
+Proof. The implication ( ⇐) follows directly from G′ ⊆ G. For ( ⇒), let K be a clique of size k in 
+
+G. We show that no step of truss core removes a vertex or edge of K.The core steps preserve K by Proposition 12. It remains to consider a truss step. Suppose that an edge uv ∈ K is tested. Since 0 ≤ d ≤ k − 2, choose d vertices w1, . . . , w d from K \ { u, v }.The set K′ = {u, v, w 1, . . . , w d} is a ( d + 2)-clique, and the remaining vertices of K lie in WG(K′). Hence this branch can be extended to a clique of size k.If the modified condition used in Algorithm 4 prunes a branch early, then it does so because the current candidate subgraph has an upper-bound value that is too small to complete a clique of size 
+
+k. Since ωu is an MCP upper-bound function, such a subgraph cannot contain the missing vertices of K. Therefore the branch corresponding to the vertices of K is never pruned. Consequently, 
+
+cond mod (u, v, G )returns true for every edge uv ∈ K, so no truss step removes an edge of K.Since the core steps also preserve all vertices of K, the set K remains a clique in G′.22 7.2 Structions 
+
+So far, the only reduction method introduced in this paper are truss and core related. We now introduce another reduction, called a struction . Structions were originally defined for the Stable Set Problem [2, 13], but they can also be applied to the Maximum Clique Problem [50]. Using structions serves two purposes: it shows how the framework for improving upper-bound values defined later can use multiple reduction methods, and it illustrates how combining different reductions can lead to stronger upper-bound value improvements. A struction transforms a graph G into a graph G′ such that 
+
+ω(G′) = ω(G) − 1.
+
+Unlike the truss and core reductions, a struction does not necessarily reduce the size of the graph. In fact, the transformed graph often has more edges/vertices than the original graph. The transformation depends on a chosen pivot vertex v ∈ V . Different choices of the pivot may produce different transformed graphs, which we denote by Gv . In our implementation, we choose a pivot that minimizes the number of edges in the transformed graph, that is, 
+
+vp ∈ arg min 
+
+> v∈V
+
+|E(Gv )|.
+
+We define struction (G) := Gvp obtained by applying the struction transformation with such a pivot vp. This is all we need to know about structions for the purposes of this paper; for a full description of the construction, we refer to [50]. For our practical purposes, we use the repeated version, reapply struction (G, edge limit ), defined in Algorithm 5. If edge limit is provided, structions are applied as long as the transformed graph does not exceed this edge limit. Thus, it may happen that no transformation is accepted. If 
+
+edge limit is not provided, we first apply one struction, set edge limit = |E(G)|, and then continue with the same rule. Thus, at least one transformation is applied. The algorithm returns the final transformed graph G′ and the number h of accepted structions, so that ω(G′) = ω(G) − h.
+
+Algorithm 5: Repeated application of struction                                                               
+
+> Input: A graph G, and an edge limit edge limit (default 0).
+> Output: A pair ( H, h ).
+> 1reapply struction (G, edge limit ←0)
+> 2if |E(G)|= 0 then return (G, 0)
+> 3H←G
+> 4h←0
+> 5if edge limit = 0 then
+> 6edge limit ← | E(G)|
+> 7H←struction (G)
+> 8h←h+ 1
+> 9end
+> 10 G′←H
+> 11 while 0<|E(G′)| ≤ edge limit do
+> 12 G′←struction (G′)
+> 13 if |E(G′)| ≤ edge limit then
+> 14 H←G′
+> 15 h←h+ 1
+> 16 end
+> 17 end
+> 18 return (H, h )
+
+Note that reapply struction cannot return the empty graph if the input graph is not empty. Indeed, a struction is accepted only if the transformed graph still has at least one edge. Since each accepted struction decreases the clique number by one, the process can at worst end with a graph whose remaining vertices are isolated. Such a graph has clique number 1; the previous graph had clique number 2, and therefore contained at least one edge. 23 8 Improving MCP upper-bound values using reductions 
+
+In this section, we describe how graph reductions can be used to iteratively improve upper-bound values for MCP. We first introduce an abstract notion of a reduction that is suitable for this purpose, and then show how such reductions can be composed and used inside a general upper-bound value improvement algorithm. 
+
+8.1 General upper-bound value improvement algorithm for MCP 
+
+The basic idea behind the algorithm can already be seen from the k-core reduction. As observed in [52], if a graph has an empty k-core, then it cannot contain a clique of size k + 1. Indeed, every vertex in a clique of size k + 1 has at least k neighbors inside the clique, and therefore such a clique would survive in the k-core. If the k-core is empty, then the trivial upper-bound value for the reduced graph is 0, which is smaller than k + 1. Hence we can conclude that ω(G) < k + 1. The same reasoning does not depend on the trivial upper-bound function. After computing the k-core, we may apply any MCP upper-bound function ωu to the reduced graph. If this gives 
+
+ωu(k-core( G)) < k + 1, then the k-core contains no clique of size k + 1. Since every clique of size 
+
+k + 1 in G is preserved by the k-core reduction, it follows that G itself contains no clique of size 
+
+k + 1. Finally, the same principle is not specific to the k-core. We can use any reduction that preserves the clique sizes relevant to the current value of k, and then apply any MCP upper-bound function to the reduced graph. If the resulting upper-bound value is below the required threshold, then the original graph cannot contain a clique of size k. The following definition captures exactly this implication. 
+
+Definition 26. For k ∈ N0, the function Rk : G → G is a k-bound-reduction if there exists 
+
+rk : G → N0 such that, for every G ∈ G ,
+
+ω(Rk(G)) < r k(G) = ⇒ ω(G) < k. 
+
+The function rk specifies the threshold that has to be checked after applying the reduction. In the simplest case, the reduction preserves cliques of size k, and then we can take rk(G) = k.However, some reductions change the clique number in a controlled way. For example, structions reduce the clique number by the number of applied transformations, so the threshold for the reduced graph must be shifted accordingly. The next proposition shows that both types of reductions fit into Definition 26. 
+
+Proposition 27. Let k ∈ N0, let d ∈ N0 with d ≤ k − 2, let ωu be an MCP upper-bound function, and let a ∈ N0. Define: 
+
+• Rd,ω u 
+
+> k
+
+(G) := truss core (G, k − 1, d, ω u),
+
+• Rak(G) := H, where (H, h ) ← reapply struction (G, a ).Then Rd,ω u 
+
+> k
+
+and Rak are k-bound-reductions. Proof. For Rd,ω u 
+
+> k
+
+, define rd,ω u 
+
+> k
+
+(G) := k. If ω(Rd,ω u 
+
+> k
+
+(G)) < r d,ω u 
+
+> k
+
+(G), then ω(Rd,ω u 
+
+> k
+
+(G)) < k . By Proposition 25, this implies that G contains no clique of size k, and therefore ω(G) < k .For Rak, let ( H, h ) ← reapply struction (G, a ), and define rak (G) := k − h. If ω(Rak(G)) <rak (G), then ω(H) < k − h. Since reapply struction applies h structions, we have ω(H) = 
+
+ω(G) − h. Hence ω(G) < k .Once we have a set of k-bound-reductions, we can apply them sequentially and obtain another 
+
+k-bound-reduction. This is formalized in the following proposition: 24 Proposition 28. Let k ∈ N0. Let Rk : G → G be a k-bound-reduction with corresponding function 
+
+rk : G → N0. For every q ∈ N0, let R′ 
+
+> q
+
+: G → G be a q-bound-reduction with corresponding function 
+
+r′ 
+
+> q
+
+: G → N0. Define 
+
+Rck(G) := ( R′  
+
+> rk(G)
+
+◦ Rk)( G) = R′ 
+
+> rk(G)
+
+(Rk(G)) .
+
+Then Rck is a k-bound-reduction. Proof. Define rck : G → N0 by 
+
+rck(G) := r′ 
+
+> rk(G)
+
+(Rk(G)) .
+
+Then 
+
+ω(Rck(G)) < r ck(G) ⇒ ω(R′ 
+
+> rk(G)
+
+(Rk(G))) < r ′ 
+
+> rk(G)
+
+(Rk(G)) 
+
+⇒ ω(Rk(G)) < r k(G)
+
+⇒ ω(G) < k. 
+
+The first implication follows from the definition of Rck and rck. The second and third implications follow from the definition of a k-bound-reduction. Hence Rck is a k-bound-reduction. Now we can define Algorithm 6 for improving an upper-bound value. 
+
+Algorithm 6: MCP upper-bound value improvement algorithm 
+
+Input: Graph G
+
+Family ( Rk )k∈N, where each Rk is a set of pairs ( Rk , r k ) such that Rk is a 
+
+k-bound-reduction with threshold function rk
+
+MCP upper-bound function ωu : G → N0 
+
+> 1
+
+k ← ωu(G) 
+
+> 2
+
+while ¬termination criteria do  
+
+> 3
+
+Choose a pair ( Rk , r k ) ∈ R k 
+
+> 4
+
+if ωu(Rk (G)) < r k (G) then  
+
+> 5
+
+k ← k − 1 
+
+> 6
+
+end  
+
+> 7
+
+end  
+
+> 8
+
+return k
+
+The algorithm initializes k with ωu(G), which is an integer by Definition 2. The loop then tries to decrease the current upper-bound value k. In each iteration, for the current value of k, we choose a pair ( Rk, r k) ∈ R k. Thus Rk is a k-bound-reduction and rk is its corresponding threshold function. The choice of ( Rk, r k) is left open: in practice, one usually starts with cheaper reductions and applies more expensive reductions only if necessary. The stopping rule termination criteria is implementation-dependent. It can be based, for example, on a time limit, a maximum number of reductions, a target upper-bound value, or any other criterion suitable for the given application. After applying the reduction, we compute the upper-bound value ωu(Rk(G)). By Definitions 26 and 2, we have 
+
+ωu(Rk(G)) < r k(G) ⇒ ω(Rk(G)) < r k(G)
+
+⇒ ω(G) < k. 
+
+Therefore, if ωu(Rk(G)) < r k(G), then the current value k is not attainable as a clique size in 
+
+G. Since clique numbers are integers, this implies ω(G) ≤ k − 1, and the algorithm can update 
+
+k ← k − 1. If the condition fails, the current upper-bound value is not improved in that iteration, and the algorithm tries again with another selected reduction. After termination, the algorithm returns k as the improved upper-bound value for ω(G). 25 Remark 29. The value k does not have to be a certified strict upper-bound value for this argument to work. We may also test a value of k for which it is not known whether ω(G) < k . If the condition ωu(Rk(G)) < r k(G) holds, then by Definition 26 we know that ω(G) < k . In other words, if ω(G) ≥ k, the algorithm cannot falsely certify an improvement; in that case, the certification condition will fail. 
+
+8.2 Instantiation with truss and core 
+
+Our first experimental variant uses only the truss core reduction, which is given in Algorithm 7. 
+
+Algorithm 7: Truss and core based tightening of an upper-bound value for ω(G)                                                
+
+> Input: A graph G.
+> Output: A tightened upper-bound value for ω(G).
+> 1k←ωu(G)
+> 2d←0
+> 3H←G
+> 4while ¬termination criteria do
+> 5if d+ 2 > k then return k
+> 6H←truss core (H, k −1, d, ω u)
+> 7if ωu(H)< k then
+> 8k←k−1
+> 9H←G
+> 10 else
+> 11 d←d+ 1
+> 12 end
+> 13 end
+> 14 return k
+
+In each iteration, the algorithm applies truss core and checks whether the upper-bound value can be improved. If the value is improved, then k is decreased by one, H is reset to be again G
+
+and the same value of d is kept. Otherwise, k remains unchanged and we increase d ← d + 1. Notice that the algorithm has an additional stopping rule, which we call the structural stopping condition : it terminates when d + 2 > k . The reason is that the last meaningful case is d + 2 = k.In this case, a witnessing clique from Definition 16 already has size k. Hence, if at least one edge remains after the reduction, then some remaining edge satisfies Definition 16, and its witnessing clique is a clique of size k. Therefore, the upper-bound test cannot certify ω(G) < k , and larger values of d cannot improve the upper-bound value further. If the reduction removes all edges, then only isolated vertices may remain. For k ≥ 2, these isolated vertices are also removed by the core step, so the reduced graph becomes empty, k is decreased, and the algorithm continues normally. For k = 1, the structural stopping condition is satisfied trivially, and the algorithm terminates. In terms of the abstract framework in Algorithm 6, this variant uses reductions built from TC k,d (H) := truss core (H, k − 1, d, ω u).
+
+For a chosen value of d, the reduction is the composition of all truss core reductions from the current starting value d′ up to d, where 0 ≤ d′ ≤ d:TC k,d ◦ TC k,d −1 ◦ · · · ◦ TC k,d ′ .
+
+Thus, for each current clique-size threshold k, the set Rk can be understood as containing these composed reductions for all 0 ≤ d′ ≤ d ≤ k − 2. The value d′ is the current truss parameter when the graph is reset; in particular, when k decreases, the algorithm resets the graph but continues with the same value of d, rather than starting again from d = 0. The corresponding threshold function from Definition 26 is rk(G) = k, since each TC step preserves all cliques of size k.26 8.3 Instantiation with structions, truss and core 
+
+The second algorithm which we will use in our experiments is defined in Algorithm 8. 
+
+Algorithm 8: Struction, truss and core based tightening of an upper-bound value for 
+
+ω(G)
+
+Input: A graph G.
+
+Output: A tightened upper-bound value for ω(G).  
+
+> 1
+
+(( Hinit , h init ), t rs init ) ← reapply struction (G; edge limit = |E(G)|) 
+
+> 2
+
+H ← Hinit , h ← hinit , k ← ωu(G), d ← 0, t rs ← trs init , t tc ← 0 
+
+> 3
+
+while ¬termination criteria do  
+
+> 4
+
+improved ← false  
+
+> 5
+
+while true do  
+
+> 6
+
+if ωu(H) < k − h then  
+
+> 7
+
+H ← Hinit , h ← hinit , k ← k − 1, d ← 0, t rs ← trs init , t tc ← 0 
+
+> 8
+
+improved ← true  
+
+> 9
+
+end  
+
+> 10
+
+if ttc > t rs or improved then break  
+
+> 11
+
+if d + 2 > k − h then return k 
+
+> 12
+
+(( H, ·), t tc ) ← truss core (H, k − h − 1, d, ω u) 
+
+> 13
+
+d ← d + 1  
+
+> 14
+
+end  
+
+> 15
+
+if not improved then  
+
+> 16
+
+(( H, h add ), t rs ) ← reapply struction (H) 
+
+> 17
+
+h ← h + hadd  
+
+> 18
+
+end  
+
+> 19
+
+end  
+
+> 20
+
+return k
+
+First let us make note that for both reapply struction and truss core functions we added additional return value which tell us the time the algorithm was executing. First thing we do is call reapply struction with edge limit set to number of edges in original graph. What we get out will be our initial graph which we will use at every reset. Then we have two loops. The inner loop executes as long as truss core reduction is not slower then previous reapply struction .Once it gets slower, we exit the inner loop, call reapply struction again, measure its time, and again enter the inner loop. The algorithm uses the same structural stopping condition as Algorithm 7, but adjusted for the clique-size decrease caused by the accepted structions: it terminates when d + 2 > k − h. After 
+
+h structions, a clique of size k in the original graph corresponds to a clique of size k − h in the current graph. Thus, at the last meaningful value d + 2 = k − h, if at least one edge remains after the reduction, then some remaining edge has a witnessing clique of size k − h. This clique can be lifted through the h structions to a clique of size k in the original graph, so we cannot certify 
+
+ω(G) < k . If no edge remains, then only isolated vertices may remain. For k − h ≥ 2, these isolated vertices are removed by the core step, so the reduced graph becomes empty and the upper-bound value can still be improved. For k − h = 1, the structural stopping condition is satisfied trivially, and the algorithm terminates. To connect this algorithm with the abstract framework from Algorithm 6, we can view it as choosing reductions from the family ( Rk)k∈N. Let RS a(X) := H, where ( H, h ) = reapply struction (X, a ),
+
+and let TC k,d (X) := truss core (X, k − 1, d, ω u).
+
+Here k denotes the current clique-size threshold. The reduction RS a changes this threshold from 
+
+k to k − h, while TC k,d preserves all cliques of size k.27 For each current clique-size threshold k, the set Rk used by Algorithm 8 can be understood through composed reductions. The algorithm alternates between applications of RS and sequences of TC reductions with increasing values of d. The first RS step uses the initial edge limit a1, while all later RS steps use parameter 0. Thus the composed reduction has the form 
+
+· · · ◦ RS 0 ◦ (TC k2,D 2 ◦ · · · ◦ TC k2,0) ◦ RS 0 ◦ (TC k1,D 1 ◦ · · · ◦ TC k1,0) ◦ RS a1 .
+
+Let hj be the clique-size decrease returned by the j-th application of RS, counting the initial call RS a1 as j = 1. For each block i, which follows the first i applications of RS, the current clique-size threshold is ki = k − Pij=1 hj . Moreover, Di ≤ ki − 2 is the largest truss parameter reached before the inner stopping rule terminates the block. Thus, the threshold function defined for this composed reduction is rk(G) := kp. The TC steps do not change this value, since they preserve all cliques of the current target size. The algorithm may terminate at any point in this composition. A concrete example is 
+
+· · · ◦ RS 0 ◦ (TC k2,2 ◦ TC k2,1 ◦ TC k2,0) ◦ RS 0 ◦ (TC k1,1 ◦ TC k1,0) ◦ RS a1 .
+
+In this instantiation, structions and the combined truss and core reductions play complementary roles. Structions decrease the clique number and often reduce graph density, which can make later truss and core reductions faster and more effective. However, structions may also increase the number of vertices or edges. In contrast, truss and core reductions directly remove vertices and edges, and can therefore keep the graph growth caused by structions under control. Alternating the two methods therefore helps control the graph size and reduces the risk that either method gets stuck in a long computation. 
+
+# 9 Computational results 
+
+In this section, we evaluate the proposed framework for improving upper-bound values experimen-tally. The goal is to measure how much the reductions improve the values obtained from different MCP upper-bound functions, how quickly these improvements are obtained, and how the two algorithm instantiations compare in practice. We first describe the benchmark instances, imple-mentation details, and tested upper-bound functions. We then report the results on the selected benchmark graphs and finally compare our strongest upper-bound values with previously reported values for several difficult DIMACS instances. 
+
+9.1 Computations on benchmark graphs 
+
+We tested several upper-bound functions with both algorithm instantiations. For brevity, we denote the first instantiation, defined in Algorithm 7, by tc , and the second instantiation, defined in Algorithm 8, by tc+rs . The tested upper-bound functions were: 
+
+• trivial : We use the number of vertices as the upper-bound value. 
+
+• degree+density : We compute both the degree and density upper-bound values, and return the smaller value. This adds almost no extra cost, since both values can be computed in the same pass over the graph. 
+
+• dsatur : We color the graph with the DSatur heuristic, and use the number of colors as the upper-bound value. 
+
+• sdp : We use a hybrid SDP upper-bound function. If the graph density is larger than 0 .5, we use the Lov´ asz theta upper-bound function. Otherwise, we use vector coloring. The Lov´ asz theta upper-bound value for MCP is computed on the complement graph. Therefore, when the original graph is dense, its complement is sparse and the corresponding SDP has fewer 28 constraints, making it faster to solve. For sparse graphs, vector coloring is usually faster because its corresponding SDP has fewer constraints. All SDP computations were performed using MOSEK 11.1 [38]. Our computational setup was as follows. The implementation was written in C++. We used all graphs with fewer than 45000 edges from the benchmark collection of [35]. This cutoff was chosen for computational feasibility: in preliminary tests, slightly larger instances from the same collection exhausted the available memory during the SDP computation. The resulting set contains 73 benchmark graphs, which was sufficient for a broad comparison across graph sizes and densities. The instances used here come from the classical DIMACS benchmark set [22], the EVIL benchmark family [48], and Sloane’s coding-theory challenge instances [47]. We divided them into two groups: small graphs with at most 15000 edges, whose results are shown in Table 1, and medium graphs with more than 15000 edges, whose results are shown in Table 2. For each graph, we ran every combination of algorithm and upper-bound function with a time limit of 25 minutes. 
+
+Graph Algorithm ωu trivial ωu degree+density ωu dsatur ωu sdp 
+
+1dc.64 n : 64 m : 1473 tc 64 10 <1s 54 10 <1s 12 10 <1s 10 10 <1s 
+
+ρ : 0 .73 ω : 10 tc+rs 10 <1s 10 <1s 10 <1s 10 <1s 1dc.128 n : 128 m : 6657 tc 128 63 37 33 30 25m 115 62 43 38 33 25m 21 17 16 2s 16 16 <1s 
+
+ρ : 0 .82 ω : 16 tc+rs 42 16 14s 39 16 20s 16 <1s 16 <1s 1et.64 n : 64 m : 1752 tc 64 29 19 18 1m15s 59 29 21 18 3m14s 20 18 <1s 18 18 <1s 
+
+ρ : 0 .87 ω : 18 tc+rs 18 <1s 18 <1s 18 <1s 18 <1s 1et.128 n : 128 m : 7456 tc 128 91 80 76 74 25m 122 88 79 78 74 25m 32 31 30 30 30 25m 29 29 28 20s 
+
+ρ : 0 .92 ω : 28 tc+rs 28 <1s 28 <1s 28 <1s 28 <1s 1tc.8 n : 8 m : 22 tc 8 4 <1s 7 4 <1s 4 4 <1s 4 4 <1s 
+
+ρ : 0 .79 ω : 4 tc+rs 4 <1s 4 <1s 4 <1s 4 <1s 1tc.16 n : 16 m : 98 tc 16 8 <1s 14 8 <1s 8 8 <1s 8 8 <1s 
+
+ρ : 0 .82 ω : 8 tc+rs 8 <1s 8 <1s 8 <1s 8 <1s 1tc.32 n : 32 m : 428 tc 32 12 <1s 29 12 <1s 12 12 <1s 12 12 <1s 
+
+ρ : 0 .86 ω : 12 tc+rs 12 <1s 12 <1s 12 <1s 12 <1s 1tc.64 n : 64 m : 1824 tc 64 35 29 25 21 25m 60 37 30 27 24 25m 20 20 <1s 20 20 <1s 
+
+ρ : 0 .90 ω : 20 tc+rs 20 <1s 20 <1s 20 <1s 20 <1s 1tc.128 n : 128 m : 7616 tc 128 97 89 86 83 25m 123 96 89 86 85 25m 38 38 <1s 38 38 <1s 
+
+ρ : 0 .94 ω : 38 tc+rs 38 <1s 38 <1s 38 <1s 38 <1s 1zc.128 n : 128 m : 7008 tc 128 83 55 51 50 25m 118 80 60 53 50 25m 28 23 22 22 21 25m 20 20 19 18 3m41s 
+
+ρ : 0 .86 ω : 18 tc+rs 59 42 34 23 25m 60 44 36 28 25m 23 19 18 3m53s 20 19 18 1m50s 2dc.128 n : 128 m : 2955 tc 128 5 <1s 77 5 <1s 6 5 <1s 5 - 5 3s 
+
+ρ : 0 .36 ω : 5 tc+rs 5 <1s 5 <1s 5 <1s - 5 3s brock200-1 n : 200 m : 14834 tc 200 127 52 45 40 25m 166 107 58 52 45 25m 53 38 28 26 25 25m 27 - 26 23 21 20m15s 
+
+ρ : 0 .75 ω : 21 tc+rs 127 48 37 32 25m 107 51 40 35 25m 38 26 22 21 6m35s - 26 23 21 20m15s brock200-2 n : 200 m : 9876 tc 200 46 12 4s 115 25 12 7s 31 14 12 1s 14 - 14 12 1m31s 
+
+ρ : 0 .50 ω : 12 tc+rs 48 12 5s 26 12 9s 14 12 1s - 14 12 1m31s brock200-3 n : 200 m : 12048 tc 200 87 17 15 2m18s 135 61 22 15 4m54s 39 23 15 14s 18 - 18 15 2m14s 
+
+ρ : 0 .61 ω : 15 tc+rs 88 18 15 2m47s 61 23 18 15 8m1s 23 15 9s - 18 15 2m14s brock200-4 n : 200 m : 13089 tc 200 104 27 22 17 19m18s 148 79 31 26 22 25m 43 28 19 17 2m38s 21 - 20 17 2m56s 
+
+ρ : 0 .66 ω : 17 tc+rs 104 28 20 17 9m22s 79 32 24 18 25m 29 17 28s - 20 17 2m55s C125-9 n : 125 m : 6963 tc 125 81 67 64 62 25m 118 79 69 67 63 25m 52 42 38 38 37 25m 37 37 34 35s 
+
+ρ : 0 .90 ω : 34 tc+rs 81 53 44 36 25m 79 53 45 39 25m 42 34 48s 37 34 35s c-fat200-1 n : 200 m : 1534 tc 200 12 <1s 18 12 <1s 15 12 <1s 12 12 <1s 
+
+ρ : 0 .08 ω : 12 tc+rs 12 <1s 12 <1s 12 <1s 12 <1s c-fat200-2 n : 200 m : 3235 tc 200 24 <1s 35 24 <1s 24 24 <1s 24 - 24 2s 
+
+ρ : 0 .16 ω : 24 tc+rs 24 <1s 24 <1s 24 <1s - 24 2s c-fat200-5 n : 200 m : 8473 tc 200 58 <1s 87 58 <1s 84 58 <1s 60 - 58 20s 
+
+ρ : 0 .43 ω : 58 tc+rs 58 <1s 58 <1s 58 <1s - 58 20s c-fat500-1 n : 500 m : 4459 tc 500 14 <1s 21 14 <1s 14 14 <1s 14 - 14 7s 
+
+ρ : 0 .04 ω : 14 tc+rs 14 <1s 14 <1s 14 <1s - 14 7s c-fat500-2 n : 500 m : 9139 tc 500 26 <1s 39 26 <1s 26 26 <1s 26 - 26 36s 
+
+ρ : 0 .07 ω : 26 tc+rs 26 <1s 26 <1s 26 <1s - 26 36s evil-chv12x10 n : 120 m : 6595 tc 120 84 72 67 64 25m 113 85 75 72 68 25m 35 30 29 29 28 25m 24 24 22 22 22 25m 
+
+ρ : 0 .92 ω : 20 tc+rs 20 <1s 20 <1s 20 <1s 20 <1s evil-myc5x24 n : 120 m : 6904 tc 120 101 97 95 94 25m 118 101 97 96 95 25m 61 55 54 54 54 25m 52 52 49 49 49 25m 
+
+ρ : 0 .97 ω : 48 tc+rs 48 <1s 48 <1s 48 <1s 48 <1s evil-myc11x11 n : 121 m : 6752 tc 121 87 75 72 70 25m 116 88 79 76 73 25m 40 33 32 32 31 25m 26 26 25 24 24 25m 
+
+ρ : 0 .93 ω : 22 tc+rs 22 <1s 22 <1s 22 <1s 22 <1s evil-s3m25x5 n : 125 m : 6877 tc 125 84 63 57 54 25m 113 83 67 64 58 25m 41 32 30 29 28 25m 25 25 22 22 22 25m 
+
+ρ : 0 .89 ω : 20 tc+rs 86 46 29 20 8m11s 83 42 23 20 5m27s 32 27 23 20 12m13s 25 22 22 22 25m evil-myc23x6 n : 138 m : 8211 tc 138 95 54 48 41 25m 127 90 60 53 47 25m 28 21 20 19 18 25m 15 15 14 14 13 25m 
+
+ρ : 0 .87 ω : 12 tc+rs 95 12 11s 90 12 9s 21 19 12 3m18s 15 14 14 13 25m evil-myc5x30 n : 150 m : 10837 tc 150 132 124 123 122 25m 147 130 126 124 122 25m 77 70 66 66 66 25m 65 65 63 61 61 25m 
+
+ρ : 0 .97 ω : 60 tc+rs 60 <1s 60 <1s 60 <1s 60 <1s evil-s3m25x6 n : 150 m : 10073 tc 150 120 85 82 77 25m 138 115 90 86 83 25m 50 42 37 37 36 25m 30 30 28 27 27 25m 
+
+ρ : 0 .90 ω : 24 tc+rs 120 101 95 89 25m 115 93 89 82 25m 42 36 32 30 25m 30 28 27 27 25m evil-myc11x14 n : 154 m : 11080 tc 154 131 106 103 100 25m 149 127 109 107 103 25m 48 45 41 41 41 25m 33 33 32 32 31 25m 
+
+ρ : 0 .94 ω : 28 tc+rs 28 <1s 28 <1s 28 <1s 28 <1s hamming6-2 n : 64 m : 1824 tc 64 37 32 20s 58 39 33 32 1m1s 32 32 <1s 32 32 <1s 
+
+ρ : 0 .90 ω : 32 tc+rs 35 32 2s 35 32 2s 32 <1s 32 <1s hamming6-4 n : 64 m : 704 tc 64 4 <1s 23 4 <1s 7 4 <1s 5 4 <1s 
+
+ρ : 0 .35 ω : 4 tc+rs 4 <1s 4 <1s 4 <1s 4 <1s johnson8-2-4 n : 28 m : 210 tc 28 4 <1s 16 4 <1s 6 4 <1s 4 4 <1s 
+
+ρ : 0 .56 ω : 4 tc+rs 4 <1s 4 <1s 4 <1s 4 <1s johnson8-4-4 n : 70 m : 1855 tc 70 14 <1s 54 15 14 1s 17 14 <1s 14 14 <1s 
+
+ρ : 0 .77 ω : 14 tc+rs 14 <1s 14 <1s 14 <1s 14 <1s johnson16-2-4 n : 120 m : 5460 tc 120 39 8 24s 92 35 8 57s 14 11 9 8 1m20s 8 8 <1s 
+
+ρ : 0 .76 ω : 8 tc+rs 41 8 24s 41 8 31s 11 9 9 8 9m31s 8 <1s keller4 n : 171 m : 9435 tc 171 73 16 11 3m32s 125 52 21 14 11 7m39s 24 14 11 8s 14 - 12 11 1m12s 
+
+ρ : 0 .65 ω : 11 tc+rs 73 12 11 1m6s 53 13 11 1m40s 14 11 8s - 12 11 1m12s MANN-a9 n : 45 m : 918 tc 45 27 16 57s 42 28 21 16 3m27s 19 17 16 15s 17 16 <1s 
+
+ρ : 0 .93 ω : 16 tc+rs 16 <1s 16 <1s 16 <1s 16 <1s p-hat300-1 n : 300 m : 10933 tc 300 8 <1s 133 8 <1s 22 8 <1s 10 - - 8 1m21s 
+
+ρ : 0 .24 ω : 8 tc+rs 8 <1s 8 <1s 8 <1s - - 8 1m21s san200-0-7-1 n : 200 m : 13930 tc 200 116 68 64 60 25m 156 100 70 67 63 25m 42 30 <1s 30 - 30 10s 
+
+ρ : 0 .70 ω : 30 tc+rs 116 62 58 58 25m 100 65 62 58 25m 30 <1s - 30 10s san200-0-7-2 n : 200 m : 13930 tc 200 108 80 72 68 25m 165 102 82 77 72 25m 23 18 <1s 18 - 18 17s 
+
+ρ : 0 .70 ω : 18 tc+rs 109 33 26 18 23m6s 100 52 36 21 25m 18 <1s - 18 17s sanr200-0-7 n : 200 m : 13868 tc 200 114 36 30 26 25m 162 91 43 35 29 25m 47 33 22 21 19 25m 23 - 22 19 18 12m12s 
+
+ρ : 0 .70 ω : 18 tc+rs 114 35 26 21 25m 92 40 29 25 25m 33 19 18 1m33s - 22 19 18 12m13s 
+
+Table 1: Upper-bound progress on small graph instances with at most 15000 edges. 
+
+29 Graph Algorithm ωu trivial ωu degree+density ωu dsatur ωu sdp 
+
+1dc.256 n : 256 m : 28801 tc 256 212 145 137 127 25m 240 199 151 143 135 25m 43 37 33 33 33 25m 30 - 30 5s 
+
+ρ : 0 .88 ω : 30 tc+rs 198 138 138 135 25m 183 141 139 139 25m 37 33 33 33 25m - 30 5s 1et.256 n : 256 m : 30976 tc 256 232 200 198 195 25m 249 226 203 199 194 25m 69 65 63 62 62 25m 55 - 54 54 53 25m 
+
+ρ : 0 .95 ω : 50 tc+rs 50 <1s 50 <1s 50 <1s - 50 2s 1tc.256 n : 256 m : 31328 tc 256 234 208 207 204 25m 250 229 210 207 203 25m 69 65 64 63 1m52s 63 63 <1s 
+
+ρ : 0 .96 ω : 63 tc+rs 63 <1s 63 <1s 63 <1s 63 1s 1zc.256 n : 256 m : 29824 tc 256 231 177 164 160 25m 244 220 187 177 177 25m 56 49 46 46 45 25m 38 - 38 36 2m39s 
+
+ρ : 0 .91 ω : 36 tc+rs 215 156 156 156 25m 199 157 157 157 25m 49 46 46 43 25m - 37 36 1m51s 2dc.256 n : 256 m : 15457 tc 256 60 7 6s 176 38 7 9s 10 7 <1s 7 - - 7 3m59s 
+
+ρ : 0 .47 ω : 7 tc+rs 9 7 1s 7 <1s 7 <1s - - 7 4m1s C250-9 n : 250 m : 27984 tc 250 210 150 142 136 25m 237 198 156 149 144 25m 92 80 70 69 69 25m 56 - 55 52 51 25m 
+
+ρ : 0 .90 ω : 44 tc+rs 210 156 156 156 25m 198 152 148 148 25m 80 70 66 62 25m - 55 52 51 25m c-fat500-5 n : 500 m : 23191 tc 500 87 64 3s 96 74 64 2s 64 64 <1s 64 - - - 64 7m26s 
+
+ρ : 0 .19 ω : 64 tc+rs 89 64 3s 76 64 2s 64 <1s - - - 64 7m27s evil-chv12x15 n : 180 m : 15166 tc 180 160 128 124 120 25m 173 155 132 128 124 25m 55 50 45 45 45 25m 36 36 35 34 34 25m 
+
+ρ : 0 .94 ω : 30 tc+rs 148 103 94 83 25m 142 101 91 78 25m 43 38 37 34 25m 36 33 33 33 25m evil-myc5x36 n : 180 m : 15671 tc 180 166 153 150 149 25m 177 164 153 151 150 25m 90 84 80 80 80 25m 77 77 74 73 72 8m38s 
+
+ρ : 0 .97 ω : 72 tc+rs 115 73 72 1m6s 108 74 72 1m14s 73 72 1s 77 72 38s evil-myc23x8 n : 184 m : 15072 tc 184 152 98 91 85 25m 173 144 107 99 91 25m 37 32 27 27 27 25m 20 20 19 19 19 25m 
+
+ρ : 0 .90 ω : 16 tc+rs 152 80 19 19 25m 144 72 16 2m52s 32 27 27 18 25m 20 19 19 19 25m evil-myc11x17 n : 187 m : 16490 tc 187 169 140 136 132 25m 181 165 143 139 135 25m 63 56 52 52 52 25m 40 40 39 39 39 25m 
+
+ρ : 0 .95 ω : 34 tc+rs 141 84 64 46 25m 134 87 65 44 25m 44 40 39 34 20m12s 40 36 36 36 25m evil-s3m25x8 n : 200 m : 18350 tc 200 177 135 130 126 25m 188 169 142 137 132 25m 66 58 52 52 52 25m 40 40 38 38 37 25m 
+
+ρ : 0 .92 ω : 32 tc+rs 177 136 134 134 25m 169 129 129 129 25m 58 52 49 44 25m 40 38 38 37 25m evil-myc5x42 n : 210 m : 21404 tc 210 197 181 180 179 25m 207 194 183 181 180 25m 106 99 94 94 94 25m 90 90 87 87 85 25m 
+
+ρ : 0 .98 ω : 84 tc+rs 162 101 88 84 8m4s 149 99 88 84 9m30s 102 84 2s 90 89 84 3m8s evil-myc11x20 n : 220 m : 22960 tc 220 201 169 165 162 25m 214 197 176 172 168 25m 73 66 61 61 61 25m 47 47 47 47 46 25m 
+
+ρ : 0 .95 ω : 40 tc+rs 192 148 147 145 25m 183 147 146 141 25m 60 51 50 48 25m 47 45 43 43 25m evil-myc23x10 n : 230 m : 24072 tc 230 201 144 138 132 25m 217 192 157 149 140 25m 48 40 36 36 36 25m 25 25 24 24 24 25m 
+
+ρ : 0 .91 ω : 20 tc+rs 201 146 126 119 25m 192 137 125 111 25m 40 36 36 34 25m 25 24 24 24 25m evil-chv12x20 n : 240 m : 27328 tc 240 222 188 183 179 25m 233 216 192 187 183 25m 74 68 63 63 62 25m 49 49 47 47 46 25m 
+
+ρ : 0 .95 ω : 40 tc+rs 216 184 184 184 25m 210 186 186 186 25m 65 61 59 55 25m 49 47 47 46 25m evil-myc5x48 n : 240 m : 27962 tc 240 226 207 205 204 25m 236 223 210 207 205 25m 120 114 108 108 108 25m 100 100 98 97 96 15m59s 
+
+ρ : 0 .97 ω : 96 tc+rs 223 175 167 161 25m 214 177 166 160 25m 119 97 96 2m4s 100 99 96 2m32s evil-s3m25x10 n : 250 m : 29075 tc 250 227 182 177 172 25m 238 219 190 186 176 25m 81 73 66 66 66 25m 50 50 49 48 47 25m 
+
+ρ : 0 .93 ω : 40 tc+rs 227 184 184 184 25m 219 181 175 175 25m 73 66 65 62 25m 50 49 48 47 25m evil-myc11x23 n : 253 m : 30422 tc 253 232 199 195 190 25m 247 226 203 198 194 25m 84 76 71 71 71 25m 55 55 54 54 53 25m 
+
+ρ : 0 .95 ω : 46 tc+rs 224 194 194 194 25m 219 195 195 195 25m 74 68 66 62 25m 55 53 53 52 25m evil-myc5x60 n : 300 m : 43817 tc 300 284 262 260 259 25m 296 280 264 262 261 25m 149 143 139 134 134 25m 122 122 121 120 1m31s 
+
+ρ : 0 .98 ω : 120 tc+rs 300 249 244 244 25m 296 246 238 238 25m 149 127 123 121 25m 122 122 120 2m22s gen200-p0-9-44 n : 200 m : 17910 tc 200 164 116 112 108 25m 189 156 121 116 111 25m 62 53 48 48 47 25m 44 44 <1s 
+
+ρ : 0 .90 ω : 44 tc+rs 165 113 107 102 25m 156 112 107 104 25m 53 48 48 44 23m15s 44 <1s gen200-p0-9-55 n : 200 m : 17910 tc 200 164 117 113 108 25m 189 155 120 116 111 25m 71 60 55 13s 55 55 <1s 
+
+ρ : 0 .90 ω : 55 tc+rs 164 117 114 112 25m 155 115 115 112 25m 60 55 13s 55 <1s hamming8-2 n : 256 m : 31616 tc 256 247 225 222 220 25m 248 242 225 222 221 25m 128 128 <1s 128 128 <1s 
+
+ρ : 0 .97 ω : 128 tc+rs 247 225 225 225 25m 242 220 220 220 25m 128 <1s 128 <1s hamming8-4 n : 256 m : 20864 tc 256 156 26 16 4m11s 164 104 31 22 16 13m23s 24 17 16 6s 16 - 16 46s 
+
+ρ : 0 .64 ω : 16 tc+rs 157 32 23 17 25m 104 39 31 23 25m 17 16 6s - 16 46s p-hat300-2 n : 300 m : 21928 tc 300 90 39 35 32 25m 209 76 42 37 34 25m 42 29 25 3s 26 - - - 25 9m45s 
+
+ρ : 0 .49 ω : 25 tc+rs 92 29 25 2m20s 77 31 25 3m45s 29 25 3s - - - 25 9m45s p-hat300-3 n : 300 m : 33390 tc 300 180 93 86 79 25m 258 158 96 89 83 25m 69 58 41 40 40 25m 41 - - 41 36 20m27s 
+
+ρ : 0 .74 ω : 36 tc+rs 180 98 76 65 25m 158 95 77 67 25m 59 41 39 36 13m54s - - 41 36 20m26s p-hat500-1 n : 500 m : 31569 tc 500 79 9 7s 205 39 9 6s 32 13 9 3s - - 25m 
+
+ρ : 0 .25 ω : 9 tc+rs 170 9 8s 46 9 7s 22 9 4s - 25m san200-0-9-1 n : 200 m : 17910 tc 200 160 116 116 115 25m 189 151 117 117 116 25m 73 70 <1s 70 70 <1s 
+
+ρ : 0 .90 ω : 70 tc+rs 160 105 99 98 25m 151 105 100 99 25m 70 <1s 70 <1s san200-0-9-2 n : 200 m : 17910 tc 200 167 116 112 108 25m 189 158 121 116 112 25m 75 63 60 8s 60 60 <1s 
+
+ρ : 0 .90 ω : 60 tc+rs 167 123 123 118 25m 158 117 117 116 25m 63 60 8s 60 <1s san200-0-9-3 n : 200 m : 17910 tc 200 167 116 112 107 25m 188 157 122 117 112 25m 64 54 48 47 47 25m 44 - 44 1s 
+
+ρ : 0 .90 ω : 44 tc+rs 167 125 123 119 25m 157 117 117 116 25m 54 48 47 45 25m - 44 1s san400-0-5-1 n : 400 m : 39900 tc 400 182 93 75 59 25m 226 153 94 84 65 25m 21 13 <1s - - 25m 
+
+ρ : 0 .50 ω : 13 tc+rs 183 93 37 16 25m 154 89 65 58 25m 13 <1s - 25m sanr200-0-9 n : 200 m : 17863 tc 200 163 113 108 104 25m 189 155 118 113 109 25m 74 65 57 56 56 25m 49 49 46 45 42 23m38s 
+
+ρ : 0 .90 ω : 42 tc+rs 164 118 112 110 25m 155 115 114 112 25m 65 56 54 50 25m 49 46 45 42 23m36s sanr400-0-5 n : 400 m : 39984 tc 400 176 35 19 13 13m43s 234 107 35 22 15 25m 56 46 16 14 13 5m26s - - 25m 
+
+ρ : 0 .50 ω : 13 tc+rs 177 35 20 18 25m 108 35 25 24 25m 50 16 13 4m19s - 25m 
+
+Table 2: Upper-bound progress on medium graph instances with more than 15000 and fewer than 45000 edges. 
+
+The left part of each table reports basic graph information, including the number of vertices, the number of edges, the density, and the clique number. All clique numbers reported here are proven optimal values taken from [35]. The right part of each table reports the computational results. The column ωu gives the initial upper-bound value computed by the corresponding function. The column named after the upper-bound function reports the progress of the value over time, namely the best upper-bound value after 1 second, 1 minute, 5 minutes, and 25 minutes. The rightmost entry in each cell gives the running time. A computation can finish before the 25-minute limit if the current upper-bound value reaches the known lower bound. When a computation finishes before the time limit, the reported value is written in bold. For the instances considered here, these lower bounds are also proven optimal values, but the algorithm itself does not require this. If the known lower bound is not optimal, then the algorithm will not certify an upper-bound value below the true optimum; it will instead terminate either when termination criteria is met or when the structural stopping condition is reached. As explained for both instantiations, the structural stopping condition is reached when the reduction finds a clique matching the current value of k. For tc , this condition is d + 2 > k , while for tc+rs 
+
+it is d + 2 > k − h. When the structural stopping condition is satisfied, the algorithm has found a clique whose size matches the current upper bound; hence, it has certified the optimum value and can return k.All computations in Tables 1 and 2 were performed on a single machine with a 13th Gen Intel(R) Core(TM) i5-13420H processor. The machine has 8 physical cores, 12 logical threads, and 31 GiB of RAM. The maximum CPU frequency reported by the system is approximately 4.60 GHz. All computations were run single-threaded, including the MOSEK computations used for the SDP-based upper-bound functions. This was done to make the running times comparable across all tested methods. Another observation from the tables is that tc compares favorably with the Sequential Elim-30 ination Algorithm (SEA) from [15]. On the benchmark instances that overlap with the SEA experiments, tc with the trivial upper-bound function gives strictly better values in all cases. With the DSatur upper-bound function, tc gives either strictly better values or the same values; in the equal cases, both methods already attain the optimal value. This comparison is consistent with the relationship between SEA and the core-only version of our framework. More precisely, if ωu is increasing, the core-only version of our framework returns an upper-bound value no larger than that returned by SEA. By the core-only version, we mean Algorithm 7 without the truss step, terminated when the core reduction no longer improves the bound. We omit the formal proof, since it would require additional notation and the result is not used elsewhere in the paper. The full tc variant additionally applies truss reductions, which can produce stronger bounds, as observed in our experiments. To obtain a clearer comparison between the methods, we also plot the results from Tables 1 and 2; see Figure 1. The x-axis shows time, while the y-axis shows the percentage gap between the current upper-bound value and the optimal value. More precisely, if Ut is the upper-bound value at time t, then the plotted gap is 100 · (Ut − ω(G)) /ω (G). The value at time 0 is the initial upper-bound value. After that, the values are shown in steps of 5s. If the initial upper-bound value took more than 5s to compute, we use the initial value also for the later time points until the computation finishes. We omit instances for which the initial upper-bound value was not computed within 25 minutes.                            
+
+> Upper bound tc tc+rs trivial degree+density dsatur sdp
+> 012345678910 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+> 0
+> 50
+> 100
+
+Small instances                          
+
+> 012345678910 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+> 0
+> 100
+> 200
+
+Medium instances 
+
+> Average gap above optimum (%)
+
+Time (minutes)     
+
+> Figure 1: Average upper-bound gap over time on small and medium instances. Colors indicate the upper-bound function; solid and dashed lines correspond to tc and tc+rs , respectively.
+
+The initial values for the trivial and degree+density upper-bound functions are not shown 31 in the plots, since they would make the scale too large and hide the relevant behavior of the other methods. For this reason, we created Figure 2, which analyzes only the first minute for these two upper-bound functions. The figure has the same structure as Figure 1, but the second row of the 
+
+x-axis also reports the average value of the parameter d for the tc runs at each time point. The plot also includes tc+rs ; however, we do not report an average d for this algorithm, because tc+rs 
+
+resets d several times during its execution, making this statistic less informative. Figures 1 and 2 show that the trivial upper-bound function quickly outperforms the degree+ density upper-bound function, although the latter gives a better initial upper-bound value. This is due to the lower cost of computing the trivial upper-bound function: it takes O(n) time, while the degree+density upper-bound function takes O(m) time. In this setting, the stronger initial upper-bound value is not always worth the additional computation time. The time for the 
+
+degree+density upper-bound function could possibly be reduced by a specialized implementation that maintains the value inside the reduction algorithm. We do not do this here, since in this work we treat each computation of an upper-bound value as a separate task.  
+
+> tc tc+rs
+> 0
+> 0
+> 5
+> 4.1
+> 10
+> 4.6
+> 15
+> 4.8
+> 20
+> 5
+> 25
+> 5.1
+> 30
+> 5.2
+> 35
+> 5.2
+> 40
+> 5.4
+> 45
+> 5.5
+> 50
+> 5.5
+> 55
+> 5.5
+> 60
+> 5.5
+> 0
+> 200
+> 400
+> 600
+> 800
+
+Small: trivial 
+
+> 0
+> 0
+> 5
+> 2.5
+> 10
+> 3
+> 15
+> 3.2
+> 20
+> 3.3
+> 25
+> 3.5
+> 30
+> 3.6
+> 35
+> 3.7
+> 40
+> 3.7
+> 45
+> 3.7
+> 50
+> 3.8
+> 55
+> 3.9
+> 60
+> 3.9
+> 0
+> 200
+> 400
+> 600
+> 800
+
+Small: degree+density 
+
+> 0
+> 0
+> 5
+> 0.6
+> 10
+> 1.8
+> 15
+> 2.5
+> 20
+> 3.2
+> 25
+> 3.6
+> 30
+> 4
+> 35
+> 4.2
+> 40
+> 4.4
+> 45
+> 4.5
+> 50
+> 4.6
+> 55
+> 4.7
+> 60
+> 4.8
+> 0
+> 200
+> 400
+> 600
+> 800
+
+Medium: trivial 
+
+> 0
+> 0
+> 5
+> 0.3
+> 10
+> 1
+> 15
+> 1.4
+> 20
+> 1.6
+> 25
+> 1.8
+> 30
+> 1.9
+> 35
+> 2.1
+> 40
+> 2.2
+> 45
+> 2.2
+> 50
+> 2.3
+> 55
+> 2.4
+> 60
+> 2.5
+> 0
+> 200
+> 400
+> 600
+> 800
+
+Medium: degree+density 
+
+> Average gap above optimum (%)
+
+Time (s); lower row: average d for tc 
+
+Figure 2: Average upper-bound gap during the first minute for trivial and degree+density on small and medium instances. Solid and dashed lines correspond to tc and tc+rs , respectively. In each x-axis tick, the upper entry gives time in seconds and the lower entry gives the average current d for tc .
+
+As expected, d increases faster for the trivial upper-bound function than for the degree+ density upper-bound function, because the trivial upper-bound function is cheaper to compute. We also observe that most of the improvement happens in the first few seconds; after that, the progress slows down substantially. Returning to Figure 1, we observe that, for all tested upper-bound functions, tc+rs outperforms 
+
+tc on average. This shows the benefit of combining different reduction methods. On the smaller graphs, the trivial and degree+density upper-bound functions combined with tc+rs come close to dsatur combined with tc . However, this behavior does not continue on the medium graphs. On 32 the other hand, dsatur combined with tc+rs comes close to the performance of the sdp method. This motivated a second comparison: we compare dsatur with tc+rs against the initial sdp 
+
+upper-bound value. More precisely, we count how often dsatur with tc+rs reaches the initial 
+
+sdp upper-bound value faster than the sdp computation itself. The results are shown in Figure 3, where instances are grouped by graph density. Below the heatmap, we also report the average speedup on instances where dsatur with tc+rs is faster, and the average slowdown on instances where the sdp computation is faster. The results are promising. For all density buckets below 0 .7, dsatur with tc+rs reaches the initial sdp upper-bound value faster in most cases, with the largest speedups appearing on lower-density graphs. In the density bucket [0 .7, 0.8), it still wins in a majority of cases, but the slowdowns in that range are much larger than the speedups. For graphs with density above 0 .8, the 
+
+sdp upper-bound function performs better, and the slowdowns are even larger. This is expected: the tc+rs reduction is less effective on very dense graphs, while the Lov´ asz theta computation becomes easier because it is applied to the complement graph, which becomes sparse when the original graph is dense. 
+
+> [0 .0, 0.1)
+> [0 .1, 0.2)
+> [0 .2, 0.3)
+> [0 .3, 0.4)
+> [0 .4, 0.5)
+> [0 .5, 0.6)
+> [0 .6, 0.7)
+> [0 .7, 0.8)
+> [0 .8, 0.9)
+> [0 .9, 1.0]
+
+Small 3/3 1/1 1/1 2/2 2/2 1/1 4/4 5/7 3/8 7/11 29/40 
+
+Medium 0/0 1/1 1/1 0/0 2/2 2/2 1/1 1/1 0/4 4/21 12/33 
+
+Combined 3/3 2/2 2/2 2/2 4/4 3/3 5/5 6/8 3/12 11/32 41/73 
+
+Avg. speedup 14,456x 112,574x >354x 90x 150x >695x 6.1x 24x 9.7x 42x 
+
+Avg. slowdown - - - - - - - 1,181x >756x >1,299x                  
+
+> larger fraction of wins
+> Figure 3: Comparison of dsatur with tc+rs against direct computation of the initial sdp bound, grouped by edge-density bucket. The bottom rows report mean speedup and slowdown factors. For speedups, a leading >
+> means that the sdp run did not finish within the time limit, so the reported speedup is only a lower bound. For slowdowns, it means that dsatur with tc+rs did not reach the target bound within the time limit, so the reported slowdown is only a lower bound.
+
+9.2 Improving state-of-the-art upper-bound values on large instances 
+
+We now apply our method to improve existing upper-bound values for open DIMACS instances [22], focusing on the graphs C500.9 , C1000.9 , and C2000.9 .The plain Lov´ asz theta values reported in [16] are 
+
+ϑ(C500.9 ) ≈ 84 .20 , ϑ(C1000.9 ) ≈ 123 .49 , ϑ(C2000.9 ) ≈ 178 .93 .
+
+These values were obtained by solving the standard Lov´ asz theta SDP relaxation on the comple-mented DIMACS instances. Stronger upper-bound values were reported in [4], who considered a strengthened theta formu-lation with additional inequality constraints. Their method solves a large-scale SDP relaxation and then applies a post-processing procedure to recover a valid dual upper-bound value. For the three instances considered here, they report the certified upper-bound values 
+
+ϑ+(C500.9 ) ≈ 83 .58 , ϑ+(C1000.9 ) ≈ 122 .60 , ϑ+(C2000.9 ) ≈ 177 .73 .
+
+33 Here, ϑ+ denotes the nonnegativity-strengthened theta relaxation used in [4]. These values improve the integer upper-bound values obtained from the plain Lov´ asz theta values. For C500.9 , an even slightly stronger floating-point value was later reported in [5]. They apply a compact Lov´ asz–Schrijver lift-and-project SDP relaxation, denoted μ(G, C ), where C is the constraint set used in their compact formulation, and report 
+
+μ(C500.9 , C ) ≈ 83 .51 .
+
+Since the clique number is integer, any certified floating upper-bound value U implies 
+
+ω(G) ≤ ⌊ U ⌋.
+
+Applying this observation to the above values gives 
+
+ω(C500.9 ) ≤ 83 , ω(C1000.9 ) ≤ 122 , ω(C2000.9 ) ≤ 177 .
+
+To the best of our knowledge, these are the strongest certified integer upper-bound values previously reported for these three DIMACS instances. In this work, we obtained new improved upper-bound values by using the truss core reduction with the SDP upper-bound function as ωu. Since the three graphs considered here are dense, this means that the Lov´ asz theta upper-bound function was used. The obtained values are 
+
+ω(C500.9 ) ≤ 73 , ω(C1000.9 ) ≤ 115 , ω(C2000.9 ) ≤ 168 .
+
+For C500.9 , we allowed both core and truss with d = 0 to run as long as they continued to improve the value. The computation that improved the upper-bound value from 83 to 73 took 4d 9h 13m . We also tried to improve the value to 72, but stopped the computation after three days, since the d = 0 truss step no longer removed a substantial number of edges and moving to d = 1 was too expensive. For C1000.9 , the Lov´ asz theta computations were even more expensive. Therefore, we only used the core part of the reduction. The computation that improved the upper-bound value from 122 to 115 took 4d 14h 45m . We also tried to improve the value to 114, but stopped the computation after three days, since core no longer removed enough vertices to make a further improvement likely, while applying truss was too expensive. The computations for C500.9 and C1000.9 were performed on a single compute node with two AMD EPYC 7402 24-Core processors. The node has 48 physical cores, 96 logical threads, and 125 GiB of RAM. The maximum CPU frequency reported by the system is approximately 3.35 GHz. The MOSEK computations were run as single-process shared-memory jobs, using 24 threads for C500.9 and 48 threads for C1000.9 . The number of threads was chosen empirically. We tested different thread counts for the Lov´ asz theta computations on C500.9 and C1000.9 , and used the values that gave the best trade-off before additional threads started to give diminishing returns. For C2000.9 , we used a more targeted approach. Computing all intermediate upper-bound values before reaching 169 would require too much time and memory. Instead, as explained in Remark 29, we directly tested the candidate value k = 169. Once the reduction certified ω(G) <
+
+169, we obtained the valid upper-bound value ω(G) ≤ 168. The value k = 169 was chosen empirically. In our implementation, core processes vertices in degeneracy order. On C500.9 and C1000.9 , we observed that when this ordering allowed core 
+
+to remove several dozen vertices without stalling, the process usually continued until the desired certificate was obtained. We therefore tested several candidate values for C2000.9 and found that 
+
+k = 169 was the smallest value for which this behavior occurred consistently, and then applied only core for this value of k. The computation that returned the upper-bound value 168 took 
+
+17d 18h 8m .34 Our choice of the degeneracy order [36] is motivated by the standard k-core computation, where this order reduces the number of queue reinsertions to zero: vertices can be processed and removed without being reinserted into the queue. In our generalized core reduction, the removal test is based on an upper-bound function instead of only on the neighborhood size, so this zero-reinsertion property no longer follows. Nevertheless, the degeneracy order still tends to process vertices with small remaining neighborhoods early, and we therefore expect it to be more effective than an arbitrary ordering. The computation for C2000.9 was performed on a single compute node with two AMD EPYC 9455 48-Core processors. The node has 96 physical cores, 192 logical threads, and 751 GiB of RAM. The maximum CPU frequency reported by the system is approximately 4 .41 GHz. The MOSEK computation was run as a single-process shared-memory job using 192 threads, which corresponds to all available logical threads on the node. This thread count was chosen empirically on C2000.9 , where it gave the fastest computations among the tested values. 
+
+# 10 Conclusions and Future work 
+
+10.1 Conclusions 
+
+In this paper, we studied the interaction between reduction rules and upper-bound functions for MCP. We first showed how MCP upper-bound functions can be used to strengthen classical core and truss reductions, leading to the ( k, ω u)-core and the ( k, ω u)-truss. We then further generalized the truss reduction by introducing the ( k, d, ω u)-truss, where the parameter d allows one to trade additional computational time for stronger reductions. We proved the relevant clique-preservation properties, correctness results, and running-time bounds. We then introduced a general framework for improving MCP upper-bound values by applying reductions before evaluating an upper-bound function, and provided two concrete instantiations: one using truss and core reductions, and one combining truss and core reductions with structions. The computational results show that the proposed reductions can substantially improve several standard upper-bound functions. They also show that combining different reductions can be ben-eficial in practice. On sparse and medium-density benchmark graphs, the instantiation combining truss and core reductions with structions, using the coloring-based upper-bound function, often reached SDP-level bounds faster than computing the corresponding SDP bound directly. Finally, using the truss and core instantiation with the Lov´ asz theta upper-bound function, we improved the previously best known upper-bound values for three difficult DIMACS instances whose optimal clique numbers are not known. 
+
+10.2 Future work 
+
+The results of this paper suggest several natural extensions. We list the main directions for future work below. 
+
+Generalization of truss and core 
+
+• In this work, we used the ( k, ω u)-core and introduced the ( k, ω u)-truss and the ( k, d, ω u)-truss as upper-bound-based generalizations of the k-truss. We used these notions as reduction techniques for MCP. Since k-cores and generalized cores are also used in network analysis, including cohesion analysis, community detection, and large-scale graph processing [3, 26, 44, 46], it would be interesting to study whether the ( k, ω u)-core can also be useful in such applications for suitable choices of ωu. Similarly, since k-trusses are widely used as cohesive subgraph models, especially for finding dense communities in large graphs [20, 53], it would be interesting to study whether the two generalizations introduced here, namely the use of 
+
+ωu and the additional parameter d, can also be useful in such applications. 35 • Regarding the time complexity of the ( k, d, ω u)-truss algorithm, the case d = 0 with ωu not being edge-sensitive improves the running time by a factor of O(√m), because the second, more expensive update of QE can be omitted. We believe that the assumption that ωu
+
+is not edge-sensitive is necessary for this improvement: if deleting an edge can change the value of ωu, then O(m2) edge occurrences may be affected and the expensive update seems unavoidable. The role of the assumption d = 0 is less clear. For d > 0, after an edge is removed, the current algorithm has to inspect the edges inside its common neighborhood in order to find which witnessing cliques may have been affected. A possible improvement would be to maintain a data structure that stores witnessing cliques and avoids this search. This could improve the practical running time, but we were not able to prove a better asymptotic bound. A natural direction for future work is therefore to test whether such a data structure improves the practical running time, and then to understand its theoretical limits: either by proving an improved asymptotic bound, or by showing that the current bound cannot be improved in this way, or perhaps cannot be improved at all. 
+
+Upper-bound value improvement algorithm: 
+
+• We presented a general algorithm for improving MCP upper-bound values and gave two concrete instantiations. However, the framework is not limited to the reduction rules studied here. Many other reductions could be included, either alone or in combination with existing ones. Future work should therefore study which reduction rules complement each other well and how they can be implemented efficiently in parallel. Once an efficient implementation is developed, it should be evaluated in other state-of-the-art applications that rely on upper-bound values, such as branch-and-bound solvers. Another direction for future work is to improve the method that produced the new state-of-the-art upper-bound values for the three benchmark instances. In our implementation, parallelization was used only within the sdp computation. MOSEK supports parallel com-putation only within a single node and cannot distribute the computation across multiple nodes. Although a different solver could provide multi-node support, parallelizing only the computation of upper-bound values would probably still give diminishing returns. A more promising approach is therefore to parallelize the upper-bound value improvement procedure itself across multiple nodes. The running time could also be reduced by minimizing the number of expensive computations of upper-bound values, for example by warm-starting the solver or reusing relevant intermediate results. 
+
+• The upper-bound value improvement framework is not limited to MCP or to the reduction methods introduced above. Consider two maximization problems with instance sets P and 
+
+Q. Thus, I ∈ P denotes an instance of the first problem. Let uQ : Q → R be an upper-bound function for the second problem, and let vopt  
+
+> P
+
+: P → R give the optimal value of an instance of the first problem. For each threshold k, suppose that there exist a transformation 
+
+Tk : P → Q and a threshold function tk : P → R such that, for every I ∈ P ,
+
+uQ(Tk(I)) < t k(I) ⇒ vopt  
+
+> P
+
+(I) < k. 
+
+Then an upper-bound value for the transformed instance Tk(I) can certify that the optimal value of the original instance I is below k.It would be interesting to investigate whether this idea can improve upper-bound values for other optimization problems and whether allowing more general transformations can produce stronger results. 
+
+• In our experiments, tc+rs with dsatur reached the same upper-bound value as the sdp 
+
+computation faster on all graphs with density below 0 .7. For graphs with density between 0.7 and 0 .8, it was still faster in 6 /8 cases. We limited the experiments to medium-sized 36 graphs with fewer than 45000 edges. The reason is that the single-threaded computation of the sdp upper-bound function was already time-consuming on these instances, and it would become practically infeasible on much larger graphs. If the improvement algorithm is parallelized in future work, it would be useful to test whether this behavior also holds for larger graphs when compared with a multi-threaded SDP solver. If so, this method could provide a practical substitute for SDP-based upper-bound functions, which are expensive and sometimes practically infeasible to compute on large instances. 
+
+• In this work, the function ωu used inside the reductions is always one of the underlying upper-bound functions, such as coloring-based or SDP-based bounds. A possible direction for future work is to define ωu itself as the output of an upper-bound improvement algo-rithm. This would create a feedback loop in which improved upper-bound values lead to stronger reductions, and these stronger reductions may then lead to further upper-bound improvements. 
+
+# Author contributions 
+
+Conceptualization, A.K.; methodology, A.K.; software, A.K.; validation, A.K.; formal analysis, A.K.; investigation, A.K.; visualization, A.K.; writing – original draft, A.K.; writing – review and editing, A.K. and J.P.; supervision, J.P.; resources, J.P.; funding acquisition, J.P. 
+
+# Notes on contributors 
+
+Aljaˇ z Krpan is a master’s student at the University of Ljubljana, Faculty of Mathematics and Physics, mentored by Prof. Janez Povh. His main research interests include algorithmic optimiza-tion for discrete and combinatorial problems, mathematical modeling of real-life problems, and efficient practical implementations of algorithms for large-scale and parallel computing environ-ments. Janez Povh is a full professor of applied mathematics at the University of Ljubljana, Slovenia, and managing director of Rudolfovo – Science and Technology Centre Novo mesto, Slovenia. His research focuses on developing state-of-the-art algorithms for hard computational problems, mainly in combinatorial optimization and data science. He is primarily interested in computing exact solutions, that is, global optima, but also adapts his methods to obtain high-quality local optima. He analyzes algorithms theoretically and implements them as high-performance code designed to use modern supercomputers and quantum computers. 
+
+# Funding 
+
+This research was co-funded by (1) the Slovenian Research and Innovation Agency ARIS through the research project Quantum Solver for Hard Binary Quadratic Problems (Grant No. J7-50186), and through the annual work programme of Rudolfovo, and by (2) QEC4QEA project (Grant Agreement No. 101194322), funded by the European High Performance Computing Joint Under-taking (EuroHPC JU) and participating countries, including Slovenia, under the Horizon Europe research and innovation programme. 
+
+# Disclosure statement 
+
+The authors declare that they have no competing interests. 37 Data availability 
+
+All code used for the computational experiments is available on the arXiv page of this paper, on GitHub https://github.com/Rudolfovoorg/Improving_Upper_Bounds_of_MCP_using_Reduction_Rules.git and on Zenodo https://doi.org/10.5281/zenodo.21336337 .
+
+# References 
+
+[1] Takuya Akiba and Yoichi Iwata. Branch-and-reduce exponential/FPT algorithms in practice: A case study of vertex cover. Theoretical Computer Science , 609:211–225, 2016. doi: 10.1016/j.tcs.2015.09.023. [2] Gabriela Alexe, Peter L. Hammer, Vadim V. Lozin, and Dominique de Werra. Struction revisited. Discrete Applied Mathematics , 132(1–3):27–46, 2003. doi: 10.1016/S0166-218X(03)00388-3. [3] Vladimir Batagelj and Matjaˇ z Zaverˇ snik. Fast algorithms for determining (generalized) core groups in social networks. Advances in Data Analysis and Classification , 5(2):129–145, 2011. doi: 10.1007/s11634-010-0079-y. [4] Federico Battista and Marianna De Santis. Dealing with inequality constraints in large-scale semidefinite relaxations for graph coloring and maximum clique problems. 4OR , 23(1):65–95, 2025. doi: 10.1007/ s10288-024-00569-5. [5] Federico Battista, Fabrizio Rossi, and Stefano Smriglio. Application of the Lov´ asz–Schrijver operator to compact stable set integer programs. Mathematical Programming Computation , 18:443–480, 2026. doi: 10.1007/s12532-025-00298-8. Published online 2025-12-06; arXiv preprint: arXiv:2407.19290. [6] Daniel Br´ elaz. New methods to color the vertices of a graph. Communications of the ACM , 22(4):251–256, 1979. doi: 10.1145/359094.359101. [7] Valentin E. Brimkov and Reneta P. Barneva. Bounds on the clique and the independence number for certain classes of graphs. Mathematics , 12(2):170, 2024. doi: 10.3390/math12020170. [8] Zi Chen, Long Yuan, Li Han, and Zhengping Qian. Higher-order truss decomposition in graphs. IEEE Transactions on Knowledge and Data Engineering , 35(4):3966–3978, 2023. doi: 10.1109/TKDE.2021.3137955. Earlier arXiv preprint: arXiv:2103.16037. [9] Norishige Chiba and Takao Nishizeki. Arboricity and subgraph listing algorithms. SIAM Journal on Computing ,14(1):210–223, 1985. doi: 10.1137/0214017. [10] Jonathan Cohen. Trusses: Cohesive subgraphs for social network analysis. Technical Report 16, 3.1, National Security Agency, 2008. [11] Luigi Curzi, Alain Hertz, and Isabella Lari. A repeated sequential elimination algorithm for finding an upper bound on the clique number. Les Cahiers du GERAD G-2012-80, GERAD, Montr´ eal, QC, Canada, December 2012. URL https://www.gerad.ca/fr/papers/G-2012-80 .[12] Jakob Dahlum, Sebastian Lamm, Peter Sanders, Christian Schulz, Darren Strash, and Renato F. Werneck. Accelerating local search for the maximum independent set problem. In Experimental Algorithms , volume 9685 of Lecture Notes in Computer Science , pages 118–133. Springer, 2016. ISBN 978-3-319-38850-2. doi: 10.1007/978-3-319-38851-9 9. [13] Ch. Ebenegger, P. L. Hammer, and D. de Werra. Pseudo-boolean functions and stability of graphs. In Algebraic and Combinatorial Methods in Operations Research , volume 95 of North-Holland Mathematics Studies , pages 83–97. North-Holland, 1984. doi: 10.1016/S0304-0208(08)72955-4. [14] Talya Eden, Dana Ron, and C. Seshadhri. On approximating the number of k-cliques in sublinear time. In 
+
+Proceedings of the 50th Annual ACM SIGACT Symposium on Theory of Computing , STOC 2018, pages 722– 734, New York, NY, USA, 2018. Association for Computing Machinery. ISBN 9781450355599. doi: 10.1145/ 3188745.3188810. [15] Bernard Gendron, Alain Hertz, and Patrick St-Louis. A sequential elimination algorithm for computing bounds on the clique number of a graph. Discrete Optimization , 5(3):615–628, 2008. doi: 10.1016/j.disopt.2008.01.001. [16] Rui Gong, Diego Cifuentes, and Alejandro Toriello. Rounding the Lov´ asz theta function with a value function approximation, 2026. arXiv:2504.07204v2; submitted 2025-04-09, revised 2026-04-27. [17] Swati Goswami and Asit Kumar Das. Determining maximum cliques for community detection in weighted sparse networks. Knowledge and Information Systems , 64(2):289–324, 2022. doi: 10.1007/s10115-021-01631-y. 
+
+38 [18] Ernestine Großmann, Kenneth Langedal, and Christian Schulz. A comprehensive survey of data reduction rules for the maximum weighted independent set problem, 2024. arXiv:2412.09303v2; submitted 2024-12-12, revised 2026-03-18. [19] Demian Hespe, Christian Schulz, and Darren Strash. Scalable kernelization for maximum independent sets. 
+
+Journal of Experimental Algorithmics , 24(1):1.16:1–1.16:22, 2019. doi: 10.1145/3355502. [20] Xin Huang, Laks V. S. Lakshmanan, Jeffrey Xu Yu, and Hong Cheng. Approximate closest community search in networks. Proceedings of the VLDB Endowment , 9(4):276–287, 2015. doi: 10.14778/2856318.2856323. [21] Hua Jiang, Chu-Min Li, and Felip Many` a. Combining efficient preprocessing and incremental MaxSAT rea-soning for MaxClique in large graphs. In ECAI 2016: 22nd European Conference on Artificial Intelligence ,volume 285 of Frontiers in Artificial Intelligence and Applications , pages 939–947. IOS Press, 2016. doi: 10.3233/978-1-61499-672-9-939. [22] David S. Johnson and Michael A. Trick, editors. Cliques, Coloring, and Satisfiability: Second DIMACS Implementation Challenge, October 11–13, 1993 , volume 26 of DIMACS Series in Discrete Mathematics and Theoretical Computer Science . American Mathematical Society, Providence, RI, 1996. ISBN 978-0-8218-6609-2. doi: 10.1090/dimacs/026. [23] Humayun Kabir and Kamesh Madduri. Parallel k-truss decomposition on multicore systems. In 2017 IEEE High Performance Extreme Computing Conference (HPEC) , pages 1–7. IEEE, 2017. doi: 10.1109/HPEC.2017. 8091052. [24] David Karger, Rajeev Motwani, and Madhu Sudan. Approximate graph coloring by semidefinite programming. 
+
+Journal of the ACM , 45(2):246–265, 1998. doi: 10.1145/274787.274791. [25] Richard M. Karp. Reducibility among combinatorial problems. In Raymond E. Miller, James W. Thatcher, and Jean D. Bohlinger, editors, Complexity of Computer Computations , pages 85–103. Springer US, Boston, MA, 1972. ISBN 978-1-4684-2001-2. doi: 10.1007/978-1-4684-2001-2 9. [26] Yi-Xiu Kong, Gui-Yuan Shi, Rui-Jie Wu, and Yi-Cheng Zhang. k-core: Theories and applications. Physics Reports , 832:1–32, 2019. doi: 10.1016/j.physrep.2019.10.004. [27] Craig E. Larson. The independence number project: α-bounds. Manuscript, 2012. URL https: //independencenumber.wordpress.com/wp-content/uploads/2012/07/inp-alpha-bounds-120803.pdf . Ac-cessed 2026-07-06. [28] Hui Sun Lee and Wonpil Im. G-LoSA: An efficient computational tool for local structure-centric biological studies and drug design. Protein Science , 25(4):865–876, 2016. doi: 10.1002/pro.2890. [29] Chu-Min Li, Zhiwen Fang, Hua Jiang, and Ke Xu. Incremental upper bound for the maximum clique problem. 
+
+INFORMS Journal on Computing , 30(1):137–153, 2018. doi: 10.1287/ijoc.2017.0770. [30] L´ aszl´ o Lov´ asz. On the shannon capacity of a graph. IEEE Transactions on Information Theory , 25(1):1–7, 1979. doi: 10.1109/TIT.1979.1055985. [31] L´ aszl´ o Lov´ asz. Graphs and Geometry , volume 65 of Colloquium Publications . American Mathematical Society, Providence, RI, 2019. ISBN 978-1-4704-5087-8. doi: 10.1090/coll/065. [32] Can Lu, Jeffrey Xu Yu, Hao Wei, and Yikai Zhang. Finding the maximum clique in massive graphs. Proceedings of the VLDB Endowment , 10(11):1538–1549, 2017. doi: 10.14778/3137628.3137660. [33] Fragkiskos D. Malliaros, Christos Giatsidis, Apostolos N. Papadopoulos, and Michalis Vazirgiannis. The core decomposition of networks: Theory, algorithms and applications. The VLDB Journal , 29:61–92, 2020. doi: 10.1007/s00778-019-00587-4. [34] Svetozar Margenov, Thomas Rauber, Emanouil I. Atanassov, Francisco Almeida, Vicente Blanco, Raimondas ˇCiegis, Alberto Cabrera, Neki Frasheri, Stanislav Harizanov, Rima Kriauzien, Gudula R¨ unger, Pablo San Segundo, Adimas Starikovicius, S´ andor Szab´ o, and Bogd´ an Zav´ alnij. Applications for ultrascale systems. In 
+
+Ultrascale Computing Systems , pages 189–244. The Institution of Engineering and Technology, London, 2019. ISBN 978-1-78561-833-8. doi: 10.1049/PBPC024E ch6. [35] Raffaele Marino, Lorenzo Buffoni, and Bogd´ an Zav´ alnij. A short review on novel approaches for maximum clique problem: From classical algorithms to graph neural networks and quantum algorithms, 2024. [36] David W. Matula and Leland L. Beck. Smallest-last ordering and clustering and graph coloring algorithms. 
+
+Journal of the ACM , 30(3):417–427, 1983. doi: 10.1145/2402.322385. 
+
+39 [37] Renato D. C. Monteiro. Primal–dual path-following algorithms for semidefinite programming. SIAM Journal on Optimization , 7(3):663–678, 1997. doi: 10.1137/S1052623495293056. [38] MOSEK ApS. MOSEK Optimizer API for C. Version 11.1.11 , 2026. URL https://docs.mosek.com/11.1/ capi/index.html . Accessed 2026-07-06. [39] Ryan A. Rossi. Fast triangle core decomposition for mining large graphs. In Advances in Knowledge Discovery and Data Mining , volume 8443 of Lecture Notes in Computer Science , pages 310–322. Springer, 2014. doi: 10.1007/978-3-319-06608-0 26. [40] Kazumi Saito and Takeshi Yamada. Extracting communities from complex networks by the k-dense method. In 
+
+2006 IEEE International Conference on Data Mining Workshops (ICDMW’06) , pages 300–304. IEEE, 2006. doi: 10.1109/ICDMW.2006.76. [41] Pablo San Segundo, Alexey Nikolaev, and Mikhail Batsyn. Infra-chromatic bound for exact maximum clique search. Computers & Operations Research , 64:293–303, 2015. doi: 10.1016/j.cor.2015.06.009. [42] Pablo San Segundo, Alvaro Lopez, and Panos M. Pardalos. A new exact maximum clique algorithm for large and massive sparse graphs. Computers & Operations Research , 66:81–94, 2016. doi: 10.1016/j.cor.2015.07.013. [43] Pablo San Segundo, Alexey Nikolaev, Mikhail Batsyn, and Panos M. Pardalos. Improved infra-chromatic bound for exact maximum clique search. Informatica , 27(2):463–487, 2016. doi: 10.15388/Informatica.2016.95. [44] Ahmet Erdem Sariy¨ uce, Bu˘ gra Gedik, Gabriela Jacques-Silva, Kun-Lung Wu, and ¨Umit V. C ¸ ataly¨ urek. In-cremental k-core decomposition: Algorithms and evaluation. The VLDB Journal , 25(3):425–447, 2016. doi: 10.1007/s00778-016-0423-8. [45] Ahmet Erdem Sariy¨ uce, C. Seshadhri, Ali Pinar, and ¨Umit V. C ¸ ataly¨ urek. Nucleus decompositions for identify-ing hierarchy of dense subgraphs. ACM Transactions on the Web , 11(3):16:1–16:27, 2017. doi: 10.1145/3057742. [46] Stephen B. Seidman. Network structure and minimum degree. Social Networks , 5(3):269–287, 1983. doi: 10.1016/0378-8733(83)90028-X. [47] Neil J. A. Sloane. Challenge problems: Independent sets in graphs. Online resource, 2000. URL https: //oeis.org/A265032/a265032.html . Accessed 2026-07-06. [48] S´ andor Szab´ o and Bogd´ an Zav´ alnij. Benchmark problems for exhaustive exact maximum clique search algo-rithms. Informatica , 43(2):177–186, 2019. doi: 10.31449/inf.v43i2.2678. [49] S´ andor Szab´ o and Bogd´ an Zav´ alnij. Estimating clique size via discarding subgraphs. Informatica , 45(2): 197–204, 2021. doi: 10.31449/inf.v45i2.3107. [50] S´ andor Szab´ o and Bogd´ an Zav´ alnij. Clique search in graphs of special class and job shop scheduling. Mathe-matics , 10(5):697, 2022. doi: 10.3390/math10050697. [51] Anurag Verma, Austin Buchanan, and Sergiy Butenko. Solving the maximum clique and vertex coloring problems on very large sparse networks. INFORMS Journal on Computing , 27(1):164–177, 2015. doi: 10. 1287/ijoc.2014.0618. [52] Jose L. Walteros and Austin Buchanan. Why is maximum clique often easy in practice? Operations Research ,68(6):1866–1895, 2020. doi: 10.1287/opre.2019.1970. [53] Jia Wang and James Cheng. Truss decomposition in massive networks. Proceedings of the VLDB Endowment ,5(9):812–823, 2012. doi: 10.14778/2311906.2311909. [54] William W. Willis. Bounds for the independence number of a graph. Master’s thesis, Virginia Commonwealth University, 2011. [55] Lei Yang and Xianglong Tang. Protein-protein interactions prediction based on iterative clique extension with gene ontology filtering. The Scientific World Journal , 2014:523634, 2014. doi: 10.1155/2014/523634. 
+
+40

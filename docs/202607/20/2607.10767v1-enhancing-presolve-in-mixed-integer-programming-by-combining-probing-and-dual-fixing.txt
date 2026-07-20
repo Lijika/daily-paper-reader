@@ -1,0 +1,834 @@
+Title: Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing
+
+URL Source: https://arxiv.org/pdf/2607.10767v1
+
+Published Time: Tue, 14 Jul 2026 01:55:34 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+Noname manuscript No. 
+
+(will be inserted by the editor) 
+
+# Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 
+
+Zhao-Wei Wang · Wei-Kun Chen · Yu-Hong Dai 
+
+Received: date / Accepted: date 
+
+Abstract Probing and dual fixing are two powerful presolve techniques in mixed integer programming (MIP) solvers. Probing tentatively sets some binary variables to 0 or 1, applies linear constraint based domain propagation techniques to derive better variable bounds, and extracts useful information such as stronger variable implications and better global variable bounds. Dual fixing attempts to fix variables to lower or upper bounds while ensuring that at least one optimal solution is retained, as long as the problem was feasible. In this pa-per, we investigate how to combine the two approaches in MIP solvers to achieve a better performance. In particular, we first embed dual fixing into the probing framework, deriving more useful variables’ implications for enhancing the capability of probing. Then, we de-velop an improved dual fixing technique where more variable fixings can be applied, and use the probing framework to detect the reductions. Computational results on the MIPLIB 2017 benchmark instances demonstrate the potential of the two proposed techniques in combining probing and dual fixing on the open-source MIP solver HiGHS. 
+
+Keywords Mixed integer programming · presolve · probing · dual fixing 
+
+1 Introduction 
+
+Presolve is a fundamental technique for mixed integer programming (MIP) problems. It contains a set of algorithms designed to eliminate redundant information and strengthen the formulation, with the goal of accelerating the subsequent branch-and-cut process. In the literature, many researchers have proposed various presolve techniques to improve the computational performance of solving MIPs; see [4, 5, 6, 8, 9, 10, 12, 15, 17, 21] among many of them. Achterberg et al. [2] provided a comprehensive discussion of various presolve techniques. According to the investigations in [2, 3], presolve can frequently turn a problem 
+
+Zhao-Wei Wang and Yu-Hong Dai Academy of Mathematics and Systems Science, Chinese Academy of Sciences, 100190, Beijing, China, School of Mathematical Sciences, University of Chinese Academy of Sciences, 100049, Beijing, China E-mail: {wangzhaowei, dyh }@lsec.cc.ac.cn Wei-Kun Chen School of Mathematics and Statistics, Beijing Institute of Technology, 100081, Beijing, China E-mail: chenweikun@bit.edu.cn arXiv:2607.10767v1 [math.OC] 12 Jul 2026 2 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai 
+
+from intractable to easily solvable, and therefore, it has become one of the most important ingredients of modern MIP solvers. 
+
+Probing is a well-known presolve technique for MIP problems [21]. Its basic idea is to tentatively set some binary variables to 0 or 1, and apply linear constraint based domain propagation techniques to derive better variable bounds. Analyzing these results can provide useful information including variable fixings, substitutions, implications (which are useful for the subsequent branch-and-cut process), and better global variable bounds. Probing is a very effective presolve technique for improving the performance of MIP solvers and has been widely investigated in the literature; see, e.g., [1, 2, 7, 10]. Kılınc ¸ et al. [18] and Ma et al. [19] extended probing to solving mixed integer nonlinear programming and stochastic programming problems. 
+
+Dual fixing is another well-known presolve technique in the literature. It is a dual pre-solve technique , which derives reductions by considering the information of the objective function; the reductions may remove optimal solutions, while ensuring that at least one opti-mal solution is retained, as long as the original problem was feasible [1, 3, 13]. In particular, dual fixing sets a variable to its upper bound (respectively, lower bound) if (i) increasing (respectively, decreasing) the variable’s value makes all the constraints other than its bound constraints in the problem less tight, and (ii) the variable has a nonpositive (respectively, nonnegative) objective coefficient. If the variable being fixed has a nonzero objective coef-ficient, then the resulting reduction is a weak dual presolve reduction, which may remove only suboptimal solutions while retaining all optimal solutions. Otherwise, the reduction is a strong dual presolve reduction, which may remove optimal solutions while retaining at least one optimal solution [14]. Dual fixing is simple to implement and has been included as a standard presolve ingredient in all state-of-the-art MIP solvers [1, 2, 3]. Although probing and dual fixing are well studied, the combination of the two ap-proaches, however, has not been discussed in the literature. In this paper, we attempt to fill this research gap by developing methods to combine and enhance these two powerful techniques for MIP problems. In particular, we first embed dual fixing into the probing framework to detect more reductions. The rationale behind this is that tentatively setting some binary variables to 0 or 1 and then applying domain propagation techniques could substantially change the structure of the problem. This can further trigger dual fixing to detect more variable fixings, which in turn enables probing to detect more reductions. In addition, we develop a probing-based approach to detect more dual fixings. Specifi-cally, we first propose an improved dual fixing technique, which, instead of relying directly on the constraint matrix of the MIP problem, relies on the point representation of the feasi-ble region (i.e., the collection of points at which the constraints of the MIP problem hold), and can detect more variable fixings. Then, we use the probing framework to quickly detect the condition for which the improved dual fixing can be applied. We implement the two proposed techniques (in combining probing and dual fixing) in the state-of-the-art open-source MIP solver HiGHS [16]. Computational results on the MI-PLIB 2017 benchmark instances [11] demonstrate the potential of the two proposed tech-niques on HiGHS. This article is organized as follows. Section 2 introduces the integration of dual fixing in the probing framework. Section 3 proposes improved conditions for applying dual fixing, and uses the probing framework to verify whether the conditions hold. Section 4 presents the computational results. Section 5 concludes the paper. 
+
+Notation . We use the following notation throughout the paper. Given a matrix A ∈ Rm×n,vectors c ∈ Rn, ℓ ∈ (R ∪ {− ∞})n, u ∈ (R ∪ { +∞})n, b ∈ Rm, variables x ∈ Rn with x j ∈ ZEnhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 3
+
+for j ∈ I ⊆ N := {1, · · · , n}, the MIP problem can be written as min 
+
+n
+
+c⊤x | Ax ≤ b, ℓ ≤ x ≤ u, x j ∈ Z, ∀ j ∈ I
+
+o
+
+. (MIP) We denote the feasible region of (MIP) as 
+
+X = {x ∈ Rn | Ax ≤ b, ℓ ≤ x ≤ u, x j ∈ Z, ∀ j ∈ I}. (1) For matrix A, the j-th column is denoted as A· j, the i-th row is denoted as Ai·, and the (i, j)-th entry is denoted as ai j . Finally, we use M = {1, · · · , m} to denote the index set of constraints. 
+
+2 Integration of dual fixing in probing 
+
+In this section, we first review the probing and dual fixing techniques and then enhance probing by embedding dual fixing to derive more reductions. 2.1 Probing We first briefly discuss the probing technique; see [1, 21] for a detailed discussion. The basic idea of probing is to tentatively set some binary variables to 0 or 1, apply (linear con-straint based) domain propagation techniques to derive better variable bounds, and extract useful information such as stronger variable implications and better global variable bounds. Let xk, k ∈ N, be a binary variable. For j ∈ N\{ k}, let ℓ0 
+
+> j
+
+and u0 
+
+> j
+
+be the lower and upper bounds of x j deduced from xk = 0 (after applying the domain propagation), and ℓ1 
+
+> j
+
+and u1 
+
+> j
+
+be the lower and upper bounds of x j deduced from xk = 1. Then, we can derive the following information from probing on xk:R1. If setting xk = 0 (respectively, xk = 1) leads to an infeasible problem, then we can fix 
+
+xk = 1 (respectively, xk = 0). R2. If ℓ0 
+
+> j
+
+= u0 
+
+> j
+
+and ℓ1 
+
+> j
+
+= u1 
+
+> j
+
+, then x j can be substituted by xk: x j := ℓ0 
+
+> j
+
++ ( ℓ1 
+
+> j
+
+− ℓ0 
+
+> j
+
+)xk.R3. If no variable fixing or substitution is detected, we can derive variable implications be-tween x j and xk:
+
+x j ≥
+
+
+
+ℓ1 
+
+> j
+
+− ℓ0
+
+> j
+
+
+
+xk + ℓ0 
+
+> j
+
+, x j ≤
+
+
+
+u1 
+
+> j
+
+− u0
+
+> j
+
+
+
+xk + u0 
+
+> j
+
+. (2) These implications can be used to guide variable branching [1] and enhance the mixed integer rounding cut separation [20] in the subsequent branch-and-cut process. R4. Finally, we can set ℓ j := min {ℓ0 
+
+> j
+
+, ℓ 1 
+
+> j
+
+} and u j := max {u0 
+
+> j
+
+, u1 
+
+> j
+
+} as new global lower and upper bounds for variable x j.Probing could be time-consuming, but effective termination criteria have been extensively investigated in the literature [2]. Indeed, probing is a very effective presolve technique [2, 3] for improving the performance of MIP solvers and has been implemented in all state-of-the-art MIP solvers. 2.2 Dual Fixing Dual fixing is a dual presolve technique which attempts to fix variables to lower or upper bounds while ensuring that at least one optimal solution is retained, as long as the problem was feasible. Specifically, dual fixing considers the following two cases where variable fix-ing can be applied to variable x j, j ∈ N:(DF1) c j ≥ 0, ai j ≥ 0, ∀ i ∈ M, and (DF2) c j ≤ 0, ai j ≤ 0, ∀ i ∈ M.4 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai 
+
+In case (DF1), if ℓ j > −∞, we can fix x j = ℓ j; if ℓ j = −∞ and c j > 0, then the problem is unbounded or infeasible; and if ℓ j = −∞ and c j = 0, we can remove all constraints i ∈ M
+
+with ai j ̸ = 0 from the problem. The last case is valid since in a post-solve process, we can always recover a finite value of x j to satisfy all those constraints (as long as the problem was feasible). Similarly, for case (DF2), if u j < +∞, we can fix x j = u j; if u j = + ∞ and c j < 0, then the problem is unbounded or infeasible; and if u j = + ∞ and c j = 0, we can remove all constraints i ∈ M with ai j ̸ = 0 from the problem. Note that if c j̸ = 0, then the reductions derived from case (DF1) or (DF2) may remove only suboptimal solutions while retaining all optimal solutions, and are therefore weak dual reductions; otherwise, these reductions may remove optimal solutions while ensuring that at least one optimal solution is retained, and are therefore strong dual reductions [14]. Dual fixing can be easily implemented with the concepts of down-locks and up-locks 
+
+[1]. Formally, for each variable x j, j ∈ N, letting 
+
+C− 
+
+> j
+
+= i ∈ M | ai j < 0 and C+ 
+
+> j
+
+= i ∈ M | ai j > 0 ,
+
+then the down-locks and up-locks of variable x j are defined by |C− 
+
+> j
+
+| and |C+ 
+
+> j
+
+|. Intuitively, 
+
+|C− 
+
+> j
+
+| and |C+ 
+
+> j
+
+| are the numbers of constraints that “block” variable x j from decreasing and increasing, respectively. With these definitions, if |C− 
+
+> j
+
+| = 0 and c j ≥ 0 or |C+ 
+
+> j
+
+| = 0 and c j ≤ 0, then dual fixing can be applied. This also implies that dual fixing can be implemented with the complexity of O(nnz ), where nnz is the number of nonzeros in the constraint matrix A.Achterberg et al. [2] further considered the case c j ≥ 0 and C− 
+
+> j
+
+= {r} (i.e., only the r-th constraint blocks variable x j from decreasing), and proposed the dual substitution technique to derive variable substitutions. In particular, for a binary variable xk, if xk = 0 implies the redundancy of constraint r and thus x j = ℓ j (by dual fixing), and xk = 1 implies x j = u j (e.g., by domain propagation techniques), then we can substitute x j := ℓ j + ( u j − ℓ j)xk. A similar argument can be applied for the case c j ≤ 0 and |C+ 
+
+> j
+
+| = 1. In the next subsection, we will show that reductions detected by dual substitution, however, can be automatically detected if dual fixing is embedded into the probing framework. 2.3 Embedding dual fixing into the probing framework The motivation of embedding dual fixing into the probing framework is that setting some binary variables to 0 or 1 and then applying (linear constraint based) domain propagation techniques could substantially change the structure of the problem; that is, some variable bounds become much tighter and therefore, some constraints may become redundant. This can further trigger dual fixing to detect more variable fixings, thereby enabling probing to extract more useful information; see R1–R4 in Section 2.1. This is formalized below. For a binary variable xk, we probe on xk = v ∈ { 0, 1}, obtaining the subproblem: min 
+
+n
+
+c⊤x | Ax ≤ b, ℓ ≤ x ≤ u, x j ∈ Z, ∀ j ∈ I, xk = v
+
+o
+
+. (MIP-v)Applying domain propagation techniques on problem (MIP-v), the variable bounds ℓ and u
+
+can be tightened and some constraints will therefore become redundant. In particular, let min 
+
+n
+
+c⊤x | AR·x ≤ bR, ℓ ′ ≤ x ≤ u′, x j ∈ Z, ∀ j ∈ I, xk = v
+
+o
+
+, (3) be the (equivalent) reduced MIP problem, where ℓ′ and u′ are the variable bounds in the re-duced problem, R is the set of non-redundant constraints, AR· denotes the matrix consisting of the coefficients of A restricted to the row indices in R, and bR denotes the vector b re-stricted to the indices in R. For j ∈ N, we can update the sets corresponding to down-locks Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 5
+
+Algorithm 1 Dual fixing augmented probing                                       
+
+> Input: A binary variable xkto be probed on, A,b,c, ℓ, u,I.1: for v=0,1do
+> 2: Set xk=vin problem (MIP), obtaining subproblem (MIP-v). 3: repeat
+> 4: Call domain propagation presolver on problem (MIP-v) to obtain variable bounds ℓ′≤x≤u′.5: Call redundant row presolver to compute the set Rof non-redundant constraints. 6: Call dual fixing presolver on problem (3) to obtain tighter variable bounds ℓv≤x≤uv.7: until no reduction is found. 8: end for
+> 9: Extract reductions using R1–R4.
+
+and up-locks as follows: 
+
+C− 
+
+> j
+
+= i ∈ R | ai j < 0 and C+ 
+
+> j
+
+= i ∈ R | ai j > 0 .
+
+Then, in the reduced MIP problem (3), we can set x j = ℓ′j if C− 
+
+> j
+
+= 0 and c j ≥ 0, or set 
+
+x j = u′j if C+ 
+
+> j
+
+= 0 and c j ≤ 0. Note that C− 
+
+> j
+
+≤ C− 
+
+> j
+
+and C+ 
+
+> j
+
+≤ C+ 
+
+> j
+
+, and hence apply-ing dual fixing on the reduced MIP problem (3) may detect more variable fixings, obtaining tighter lower bounds ℓv and upper bounds uv (valid for (3)). As a result, after probing on 
+
+xk = 0 and xk = 1, we can extract more useful information from R1–R4 in Section 2.1, which is globally valid for problem (MIP). The overall procedure of embedding dual fix-ing into the probing framework is summarized in Algorithm 1. In Algorithm 1, the loop in steps 3–7 iteratively applies linear constraint based domain propagation and dual fixing techniques until no more reduction is found (based on our computational experience, it usu-ally terminates within a few iterations). In addition, in the loop, step 5 computes the set R of non-redundant constraints and step 6 applies the dual fixing presolver on the reduced MIP problem (3). Both steps can be implemented with the complexity of O(nnz ).We use the following example to illustrate the effectiveness of the proposed dual fixing augmented probing framework. 
+
+Example 2.1 Consider the following example min {x1 + x2 | − x1 + x3 ≤ 0, −x2 + x3 + x4 ≤ 1, x1, x2, x3, x4 ∈ { 0, 1}} . (4) By simple computation, it follows that C− 
+
+> 1
+
+= {1} and C− 
+
+> 2
+
+= {2}, and thus the down-locks 
+
+of both variables x1 and x2 are equal to 1, prohibiting us from fixing the two variables to 0. If we probe on x3 = 0, the first constraint −x1 + x3 ≤ 0 becomes redundant. We can update C− 
+
+> 1
+
+= ∅ and apply dual fixing to fix x1 = 0. If we probe on x3 = 1, then by the domain propagation, constraints −x1 + x3 ≤ 0 and x1 ∈ { 0, 1} will force x1 = 1. As a result, we can substitute x1 = x3 in problem (4). This is the dual substitution technique provided in [2]; see also the last paragraph of Section 2.2. Moreover, if we probe on x4 = 0, the second constraint −x2 + x3 + x4 ≤ 1 is redundant, and thus we can apply dual fixing to fix 
+
+x2 = 0. However, probing on x4 = 1 cannot force x2 = 1 (by domain propagation techniques), and hence the dual substitution cannot substitute x2 out from the problem. Nevertheless, using the proposed dual fixing augmented probing framework in Algorithm 1, we can detect the variable implication x2 ≤ x4, which can be used in R3 of Section 2.1 to detect further reductions. Note that when probing on multiple binary variables, special care must be taken on the implications (2) extracted from the tightened variable bounds (i.e., ℓ0, u0, ℓ1, and u1) and for which the reasoning comes from dual fixing of variable x j with c j = 0 in step 6 of 6 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai 
+
+Algorithm 1. Indeed, if c j > 0 or c j < 0, then the implications of variable x j in (2) obtained by dual fixing will not remove any optimal solution of problem (MIP). However, if c j = 0, then the implications of variable x j in (2) obtained by dual fixing may exclude some optimal solution(s) of problem (MIP). Such implications, obtained by probing on variable xk, could be inconsistent with the subsequent reductions derived by probing on other variables, as simultaneously adding them into problem (MIP) may exclude all optimal solutions. The following example illustrates this inconsistency. 
+
+Example 2.2 Consider the following example min {− x1 − x2 | x1 + x2 + x3 ≥ 1, x3 − x2 ≤ 0, x1, x2, x3 ∈ { 0, 1}} . (5) By simple calculation, the optimal solutions of problem (5) are (1, 1, 0) and (1, 1, 1). Probing on x1 = 1, constraint x1 + x2 + x3 ≥ 1 becomes redundant and we can fix x3 = 0 by dual fixing; probing on x1 = 0 does not yield additional reductions. Using R3 in Section 2.1, we obtain the implication x3 ≤ 1 − x1. On the other hand, probing on x2 = 1, constraint 
+
+x3 − x2 ≤ 0 becomes redundant, and we can fix x3 = 1 by dual fixing; probing on x2 = 0, we can fix x3 = 0 by domain propagation. Using R2 in Section 2.1, we obtain the variable substitution x3 = x2. Note that the implication x3 ≤ 1 − x1 (obtained by probing on x1)excludes the optimal solution (1, 1, 1) but is valid for problem (5), as the optimal solution 
+
+(1, 1, 0) is still retained after adding it. However, the implication x3 ≤ 1 − x1 is inconsistent with the variable substitution x3 = x2 (obtained by probing on x2) as simultaneously adding it and x3 = x2 into problem (5) will eliminate the two optimal solutions (1, 1, 0) and (1, 1, 1).The above example illustrates that implications (2), for which the reasoning comes from dual fixing of variable x j with c j = 0, through probing on a variable cannot be directly used, since they may, together with the subsequent reductions derived by probing on other variables, exclude all optimal solutions of problem (MIP). To avoid this interference caused by probing on different variables, one approach is to ignore variables x j with c j = 0 when applying dual fixing in step 6 of Algorithm 1. With this approach, all optimal solutions will be retained, and the resultant method becomes a weak dual presolve technique; see the third paragraph in Section 1. However, based on our computational experience, this approach is too conservative and may underestimate the potential of the dual fixing augmented probing. To enable the application of more reductions, we propose to disregard only the impli-cations (2) extracted from the tightened variable bounds (i.e., ℓ0, u0, ℓ1, and u1) and for which the reasoning comes from dual fixing of variable x j with c j = 0 in step 6 of Algo-rithm 1. Specifically, in Algorithm 1, we (i) temporarily store the bound changes of ℓv and 
+
+ℓ (respectively, uv and u where v ∈ { 0, 1}) for which the reasoning comes from dual fixing of variable x j with c j = 0, (ii) use them, together with other bound changes, to perform the global reductions R1, R2, and R4 in step 9, and (iii) disregard them right after probing on variable xk.Note that in the implementation of the probing in MIP solvers (e.g., HiGHS), the vari-able fixing and bound tightening in R1 and R4 are performed right after probing on the current variable xk, but the variable substitutions in R2 are delayed until all candidate vari-ables in the current round are probed on, as to avoid the computational overhead spent in the initialization of probing [10]. Therefore, inconsistency may still exist, as illustrated by the following example. 
+
+Example 2.3 Consider a variant of problem (5): min {− x1 − x2 | x1 + x2 + x3 ≥ 1, x3 − x2 ≤ 0, x3 ≥ 1 − x1, x1, x2, x3 ∈ { 0, 1}} , (6) where an additional constraint x3 ≥ 1 − x1 is enforced. The optimal solutions of (6) are still 
+
+(1, 1, 0) and (1, 1, 1). Probing on x1 and using R2 in Section 2.1, we obtain the variable Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 7
+
+substitution x3 = 1 − x1. Probing on x2 and using R2, we obtain the variable substitution 
+
+x3 = x2. However, the two variable substitutions x3 = 1 − x1 and x3 = x2 are inconsistent, as simultaneously adding both into problem (6) will eliminate the two optimal solutions 
+
+(1, 1, 0) and (1, 1, 1). Note that if the variable substitution x3 = 1 − x1 is applied right after probing on x1, we obtain the reduced problem min {x3 −x2 −1 | x3 −x2 ≤ 0, x2, x3 ∈ { 0, 1}} 
+
+for which probing on variable x2 will not yield the variable substitution x3 = x2.To further avoid inconsistency incurred by the delayed variable substitution for which the reasoning comes from dual fixing of variable x j with c j = 0, we can assign a fixed direction for variable x j with c j = 0 when performing dual fixing; that is, either (DF1) or (DF2) (but not both) in Section 2.2 can be performed in the whole probing process. Note that this is equivalent to a perturbation on the objective coefficient of variable x j with c j = 0and therefore, the delayed variable substitutions are consistent. In our implementation, the fixed direction for variable x j with c j = 0 is set to be the direction where dual fixing for variable x j was first performed. 
+
+Remark 2.1 Note that after assigning fixed directions for variables with zero objective coef-ficients, the implications derived by dual fixing are now consistent (at the time probing was performed). However, these implications may still be inconsistent with other dual reduction components in the MIP solver (such as global dual fixing). For this reason, we do not use this kind of implication out of the probing. 
+
+3 Using probing to detect more (generalized) dual fixings 
+
+The conditions (DF1) and (DF2) in Section 2.2 for applying dual fixing are straightfor-ward and can be efficiently verified, but they also highly depend on the use of A to charac-terize the feasible region X of (MIP). Indeed, to characterize the feasible region X of (MIP), different formulations can be used, each of which associates with a matrix A; see [22, Sec-tion 1.6]. It is possible that in some formulations, (DF1) or (DF2) is satisfied, allowing dual fixing to be applied, while in others, neither (DF1) nor (DF2) is satisfied. In order to rem-edy this, in this section, we first introduce improved conditions for applying dual fixing, which directly take the point representation of the feasible region X into account rather than a specific constraint matrix representation, and thus enable the detection of more reductions than the classic conditions (DF1) and (DF2). Then, we transform the problem of checking whether the conditions are satisfied into optimization problems. Finally, we use the probing framework to solve the optimization problems, thereby enabling a quick detection of the reductions. 3.1 Improved conditions for applying dual fixing To develop the improved conditions for applying dual fixing, we need the concepts of 
+
+lower bound reachable and upper bound reachable , which rely on the point representation of the feasible region X of (MIP). 
+
+Definition 1 (i) A variable x j is lower bound reachable with respect to X if setting x j = ℓ j in any feasible solution x of X yields another feasible solution, that is, if x = ( x1, . . . , x j, . . . , xn)
+
+∈ X, then ¯ x = ( x1, . . . , ℓ j, . . . , xn) ∈ X as well (when ℓ j = −∞, this means that ¯ x = ( x1,. . . , a, . . . , xn) ∈ X holds for any a ≤ x j). (ii) A variable x j is upper bound reachable with respect to X if setting x j = u j in any feasible solution x of X yields another feasible solution, i.e., if x = ( x1, . . . , x j, . . . , xn) ∈ X, then ¯ x = ( x1, . . . , u j, . . . , xn) ∈ X as well (when u j = + ∞,this means that ¯ x = ( x1, . . . , a, . . . , xn) ∈ X holds for any a ≥ x j). 8 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai 
+
+Note that for X defined in (1), if ai j ≥ 0 holds for all i ∈ M, then x j must be lower bound reachable; if ai j ≤ 0 holds for all i ∈ M, then x j must be upper bound reachable. Moreover, it is simple to see that if (IDF1) c j ≥ 0 and x j is lower bound reachable, or (IDF2) c j ≤ 0 and x j is upper bound reachable, then dual fixing can be applied to fix variables to lower or upper bounds. The following example shows that the conditions in (IDF1)–(IDF2) enable the detection of more reductions than those in (DF1)–(DF2). 
+
+Example 3.1 Consider the following example min {− x1 − 2x2 + x3 | 0 ≤ 8x1 + 4x2 − x3 ≤ 8, x1, x2, x3 ∈ { 0, 1}} . (7) As |C− 
+
+> 3
+
+| = 1, dual fixing cannot be applied to fix x3 = 0. However, as X = {(x1, x2, x3) ∈{0, 1}3 | 0 ≤ 8x1 + 4x2 − x3 ≤ 8} = {(1, 0, 1), (1, 0, 0), (0, 1, 1), (0, 1, 0), (0, 0, 0)}, x3 is lower bound reachable, and by c3 = 1 ≥ 0, condition (IDF1) is satisfied, enabling the appli-cation of dual fixing to fix x3 = 0. 3.2 Determining whether a variable is lower or upper bound reachable Using Definition 1, we can provide a natural approach to determine whether a variable x j
+
+is lower or upper bound reachable with respect to X—one can enumerate all feasible points of X and check whether the condition for a variable to be lower or upper bound reachable is satisfied. This approach, however, is computationally intractable, as the number of feasible points in X could be infinite. In order to develop a computationally tractable approach, we need the following result. 
+
+Theorem 1 Let o −,rj and o +,rj be defined as o−,rj := max    
+
+> xj>ℓ j
+
+(
+
+# ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
+, ∀ j ∈ N, r ∈ M with a r j < 0, (8) 
+
+o+,rj := max    
+
+> xj<uj
+
+(
+
+# ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
+, ∀ j ∈ N, r ∈ M with a r j > 0. (9) 
+
+Then for j ∈ N, (i) x j is lower bound reachable if and only if o −,rj + ar j ℓ j ≤ br holds for all r ∈ M with a r j < 0; and (ii) x j is upper bound reachable if and only if o +,rj + ar j u j ≤ br
+
+holds for all r ∈ M with a r j > 0.Proof. We only prove statement (i) as the proof of statement (ii) is similar. Suppose that 
+
+o−,rj + ar j ℓ j ≤ br holds for all r ∈ M with ar j < 0. Let x∗ ∈ X be a feasible solution with 
+
+x∗ 
+
+> j
+
+> ℓ j and ¯ x = ( x∗
+
+> 1
+
+, . . . , ℓ j, . . . , x∗
+
+> n
+
+). For r ∈ M with ar j ≥ 0, it follows that ∑s∈Nars ¯xs =
+
+∑s∈N\{ j} ars x∗ 
+
+> s
+
++ ar j ℓ j ≤ ∑s∈Nars x∗ 
+
+> s
+
+≤ br, where the last inequality follows from x∗ ∈ X; for 
+
+r ∈ M with ar j < 0, it follows that 
+
+# ∑
+
+> s∈N
+
+ars ¯xs = ∑ 
+
+> s∈N\{ j}
+
+ars x∗ 
+
+> s
+
++ar j ℓ j
+
+> (a)
+
+≤ max    
+
+> xj>ℓ j
+
+(
+
+# ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
++ar j ℓ j = o−,rj +ar j ℓ j ≤ br,
+
+where (a) follows from x∗ ∈ X and x∗ 
+
+> j
+
+> ℓ j. Therefore, ¯ x ∈ X and x j is lower bound reachable. Now, suppose that x j is lower bound reachable. If, otherwise, o−,r0 
+
+> j
+
++ ar0 jℓ j > br0 holds for some r0 ∈ M with ar0 j < 0, then by the definition of o−,r0 
+
+> j
+
+in (8), there exists a point x∗ ∈
+
+X such that o−,r0 
+
+> j
+
+= ∑s∈N\{ j} ar0sx∗ 
+
+> s
+
+, and thus ∑s∈N\{ j} ar0sx∗ 
+
+> s
+
++ ar0 jℓ j > br0 . This implies Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 9
+
+¯x := ( x∗
+
+> 1
+
+, . . . , ℓ j, . . . , x∗
+
+> n
+
+) /∈ X, a contradiction with the fact that x j is lower bound reachable. Theorem 1 shows that determining whether {x j} are lower or upper bound reachable can be done by solving the optimization problems (8) and (9). The following example further illustrates this. 
+
+Example 3.2 (Example 3.1 continued) Note that constraint 0 ≤ 8x1 + 4x2 − x3 ≤ 8 in prob-lem (7) can be transformed into two constraints in the “ ≤” form: 
+
+− 8x1 − 4x2 + x3 ≤ 0,
+
+8x1 + 4x2 − x3 ≤ 8. (10) Let us use Theorem 1 to show that x3 is lower bound reachable. As only the second con-straint in (10) involves variable x3 with a negative coefficient, we only need to consider the optimization problem 
+
+o−,23 = max  
+
+> x3>0
+
+{8x1 + 4x2 | 0 ≤ 8x1 + 4x2 − x3 ≤ 8, x1, x2, x3 ∈ { 0, 1}} . (11) By simple computation, we obtain o−,23 = 8. From o−,23 + ( −1)ℓ3 = 8 ≤ 8, x3 must be lower bound reachable. Unfortunately, although the above approach for checking whether {x j} are lower or upper bound reachable is computationally tractable, solving the MIP problems (8) and (9) could still be computationally demanding. In the next subsection, we will use the probing framework to find upper bounds for o−,rj and o+,rj , thereby enabling a computationally effi-cient algorithm for detecting dual fixings. 
+
+Remark 3.1 It is worth noting that if x j > ℓ j and x j < u j are removed from (8) and (9), Theorem 1 still holds. Indeed, let ¯o−,rj := max 
+
+(
+
+# ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
+, ∀ j ∈ N, r ∈ M with ar j < 0, (12) ¯o+,rj := max 
+
+(
+
+# ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
+, ∀ j ∈ N, r ∈ M with ar j > 0, (13) be obtained by removing x j > ℓ j and x j < u j from (8) and (9), respectively. For any j ∈ N and 
+
+r ∈ M with ar j < 0, as x ∈ X, it must follow max x j =ℓ j
+
+(
+
+∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
++ ar j ℓ j ≤ br,and thus ¯ o−,rj +ar j ℓ j ≤ br holds if and only if o−,rj +ar j ℓ j ≤ br holds. Similarly, for any j ∈ N
+
+and r ∈ M with ar j > 0, ¯ o+,rj + ar j u j ≤ br holds if and only if o+,rj + ar j u j ≤ br holds. As a result, Theorem 1 still holds when problems (8) and (9) are replaced by the standard MIP problems (12) and (13) (without strict inequalities). However, in approximation approaches such as the one described in the next subsection, the strict inequalities x j > ℓ j and x j < u j can tighten the feasible regions of problems (8) and (9), which usually results in tighter upper bounds for o−,rj and o+,rj (than those for ¯ o−,rj
+
+and ¯ o+,rj ), thereby triggering more generalized dual fixings. 3.3 Deriving upper bounds for o−,rj and o+,rj by probing To fix a variable x j by Theorem 1 efficiently, here we use the probing framework to com-pute upper bounds for o−,rj and o+,rj . Specifically, letting ℓ0 and u0 (respectively, ℓ1 and u1)10 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai 
+
+be the lower and upper bounds of variables x, obtained by probing on xk = 0 (respectively, 
+
+xk = 1); see Algorithm 1. In other words, ℓ0 ≤ x ≤ u0 holds for all x ∈ X with xk = 0, and 
+
+ℓ1 ≤ x ≤ u1 holds for all x ∈ X with xk = 1. Then it follows that 
+
+o−,rj = max    
+
+> xj>ℓ j
+
+(
+
+## ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
+≤ max 
+
+(
+
+## ∑  
+
+> s∈N\{ j},ars >0
+
+ars u0 
+
+> s
+
++ ∑  
+
+> s∈N\{ j},ars <0
+
+ars ℓ0 
+
+> s
+
+, ∑  
+
+> s∈N\{ j},ars >0
+
+ars u1 
+
+> s
+
++ ∑  
+
+> s∈N\{ j},ars <0
+
+ars ℓ1
+
+> s
+
+)
+
+.
+
+(14) 
+
+Note that if k = j (i.e., the probing variable is x j), then the strict inequality x j > ℓ j in problem (8) enforces a tighter upper bound for o−,rj :
+
+o−,rj = max    
+
+> xj>ℓ j
+
+(
+
+# ∑ 
+
+> s∈N\{ j}
+
+ars xs | x ∈ X
+
+)
+
+≤ ∑  
+
+> s∈N\{ j},ars >0
+
+ars u1 
+
+> s
+
++ ∑  
+
+> s∈N\{ j},ars <0
+
+ars ℓ1 
+
+> s
+
+. (15) Given a fixed probing variable xk, a direct implementation of computing the upper bounds of o−,rj (i.e., the right-hand side of (14) or (15)) for all j ∈ N and r ∈ M with ar j < 0takes O(|N| × nnz ) operations. However, this computational complexity can be reduced to 
+
+O(nnz ), as detailed in the following. First, we compute 
+
+α0 
+
+> r
+
+= ∑ 
+
+> s∈N,ars >0
+
+ars u0 
+
+> s
+
++ ∑ 
+
+> s∈N,ars <0
+
+ars ℓ0 
+
+> s
+
+and α1 
+
+> r
+
+= ∑ 
+
+> s∈N,ars >0
+
+ars u1 
+
+> s
+
++ ∑ 
+
+> s∈N,ars <0
+
+ars ℓ1 
+
+> s
+
+(16) for all r ∈ M with the complexity of O(nnz ). Then, using 
+
+# ∑  
+
+> s∈N\{ j},ars >0
+
+ars u0 
+
+> s
+
++ ∑  
+
+> s∈N\{ j},ars <0
+
+ars ℓ0 
+
+> s
+
+= α0 
+
+> r
+
+− ar j ℓ0 
+
+> j
+
+, (17) 
+
+# ∑  
+
+> s∈N\{ j},ars >0
+
+ars u1 
+
+> s
+
++ ∑  
+
+> s∈N\{ j},ars <0
+
+ars ℓ1 
+
+> s
+
+= α1 
+
+> r
+
+− ar j ℓ1 
+
+> j
+
+, (18) the right-hand side of (14) or (15) reduces to max {α0 
+
+> r
+
+− ar j ℓ0 
+
+> j
+
+, α1 
+
+> r
+
+− ar j ℓ1 
+
+> j
+
+} or α1 
+
+> r
+
+− ar j ℓ1 
+
+> j
+
+,respectively, and can be computed in constant time. As a result, the upper bounds of o−,rj for all j ∈ N and r ∈ M with ar j < 0 can be computed in O(nnz ) time. Similar upper bounds can be derived for o+,rj . Note that when probing on multiple binary variables {xk}k∈S, we may obtain |S| upper bounds for o−,rj and o+,rj with the complexity of 
+
+O(|S| × nnz ). These bounds may be different, and thus, we can choose the tightest ones, as to trigger more dual fixings. 
+
+Example 3.3 (Example 3.1 continued) Let us use probing to derive an upper bound for o−,23
+
+in problem (11). Suppose that variable x1 is probed on. Fixing x1 = 1 and applying domain propagation (on the constraints in problem (7)) yields x2 = 0 and thus ℓ1 = ( 1, 0, 0) and u1 =(1, 0, 1). Similarly, fixing x1 = 0 and applying domain propagation, we obtain ℓ0 = ( 0, 0, 0)
+
+and u0 = ( 0, 1, 1). As a result, we can compute an upper bound for o−,23 :max α02 − a23 ℓ03, α12 − a23 ℓ13 = max {4 − 0, 8 − 0} = 8.
+
+From Example 3.2, this upper bound is tight and not greater than the right-hand side of the second constraint in (10). Therefore, we can conclude that x3 is lower bound reachable. 
+
+4 Numerical experiments 
+
+In this section, we evaluate the performance impact of the two proposed methods in combining and enhancing probing and dual fixing in Sections 2 and 3. We implement the proposed methods in the open-source MIP solver HiGHS 1 .14 .0 [16]. Note that standard Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 11 
+
+probing, dual fixing, and dual substitution [2] (see also the last paragraph in Section 2.2) have all been implemented in HiGHS 1.14.0, and will be included in all our computational experiments. The experiments are conducted on a Linux cluster of Intel(R) Xeon(R) Plat-inum 8358 CPUs running at 2.60 GHz. We run HiGHS using the serial version, with a time limit of 7200 seconds. We test our algorithms on the MIPLIB 2017 benchmark testset [11]. We use 5 ran-dom seeds for each of the 240 problems, and each problem and seed combination is treated as an individual observation, referred to as an “instance”. Note that the default setting of HiGHS reported incorrect objective values for one instance, i.e., map10 with seed 1, and after embedding dual fixing into the probing framework, HiGHS additionally reported in-correct objective values for two instances: map10 with seed 4 and blp-ar98 with seed 1 1. In our experiments, we exclude these three instances, yielding a testbed of 1197 instances used in Tables 1–5. We first evaluate the performance impact of integrating dual fixing into the probing framework. To do this, we compare the default setting of HiGHS, denoted as Default ,with the setting DF+Probing where dual fixing is embedded into the probing framework; see Algorithm 1. The results are summarized in Table 1. In Table 1, the “ ≥ n” bracket contains instances that are solved by at least one setting under comparison and for which the slower of the two used ≥ n seconds. With the increasing of n, the brackets can exclude instances that are “easy” for both settings, forming a hierarchy of instance subsets with increasing difficulty [3]. Column #Ins denotes the number of instances solved by at least one setting (in total, 763 instances can be solved by at least one setting, and the remaining 434 instances cannot be solved to optimality by both settings), and column #S denotes the number of instances solved by the corresponding setting in each bracket. Columns T and N
+
+under Default or DF+Probing are the shifted geometric means of CPU time in seconds and number of nodes, with a shift of 1. Under “Compare”, we report the ratios of the shifted geometric means of the CPU times and number of nodes (a value less than 1 .0 denotes that DF+Probing achieves a better performance than Default ). We observe from Table 1 that embedding dual fixing into the probing framework enables DF+Probing to achieve a slightly better performance. Overall, the number of nodes returned by DF+Probing is 3.1% smaller than those returned by Default , with a slight reduction on CPU time. However, for harder instances that are solved by at least 1000 seconds, we can observe a CPU time reduction of 2 .0%, showing that the performance is more pronounced on relatively difficult instances. For the 246 affected instances where the solving path differs among two settings 2,we can observe a CPU time reduction of 1 .6% and a node reduction of 9 .7%, respectively. To better understand where the improvements come from, we further compare the total number of bound changes (where for a variable xk, the number of bound changes is defined by ∑1
+
+> v=0
+
+(|{ j ∈ N\{ k} : ℓvj̸ = ℓ j}| + |{ j ∈ N\{ k} : uvj̸ = u j}| )) derived by the first round of probing (i.e., the presolve round where probing is first called [10]) with and without dual fixing embedded. The total number of bound changes reflects the number of reductions in R1–R4 detected by probing, i.e., the larger the total number of bound changes, the more        
+
+> 1For these two instances, the objective values reported by HiGHS with dual fixing augmented probing are −494 .662795463 and 6205 .835712, while the true objective values are −495 and 6205 .2147104. In an attempt to rule out the possibility of introducing bugs when implementing the dual fixing augmented probing, we have outputted the presolved instances, and solved them by the default setting of CPLEX 20.1.0.0 with 5 seeds. The results show that in all cases, CPLEX can return the correct objective values: −495 and 6205 .2147104.
+> 2Here, we follow [3] to assume that the solving path is identical if both the number of nodes and the number of simplex iterations are identical for the two settings.
+
+12 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai 
+
+Table 1: Performance impact of embedding dual fixing into the probing framework.                                                                    
+
+> Default DF+Probing Compare Affected Bracket #Ins #S TN#S TNTN#Ins TN
+> ≥0763 751 240.64 817.81 760 239.92 792.58 0.997 0.969 246 0.984 0.903
+> ≥10 687 675 374.12 1437.22 684 372.61 1389.42 0.996 0.967 241 0.984 0.904
+> ≥100 506 494 862.88 4232.91 503 857.03 4081.48 0.993 0.964 200 0.980 0.908
+> ≥1000 251 239 2405.06 14188.79 248 2356.93 13752.49 0.980 0.969 118 0.953 0.931
+
+Table 2: Comparison of the bound changes detected in the first round of probing with and without dual fixing embedded.                                                
+
+> Default DF+Probing Compare Affected Bracket #Bchg Tprobing #Bchg Tprobing #Bchg Tprobing #Bchg Tprobing
+> ≥02344.72 0.44 2817.77 0.48 1.202 1.079 1.717 1.119
+> ≥10 2520.88 0.47 3089.82 0.51 1.226 1.082 1.736 1.120
+> ≥100 2297.20 0.47 2900.96 0.50 1.263 1.082 1.777 1.115
+> ≥1000 2001.84 0.50 2814.88 0.55 1.406 1.091 2.029 1.153
+
+Table 3: Performance impact of using probing to detect (generalized) dual fixings (with 
+
+Default as the baseline).                                                                    
+
+> Default GDF Compare Affected Bracket #Ins #S TN#S TNTN#Ins TN
+> ≥0755 751 232.11 806.13 750 232.97 809.15 1.004 1.004 58 1.019 1.059
+> ≥10 679 675 361.29 1416.78 674 362.55 1422.70 1.003 1.004 58 1.019 1.059
+> ≥100 491 487 860.51 4584.30 486 863.47 4610.92 1.003 1.006 58 1.019 1.059
+> ≥1000 236 232 2421.77 16024.50 231 2418.25 15940.83 0.999 0.995 36 0.987 0.957
+
+the reductions in R1–R4. The results are summarized in Table 2. Column #Bchg reports the shifted geometric mean of the total number of bound changes (with a shift of 100) detected in the first round of probing. When counting the bound changes, we do not count the disregarded ones reasoning from dual fixing of variable x j with c j = 0; see Section 2.3. Column Tprobing reports the shifted geometric mean of the CPU time in seconds (with a shift of 1) spent in the first round of probing. Note that each bracket “ ≥ n” in Table 2 contains the same instances as in Table 1. From Table 2, we observe that the computational effort spent in implementing dual fixing into the probing framework is fairly small; overall, it only leads to an increase of 7 .9% probing time. In contrast, dual fixing augmented probing can detect 20 .2% more bound changes than those detected by the vanilla probing, which enables probing to derive more reductions in R1–R4, and thus further renders the branch-and-cut algorithm to explore a smaller search tree and achieve a better overall performance; see Table 1. Next, we evaluate the performance impact of using the probing framework to detect (generalized) dual fixings; see Section 3. The comparison results of the default setting of HiGHS and the one with the generalized dual fixing (denoted as GDF ) are summarized in Table 3. Overall, using Default as a baseline, the impact of the proposed generalized dual fixing is neutral, affecting only 58 instances. We also performed an additional experiment by applying the generalized dual fixing on top of DF+Probing (denoted as All ), and compared Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 13 
+
+Table 4: Performance impact of using probing to detect (generalized) dual fixings (with 
+
+DF+Probing as the baseline).                                                                    
+
+> DF+Probing All Compare Affected Bracket #Ins #S TN#S TNTN#Ins TN
+> ≥0760 760 236.71 800.00 757 236.35 799.36 0.998 0.999 43 0.973 0.985
+> ≥10 684 684 367.79 1393.51 681 367.34 1392.26 0.999 0.999 41 0.971 0.984
+> ≥100 498 498 871.14 4340.17 495 869.28 4334.83 0.998 0.999 41 0.971 0.984
+> ≥1000 244 244 2436.93 14413.51 241 2421.81 14306.47 0.994 0.993 27 0.964 0.928
+
+Table 5: Performance impact of embedding dual fixing into the probing framework and using probing to detect generalized dual fixings.                                                                    
+
+> Default All Compare Affected Bracket #Ins #S TN#S TNTN#Ins TN
+> ≥0763 751 240.64 796.51 757 239.55 770.64 0.995 0.968 271 0.983 0.907
+> ≥10 687 675 374.12 1399.16 681 372.15 1350.07 0.995 0.965 266 0.984 0.908
+> ≥100 506 494 862.88 4107.22 500 855.18 3950.00 0.991 0.962 225 0.978 0.912
+> ≥1000 253 241 2380.09 14172.72 247 2323.93 13644.77 0.976 0.963 136 0.957 0.927
+
+it with DF+Probing (where dual fixing augmented probing was implemented). From the results in Table 4, using DF+Probing as a baseline, the impact of the proposed generalized dual fixing is still neutral. However, for the 43 affected instances, a CPU time reduction of 2.7% and a node reduction of 1.5% can be observed. Now, we present the computational results in Table 5 to demonstrate the effectiveness of the two proposed techniques in combining and enhancing probing and dual fixing; see Sections 2 and 3. As observed in Table 5, the HiGHS with the two proposed techniques can achieve a better performance than Default . For instances that are solved by at least 1000 seconds, we can observe a CPU time reduction of 2 .4% and a node reduction of 3 .7%; for the 271 affected instances, we can observe a CPU time reduction of 1.7% and a node reduction of 9.3%. Note that compared with applying the individual technique, applying both the two techniques in combining probing and dual fixing enables HiGHS to find reductions on more problem instances (271), and makes a better overall performance. 
+
+5 Conclusions and future work 
+
+In this paper, we have investigated the probing and dual fixing techniques, and developed two methods to combine and enhance these two powerful techniques for MIP problems. The first method embeds dual fixing into the probing framework to detect more variable implications for probing. The second method generalizes the classic dual fixing technique where more variable fixings can be detected, and uses the probing framework for a quick verification. Through computational experiments on the MIPLIB 2017 benchmark instances, we demonstrate the potential of the two proposed techniques on HiGHS. Regarding the proposed generalized dual fixing, we have used the probing framework to compute upper bounds for o−,rj and o+,rj in (8) and (9) and detect variable fixings by verifying the conditions in Theorem 1. It would be interesting to explore other alternatives to derive upper bounds for o−,rj and o+,rj towards a more effective implementation of the generalized dual fixing. 14 Zhao-Wei Wang, Wei-Kun Chen, Yu-Hong Dai  
+
+> Acknowledgements The authors would like to thank the editors and two anonymous reviewers for their insightful comments that significantly improved the quality of our work.
+
+References 
+
+1. Achterberg, T.: Constraint Integer Programming. Ph.D. thesis, Technische Universit¨ at Berlin (2007) 2. Achterberg, T., Bixby, R.E., Gu, Z., Rothberg, E., Weninger, D.: Presolve reductions in mixed integer programming. INFORMS J. Comput. 32 (2), 473–506 (2019) 3. Achterberg, T., Wunderling, R.: Mixed integer programming: Analyzing 12 years of progress. In: Facets of Combinatorial Optimization: Festschrift for Martin Gr¨ otschel, pp. 449–481. Springer Berlin Heidelberg (2013) 4. Andersen, E.D., Andersen, K.D.: Presolving in linear programming. Math. Program. 
+
+71 , 221–245 (1995) 5. Brearley, A.L., Mitra, G., Williams, H.P.: Analysis of mathematical programming prob-lems prior to applying the simplex algorithm. Math. Program. 8(1), 54–83 (1975) 6. Crowder, H., Johnson, E.L., Padberg, M.: Solving large-scale zero-one linear program-ming problems. Oper. Res. 31 (5), 803–834 (1983) 7. Dai, Y., Chen, C.: Serial and parallel two-column probing for mixed-integer program-ming (2024). URL https://arxiv.org/abs/2408.16927 
+
+8. Gamrath, G., Koch, T., Martin, A., Miltenberger, M., Weninger, D.: Progress in presolv-ing for mixed integer programming. Math. Program. Comput. 7(4), 367–398 (2015) 9. Gemander, P., Chen, W.K., Weninger, D., Gottwald, L., Gleixner, A., Martin, A.: Two-row and two-column mixed-integer presolve using hashing-based pairing methods. Eur. J. Comput. Optim. 8(3-4), 205–240 (2020) 10. Gleixner, A., Gottwald, L., Hoen, A.: PAPILO: A parallel presolving library for inte-ger and linear optimization with multiprecision support. INFORMS J. Comput. 35 (6), 1329–1341 (2023) 11. Gleixner, A., Hendel, G., Gamrath, G., Achterberg, T., Bastubbe, M., Berthold, T., Christophel, P., Jarck, K., Koch, T., Linderoth, J., L¨ ubbecke, M., Mittelmann, H.D., Ozyurt, D., Ralphs, T.K., Salvagnin, D., Shinano, Y.: MIPLIB 2017: Data-driven com-pilation of the 6th mixed-integer programming library. Math. Program. Comput. 13 (3), 443–490 (2021) 12. Guignard, M., Spielberg, K.: Logical reduction methods in zero-one program-ming—minimal preferred variables. Oper. Res. 29 (1), 49–74 (1981) 13. Heinz, S., Schulz, J., Beck, J.C.: Using dual presolving reductions to reformulate cu-mulative constraints. Constraints 18 (2), 166–201 (2013) 14. Hoen, A., Oertel, A., Gleixner, A., Nordstr¨ om, J.: Certifying MIP-based presolve re-ductions for 0–1 integer linear programs. In: Integration of Constraint Programming, Artificial Intelligence, and Operations Research, pp. 310–328. Springer Nature Switzer-land (2024) 15. Hoffman, K.L., Padberg, M.: Improving LP-representations of zero-one linear programs for branch-and-cut. ORSA J. Comput. 3(2), 121–134 (1991) 16. Huangfu, Q., Hall, J.A.: Parallelizing the dual revised simplex method. Math. Program. Comput. 10 (1), 119–142 (2018) 17. Johnson, E.L., Suhl, U.H.: Experiments in integer programming. Discret. Appl. Math. 
+
+2(1), 39–55 (1980) 18. Kılınc ¸, M.R., Sahinidis, N.V.: Exploiting integrality in the global optimization of mixed-integer nonlinear programming problems with BARON. Optim. Method. Softw. 33 (3), Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing 15 
+
+540–562 (2018) 19. Ma, Z., Kim, Y., Linderoth, J., Luedtke, J.R., Matthews, L.R.: Probing-enhanced stochastic programming (2024). URL https://arxiv.org/abs/2407.10669 
+
+20. Marchand, H., Wolsey, L.A.: Aggregation and mixed integer rounding to solve MIPs. Oper. Res. 49 (3), 363–371 (2001) 21. Savelsbergh, M.W.P.: Preprocessing and probing techniques for mixed integer program-ming problems. ORSA J. Comput. 6(4), 445–454 (1994) 22. Wolsey, L.A.: Integer Programming. John Wiley & Sons, Inc (2020)

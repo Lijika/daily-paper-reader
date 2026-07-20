@@ -1,0 +1,271 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-20T21:32:55.290967+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 4,
+    "deep_cap": 6,
+    "deep_selected": 4,
+    "quick_candidates": 3,
+    "quick_skim_target": 11,
+    "quick_selected": 3
+  },
+  "deep_dive": [
+    {
+      "id": "2607.10767v1",
+      "source": "arxiv",
+      "title": "Enhancing Presolve in Mixed Integer Programming by Combining Probing and Dual Fixing",
+      "abstract": "Probing and dual fixing are two powerful presolve techniques in mixed integer programming (MIP) solvers. Probing tentatively sets some binary variables to 0 or 1, applies linear constraint based domain propagation techniques to derive better variable bounds, and extracts useful information such as stronger variable implications and better global variable bounds. Dual fixing attempts to fix variables to lower or upper bounds while ensuring that at least one optimal solution is retained, as long as the problem was feasible. In this paper, we investigate how to combine the two approaches in MIP solvers to achieve a better performance. In particular, we first embed dual fixing into the probing framework, deriving more useful variables' implications for enhancing the capability of probing. Then, we develop an improved dual fixing technique where more variable fixings can be applied, and use the probing framework to detect the reductions. Computational results on the MIPLIB 2017 benchmark instances demonstrate the potential of the two proposed techniques in combining probing and dual fixing on the open-source MIP solver HiGHS.",
+      "authors": [
+        "Zhao-Wei Wang",
+        "Wei-Kun Chen",
+        "Yu-Hong Dai"
+      ],
+      "primary_category": "math.OC",
+      "categories": [
+        "math.OC"
+      ],
+      "published": "2026-07-12T13:47:19+00:00",
+      "link": "https://arxiv.org/pdf/2607.10767v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Presolve techniques probing and dual fixing, analogous to CNF preprocessing",
+      "llm_evidence_cn": "探测和双固定预求解技术，类似于CNF预处理",
+      "llm_evidence": "探测和双固定预求解技术，类似于CNF预处理",
+      "canonical_evidence": "探测和双固定预求解技术，类似于CNF预处理",
+      "llm_tldr_en": "This paper enhances MIP presolve by combining probing and dual fixing, which can be transferred to SAT CNF preprocessing to reduce problem size.",
+      "llm_tldr_cn": "该论文通过结合探测和双固定技术提升混合整数规划（MIP）的预求解性能，其核心思想可迁移至SAT求解中的CNF预处理阶段。通过将双固定嵌入探测框架，推导出更有用的变量蕴含关系。实验表明该方法能有效缩小问题规模，对SAT预处理技术有重要借鉴意义。",
+      "llm_tldr": "该论文通过结合探测和双固定技术提升混合整数规划（MIP）的预求解性能，其核心思想可迁移至SAT求解中的CNF预处理阶段。通过将双固定嵌入探测框架，推导出更有用的变量蕴含关系。实验表明该方法能有效缩小问题规模，对SAT预处理技术有重要借鉴意义。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "CNF preprocessing SAT",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.11121v1",
+      "source": "arxiv",
+      "title": "Proving Optimality for the Bandwidth Multicoloring Problem via SAT",
+      "abstract": "The Bandwidth Multicoloring Problem (BMCP) is an NP-hard extension of the Bandwidth Coloring Problem (BCP) with important applications in telecommunications, resource allocation, and scheduling. While state-of-the-art metaheuristics can efficiently produce high-quality solutions, they cannot certify global optimality. Existing exact approaches based on Constraint Programming (CP) and Integer Programming (IP) provide such guarantees but typically require extensive computation and still lag behind metaheuristics in solution quality, leaving many benchmark instances without optimality certificates. In this paper, we present the first SAT-based exact framework for the BMCP. Our main contribution is an efficient SAT encoding that compactly models both intra-vertex and inter-vertex color distance constraints. Combined with tight color domain reduction and an incremental SAT-solving strategy, the proposed formulation significantly prunes the search space and enables efficient exact optimization. Experimental results on the GEOM and MS-CAP benchmark suites demonstrate substantial improvements over previous exact approaches. On the challenging GEOM benchmark, the proposed framework proves optimality for more instances within only one hour of computation than the previous CP/IP approach, which required a 48-hour time limit, while also verifying the optimality of several previously reported best-known solutions. These results demonstrate that SAT-based reasoning provides an effective exact optimization framework for the BMCP and substantially expands the range of benchmark instances whose optimality can be certified.",
+      "authors": [
+        "Duc Trung Kim Nguyen",
+        "Khanh Van To"
+      ],
+      "primary_category": "cs.LO",
+      "categories": [
+        "cs.LO"
+      ],
+      "published": "2026-07-13T05:53:17+00:00",
+      "link": "https://arxiv.org/pdf/2607.11121v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "presents SAT-based exact framework for BMCP with compact encoding",
+      "llm_evidence_cn": "提出基于SAT的BMCP精确求解框架，包含紧凑编码",
+      "llm_evidence": "提出基于SAT的BMCP精确求解框架，包含紧凑编码",
+      "canonical_evidence": "提出基于SAT的BMCP精确求解框架，包含紧凑编码",
+      "llm_tldr_en": "This paper introduces the first SAT-based exact framework for the Bandwidth Multicoloring Problem, using an efficient encoding that compactly models constraints, achieving optimality proofs for benchmark instances.",
+      "llm_tldr_cn": "本文针对带宽多着色问题（BMCP）提出了首个基于SAT的精确求解框架。核心贡献在于设计了一种紧凑的SAT编码，能够高效建模顶点间约束，从而在标准测试集上证明最优性。实验表明，该方法在多个实例上超越了传统的约束规划和整数规划方法，为NP-hard图着色问题提供了新的SAT求解思路。",
+      "llm_tldr": "本文针对带宽多着色问题（BMCP）提出了首个基于SAT的精确求解框架。核心贡献在于设计了一种紧凑的SAT编码，能够高效建模顶点间约束，从而在标准测试集上证明最优性。实验表明，该方法在多个实例上超越了传统的约束规划和整数规划方法，为NP-hard图着色问题提供了新的SAT求解思路。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.14999v1",
+      "source": "arxiv",
+      "title": "Verification of a DPLL Transition System in Rocq",
+      "abstract": "We present a formal verification of an abstract transition-system presentation of the Davis-Putnam-Logemann-Loveland (DPLL) procedure in the Rocq proof assistant. Following Nieuwenhuis et al., SAT solving is modeled as a set of rule-based transitions between states rather than as a concrete algorithm. We formalize the syntax and semantics of propositional formulas, define the classical and base DPLL transition systems, and prove their key metatheoretic properties. In particular, we establish correctness and completeness with respect to satisfiability, and we prove termination by showing that the transition relation is well-founded. The formalization extends the original abstract system by also including the pure literal rule. Building on the verified transition system, we introduce an abstract notion of strategy and derive a terminating solver from any strategy satisfying suitable conditions. We then implement a concrete strategy in Rocq and show that it satisfies the strategy specification.",
+      "authors": [
+        "Julia Dijkstra",
+        "Benedikt Ahrens"
+      ],
+      "primary_category": "cs.LO",
+      "categories": [
+        "cs.LO"
+      ],
+      "published": "2026-07-16T13:46:33+00:00",
+      "link": "https://arxiv.org/pdf/2607.14999v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "DPLL transition system for SAT solving",
+      "llm_evidence_cn": "DPLL过渡系统形式化验证，核心SAT求解技术",
+      "llm_evidence": "DPLL过渡系统形式化验证，核心SAT求解技术",
+      "canonical_evidence": "DPLL过渡系统形式化验证，核心SAT求解技术",
+      "llm_tldr_en": "Formally verifies the DPLL transition system, the core algorithm for SAT solving, proving correctness, completeness, and termination.",
+      "llm_tldr_cn": "本文在Rocq证明助手中对DPLL过渡系统进行了形式化验证，建立了命题公式的语法和语义，定义了经典及基础DPLL过渡系统，证明了其正确性、完备性和终止性。该工作为SAT求解算法的可靠实现提供了理论基础。",
+      "llm_tldr": "本文在Rocq证明助手中对DPLL过渡系统进行了形式化验证，建立了命题公式的语法和语义，定义了经典及基础DPLL过渡系统，证明了其正确性、完备性和终止性。该工作为SAT求解算法的可靠实现提供了理论基础。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.15834v1",
+      "source": "arxiv",
+      "title": "Two-Thread Coverage MCTS for SAT and XSAT",
+      "abstract": "We introduce a Monte-Carlo Tree Search solver for SAT and XSAT that pairs WalkSAT-style rollouts with a two-thread symmetry-breaking initialisation: one thread starts from all-true, the other from all-false, bounding each thread's initial Hamming distance to a satisfying assignment by $\\lfloor n/2 \\rfloor$. Empirically the solver closes 100/100 SATLIB graph-colouring encodings (flat200-479, sw100) in tens of milliseconds each, 20/20 planted 3-XOR-SAT at $n{=}200$ (median 10~s), 6/6 at $n{=}300$ (median 138~s), and one SAT Competition 2025 instance (Break-triple-04-06.xml.cnf) in 50~ms via the polarity split alone. On a full 16-round DES key-recovery encoding ($n{=}1976$, $m{=}30072$) it drives the negative-clause count from $\\sim 200$ down to 24 (99.9% clauses satisfied) over 7 hours before hitting the S-box plateau.",
+      "authors": [
+        "Marcel Crasmaru"
+      ],
+      "primary_category": "math.OC",
+      "categories": [
+        "math.OC"
+      ],
+      "published": "2026-07-17T10:45:17+00:00",
+      "link": "https://arxiv.org/pdf/2607.15834v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "New MCTS-based SAT solver with dual-thread symmetry-breaking initialization",
+      "llm_evidence_cn": "提出基于MCTS的SAT求解器，采用双线程对称性破缺初始化",
+      "llm_evidence": "提出基于MCTS的SAT求解器，采用双线程对称性破缺初始化",
+      "canonical_evidence": "提出基于MCTS的SAT求解器，采用双线程对称性破缺初始化",
+      "llm_tldr_en": "Proposes a Monte-Carlo Tree Search solver for SAT and XSAT with dual-thread symmetry-breaking initialization; solves SATLIB instances quickly and reduces negative clauses in DES instance by 99.9%.",
+      "llm_tldr_cn": "本文针对SAT和XSAT问题提出了一种基于蒙特卡洛树搜索的求解器，采用双线程对称性破缺初始化策略（一个线程从全真开始，另一个从全假开始），结合WalkSAT风格的展开。实验表明，该求解器能迅速解决SATLIB图着色编码实例，并在DES密钥恢复编码中将否定从句数从约200降至24，表明该方法在工业实例上具有潜力。该工作为SAT求解提供了新的搜索策略思路。",
+      "llm_tldr": "本文针对SAT和XSAT问题提出了一种基于蒙特卡洛树搜索的求解器，采用双线程对称性破缺初始化策略（一个线程从全真开始，另一个从全假开始），结合WalkSAT风格的展开。实验表明，该求解器能迅速解决SATLIB图着色编码实例，并在DES密钥恢复编码中将否定从句数从约200降至24，表明该方法在工业实例上具有潜力。该工作为SAT求解提供了新的搜索策略思路。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.13642v1",
+      "source": "arxiv",
+      "title": "A Distributed Framework for Compiling and Reasoning with d-DNNF",
+      "abstract": "Knowledge Compilation (KC) is a powerful paradigm that enables efficient reasoning by transforming propositional formulas into tractable target languages, such as Deterministic, Decomposable Negation Normal Form (d-DNNF). However, as real-world problem instances grow in complexity, the offline compilation phase becomes a significant computational bottleneck, often exceeding the memory and temporal limits of single-node systems. While distributed computing has been successfully applied to model counting ($\\#\\mathsf{SAT}$), extending these techniques to knowledge compilation remains a challenge due to the difficulty of sharing partial circuit fragments across distributed nodes.   In this paper, we propose dkc, the first distributed knowledge compiler designed for large-scale Decision-DNNF generation. Leveraging a Cube-and-Conquer strategy, dkc effectively partitions the search space into independent subproblems, mitigating the communication overhead typically associated with work-stealing architectures in circuit-based tasks. Recognizing that the utility of compilation lies in subsequent querying, we further introduce dreasoner, a distributed reasoning engine. dreasoner is capable of performing core inference tasks (including model counting, direct access, and uniform sampling) across a distributed d-DNNF structure, even under variable conditioning. Our experimental evaluation on benchmarks demonstrates that our distributed architecture scales effectively, enabling the compilation and querying of complex formulas that remain beyond the reach of state-of-the-art sequential compilers.",
+      "authors": [
+        "Zhenghang Xu",
+        "Minghao Yin",
+        "jianan Wang",
+        "Jean-Marie Lagniez"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-07-15T09:34:26+00:00",
+      "link": "https://arxiv.org/pdf/2607.13642v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "distributed framework for compiling d-DNNF, a tractable representation for propositional reasoning; directly applicable to SAT preprocessing and formula reduction",
+      "llm_evidence_cn": "提出的分布式知识编译框架用于生成d-DNNF，可应用于SAT预处理和公式化简，解决大规模实例的编译瓶颈",
+      "llm_evidence": "提出的分布式知识编译框架用于生成d-DNNF，可应用于SAT预处理和公式化简，解决大规模实例的编译瓶颈",
+      "canonical_evidence": "提出的分布式知识编译框架用于生成d-DNNF，可应用于SAT预处理和公式化简，解决大规模实例的编译瓶颈",
+      "llm_tldr_en": "Proposes dkc, the first distributed knowledge compiler for d-DNNF, addressing memory and time bottlenecks in compiling large propositional formulas, enabling efficient reasoning including SAT.",
+      "llm_tldr_cn": "该论文针对知识编译中离线编译阶段成为大规模问题实例的计算瓶颈这一挑战，提出了第一个分布式知识编译器dkc，用于生成可追踪的d-DNNF表示。dkc通过分布式计算克服单机系统的内存和时间限制，实现了对复杂命题公式的高效编译。编译得到的d-DNNF可直接用于高效推理，包括SAT求解和模型计数。该工作为大规模SAT预处理和公式压缩提供了新的分布式解决方案，有望拓展到CNF化简等任务。",
+      "llm_tldr": "该论文针对知识编译中离线编译阶段成为大规模问题实例的计算瓶颈这一挑战，提出了第一个分布式知识编译器dkc，用于生成可追踪的d-DNNF表示。dkc通过分布式计算克服单机系统的内存和时间限制，实现了对复杂命题公式的高效编译。编译得到的d-DNNF可直接用于高效推理，包括SAT求解和模型计数。该工作为大规模SAT预处理和公式压缩提供了新的分布式解决方案，有望拓展到CNF化简等任务。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.11726v1",
+      "source": "arxiv",
+      "title": "Improving Upper Bounds for the Maximum Clique Problem using Reduction Rules",
+      "abstract": "We study the interaction between reduction rules and upper-bound functions for the Maximum Clique Problem (MCP). We show how MCP upper-bound functions can strengthen classical core and truss reductions by replacing local size conditions with upper-bound tests. This leads to the \\((k,ω^u)\\)-core, the \\((k,ω^u)\\)-truss, and the more general \\((k,d,ω^u)\\)-truss, where the parameter \\(d\\) controls the trade-off between stronger reductions and additional computational cost. For each of these notions, we prove clique-preservation properties, correctness of the corresponding peeling algorithm, and running-time bounds. Based on these reductions, we introduce a general framework for improving upper-bound values for MCP. We give two concrete instantiations of the framework: one that uses only the combined truss and core reductions, and one that combines the truss and core reductions with repeated applications of structions. Computational experiments on 73 benchmark graphs show that the proposed reductions can substantially improve several standard upper-bound functions and that combining multiple reduction methods can be beneficial in practice. In particular, the combination of structions, truss and core reductions with a DSatur-based bound often reached SDP-level upper-bound values faster than direct SDP computation; on the tested graphs with edge density below \\(0.7\\), it did so in every case. Using the truss and core reduction with the Lovász theta upper-bound function, we also improve the previously best certified integer upper-bound values for three difficult DIMACS instances whose exact clique numbers are not known. In particular, we improve upper-bound values for graph   \\texttt{C500.9} from 83 to 73, for graph \\texttt{C1000.9} from 122 to 115, and for graph \\texttt{C2000.9} from 177 to 168.",
+      "authors": [
+        "Aljaž Krpan",
+        "Janez Povh"
+      ],
+      "primary_category": "math.CO",
+      "categories": [
+        "math.CO",
+        "cs.DS"
+      ],
+      "published": "2026-07-13T15:51:12+00:00",
+      "link": "https://arxiv.org/pdf/2607.11726v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Reduction rules for maximum clique, applicable to CNF formula reduction",
+      "llm_evidence_cn": "最大团归约规则，可应用于CNF公式化简",
+      "llm_evidence": "最大团归约规则，可应用于CNF公式化简",
+      "canonical_evidence": "最大团归约规则，可应用于CNF公式化简",
+      "llm_tldr_en": "This paper introduces new reduction rules for maximum clique that replace local size conditions with upper-bound tests, which can be adapted for CNF formula reduction in SAT.",
+      "llm_tldr_cn": "该论文针对最大团问题提出了基于上界测试的新型归约规则，将传统规模条件替换为更通用的上界检测，从而生成更精简的问题结构。证明了所提(k,ω^u)-核心和(k,ω^u)-桁架的正确性，并给出高效剥离算法。这些归约规则可启发SAT求解中的CNF公式化简方法，尤其是通过上界判断实现更强力的子句消去。",
+      "llm_tldr": "该论文针对最大团问题提出了基于上界测试的新型归约规则，将传统规模条件替换为更通用的上界检测，从而生成更精简的问题结构。证明了所提(k,ω^u)-核心和(k,ω^u)-桁架的正确性，并给出高效剥离算法。这些归约规则可启发SAT求解中的CNF公式化简方法，尤其是通过上界判断实现更强力的子句消去。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "CNF formula reduction methods",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.12711v2",
+      "source": "arxiv",
+      "title": "MaxSAT-Based Feedback for Guiding Vision-Language Models in Sudoku",
+      "abstract": "Vision--Language Models (VLMs) have recently demonstrated promising performance on structured visual reasoning tasks, including grid-based puzzles. However, despite strong perceptual capabilities, these models lack explicit mechanisms for enforcing logical consistency and frequently generate assignments that violate underlying constraints. In this paper, we propose a neuro-symbolic approach that integrates formal constraint reasoning into the VLM solving process via a Maximum Satisfiability (MaxSAT) oracle. Rather than computing solutions directly, the symbolic component acts as a consistency validator and refinement engine. Candidate placements generated by the VLM are encoded as soft clauses in a partial MaxSAT formulation, while Sudoku constraints remain hard clauses. When inconsistencies arise, the MaxSAT solver identifies a largest mutually consistent subset of assignments, which is then translated into structured textual and visual feedback to guide subsequent refinements. We evaluate our approach on a Sudoku dataset across multiple open-source and closed-access VLMs. Results show that MaxSAT-based feedback improves logical consistency and increases the number of solved instances, particularly in full-board refinement mode. These findings demonstrate that symbolic optimisation can enhance the reliability of vision-language reasoning.",
+      "authors": [
+        "Pedro Orvalho",
+        "Guillem Alenyà",
+        "Felip Manyà"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LO"
+      ],
+      "published": "2026-07-14T12:39:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.12711v2",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "uses MaxSAT as consistency validator in neuro-symbolic approach",
+      "llm_evidence_cn": "使用MaxSAT作为一致验证器于神经符号方法",
+      "llm_evidence": "使用MaxSAT作为一致验证器于神经符号方法",
+      "canonical_evidence": "使用MaxSAT作为一致验证器于神经符号方法",
+      "llm_tldr_en": "This paper proposes a neuro-symbolic approach for Sudoku solving, using a MaxSAT oracle to enforce logical consistency on VLM outputs, combining perception with formal reasoning.",
+      "llm_tldr_cn": "本文针对视觉语言模型（VLM）在结构化推理中缺乏逻辑一致性的问题，提出了一种神经符号方法，通过引入MaxSAT作为一致性验证和精炼引擎。VLM生成候选布局后，MaxSAT编码软硬子句来优化赋值，从而保证Sudoku约束的满足。实验表明该方法显著提高了VLM的求解准确率，展示了最大可满足性在约束推理中的应用价值。",
+      "llm_tldr": "本文针对视觉语言模型（VLM）在结构化推理中缺乏逻辑一致性的问题，提出了一种神经符号方法，通过引入MaxSAT作为一致性验证和精炼引擎。VLM生成候选布局后，MaxSAT编码软硬子句来优化赋值，从而保证Sudoku约束的满足。实验表明该方法显著提高了VLM的求解准确率，展示了最大可满足性在约束推理中的应用价值。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

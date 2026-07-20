@@ -1,0 +1,602 @@
+Title: Proving Optimality for the Bandwidth Multicoloring Problem via SAT
+
+URL Source: https://arxiv.org/pdf/2607.11121v1
+
+Published Time: Tue, 14 Jul 2026 02:14:35 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+e-mail: 23021533@vnu.edu.vn e-mail: khanhtv@vnu.edu.vn 
+
+RAIRO Operations Research 
+
+Will be set by the publisher 
+
+PROVING OPTIMALITY FOR THE BANDWIDTH MULTICOLORING PROBLEM VIA SAT 
+
+## Duc Trung Kim Nguyen 1 and Khanh Van To 1
+
+Abstract . The Bandwidth Multicoloring Problem (BMCP) is an NP-hard extension of the Bandwidth Coloring Problem (BCP) with im-portant applications in telecommunications, resource allocation, and scheduling. While state-of-the-art metaheuristics can efficiently pro-duce high-quality solutions, they cannot certify global optimality. Ex-isting exact approaches based on Constraint Programming (CP) and Integer Programming (IP) provide such guarantees but typically re-quire extensive computation and still lag behind metaheuristics in so-lution quality, leaving many benchmark instances without optimality certificates. In this paper, we present the first SAT-based exact frame-work for the BMCP. Our main contribution is an efficient SAT en-coding that compactly models both intra-vertex and inter-vertex color distance constraints. Combined with tight color domain reduction and an incremental SAT-solving strategy, the proposed formulation signifi-cantly prunes the search space and enables efficient exact optimization. Experimental results on the GEOM and MS-CAP benchmark suites demonstrate substantial improvements over previous exact approaches. On the challenging GEOM benchmark, the proposed framework proves optimality for more instances within only one hour of computation than the previous CP/IP approach, which required a 48-hour time limit, while also verifying the optimality of several previously reported best-known solutions. These results demonstrate that SAT-based reasoning provides an effective exact optimization framework for the BMCP and substantially expands the range of benchmark instances whose opti-mality can be certified. 
+
+Keywords: Channel assignment, Graph coloring problem, Bandwidth coloring, Bandwidth Multicoloring, SAT solving 
+
+Mathematics Subject Classification. 05C15, 90C27, 68R07  
+
+> 1
+
+VNU University of Engineering and Technology, Hanoi, Vietnam  
+
+> ©EDP Sciences 2001 arXiv:2607.11121v1 [cs.LO] 13 Jul 2026
+
+2 TITLE WILL BE SET BY THE PUBLISHER 
+
+## 1. Introduction 
+
+The Bandwidth Coloring Problem (BCP) is a combinatorial optimization prob-lem that extends the classical graph coloring problem (GCP), with numerous prac-tical applications in areas such as scheduling, resource allocation, and network design. The problem can be formally defined as follows: given an edge-weighted undirected graph G = ( V, E ), a weight function d : E → Z+ assigns a positive integer weight to each edge e = {u, v } ∈ E. The objective of the BCP is to find a coloring c : V → N such that ∀e = {u, v } ∈ E : |c(u) − c(v)| ≥ d({u, v }), while minimizing the span value, defined as k = max v∈V c(v). The Bandwidth Multicoloring Problem (BMCP) generalizes the BCP by allow-ing each vertex to be assigned multiple colors. Formally, let G = ( V, E ) be an undirected graph equipped with two weight functions: a vertex weight function 
+
+w : V → Z+ specifying the number of colors required for each vertex, and an edge weight function d : E → Z+ defining the minimum color separation between ad-jacent vertices. The objective of the BMCP is to find a multicoloring assignment 
+
+c : V → P (Z+) that minimizes the span value k = max u∈V,m ∈c(u) m while satis-fying the following conditions: first, each vertex u ∈ V is assigned exactly w(u)distinct colors; second, any two distinct colors m, n ∈ c(u) assigned to the same vertex must satisfy |m − n| ≥ d({u, u }); and finally, for any edge e = {u, v } ∈ E,every color m ∈ c(u) and n ∈ c(v) must satisfy |m − n| ≥ d({u, v }). Both the BCP and the BMCP arise naturally from frequency assignment prob-lems (FAP) [1] in the field of telecommunications, where the graph’s vertices rep-resent radio transmitters and the edge weights dictate the minimum frequency separations required to avoid electromagnetic interference [9]. Because both mod-els are generalizations of the classical graph coloring problem, they are strongly NP-hard [17]. Consequently, a vast amount of literature has been dedicated to metaheuristic approaches to find high-quality approximations, including iterated tabu search [16], learning-based hybrid search [14], path relinking [15], and vari-able neighborhood search [19]. While these methods perform well on large-scale instances, optimality matters profoundly in combinatorial optimization. Establish-ing mathematically proven optimal solutions is not merely a theoretical exercise; it is a necessity for benchmark certification and for reliably validating heuristic re-sults. Furthermore, providing exact lower bounds is crucial for supporting future algorithm development. The critical importance of exact methods is perhaps best highlighted by their ability to identify incorrect published solutions, as demon-strated when exact approaches successfully proved that a previously published heuristic solution for the BMCP [4] was mathematically flawed [6]. Despite this pressing need for provable optimality, existing exact methods for the BMCP have essentially stagnated since 2021. The current state-of-the-art exact solvers rely heavily on Constraint Programming (CP) and Integer Program-ming (IP) models introduced by Dias et al. [6, 7]. While these models can handle small-scale instances, they suffer from exponential computational complexity and fail to scale effectively. Conversely, the adjacent field of the BCP has recently experienced a major breakthrough. Boolean Satisfiability (SAT)-based methods TITLE WILL BE SET BY THE PUBLISHER 3have dramatically changed the state-of-the-art for the BCP [5, 12]. Most notably, Faber et al. [10] introduced partial-ordering-based SAT encodings (POP-S-B and POPH-S-B) that successfully identified optimal solutions for 32 out of 33 instances in the challenging GEOM dataset [21]. Surprisingly, despite the massive success of SAT solving in the BCP, the BMCP has never benefited from SAT methodologies. Extending these formulations to the BMCP is highly non-trivial. Naive adapta-tions, such as transforming the BMCP into a BCP via vertex splitting, inevitably lead to an unmanageable explosion in the number of variables and clauses, severely crippling solver efficiency. This paper fills that methodological gap by proposing the first dedicated SAT-based framework designed natively for the complex combinatorial structure of the BMCP. The primary contributions of this work are summarized as follows. First, we introduce the very first SAT-based framework for the BMCP, completely bypassing the inefficiencies of vertex decomposition. As our primary contribu-tion, we propose a novel Order-Based Encoding (OBE) that natively captures the problem’s complex combinatorial structure. Second, our proposed methodology significantly improves upon the state-of-the-art in exact solving, decisively out-performing existing CP and IP formulations. Third, by leveraging this encoding, we successfully prove optimality for several previously open instances within the benchmark datasets. Finally, and most importantly, our SAT formulation achieves these unprecedented exact solutions under a much smaller computational budget than what was previously required by the existing exact models, underscoring the exceptional efficiency and scalability of our approach. The remainder of this paper is organized as follows. Section 2 reviews related work on metaheuristic and exact approaches for the BMCP. Section 3 presents the proposed SAT-based approach, describing the encoding method. Section 4 reports computational experiments on the GEOM and MS-CAP benchmark in-stances. Finally, Section 5 summarizes the findings and discusses directions for future research. 
+
+## 2. Related work 
+
+The Bandwidth Coloring Problem and its generalization, the Bandwidth Multi-coloring Problem, model resource allocation scenarios where interacting elements must be separated by predefined distances. While the BCP assigns a single color to each vertex such that adjacent vertices respect specific edge-weight separations, the BMCP introduces the additional complexity of demanding multiple colors per vertex, governed by internal vertex separation constraints. Because these problems are NP-hard, the pursuit of optimal or near-optimal solutions has motivated a rich body of literature. Existing methodologies can be broadly categorized into heuris-tic or metaheuristic techniques, which prioritize computational speed for large instances, and exact methods, which are mathematically designed to guarantee solution optimality. Table 1 provides an overview of existing studies, including 4 TITLE WILL BE SET BY THE PUBLISHER their key contributions, the problems addressed, and the availability of optimality guarantees for the BCP and the BMCP. 
+
+Table 1. Previous work on BCP and BMCP                         
+
+> Work Main contribution Target Problem Proof of Optimality
+> Faber et al., 2024 [10] Partial-ordering SAT models (POP-S-B and POPH-S-B) BCP Yes Lai et al., 2013 [16] Multistart Iterated Tabu Search (MITS) algorithm BCP, BMCP No Jin et al., 2014 [13] Learning-based Hybrid Search (LHS) algorithm BCP, BMCP No Lai et al., 2016 [15] Path relinking strategies BCP, BMCP No Mati´ c et al., 2017 [19] Variable Neighborhood Search (VNS) BCP, BMCP No Dias et al., 2016, 2021 [6, 7] Constraint Programming (CP) and Integer Programming (IP) models BCP, BMCP Yes
+
+Metaheuristic algorithms have been extensively applied to both the BCP and the BMCP, primarily due to their ability to efficiently generate high-quality solu-tions. To tackle the BMCP using these methods, the problem is typically reduced to a standard BCP by decomposing each vertex into a clique, where the clique size corresponds to the vertex’s color demand, and internal edge weights equal the vertex’s minimum separation distance. Several prominent frameworks have been successfully adapted for these problems. These include the Multistart It-erated Tabu Search (MITS) [16], which leverages fast incremental evaluation to streamline objective function updates; Learning-based Hybrid Search (LHS) [13], which combines forward-checking construction with adaptive tabu search repair; path relinking strategies [15], which maintain a balance between search intensifi-cation and diversification; and Variable Neighborhood Search (VNS) [19], which structures local search around conflict metrics and edge weights. Despite their computational speed and scalability, these metaheuristic approaches possess inherent limitations, most notably their fundamental inability to guaran-tee global optimality. As previously established, proving optimality is not merely a theoretical exercise but a critical necessity for advancing the field. Exact math-ematical guarantees are indispensable for rigorously certifying benchmarks, re-liably validating the outputs of heuristic algorithms, and providing exact lower bounds that support future algorithmic development. Moreover, such rigor is uniquely capable of identifying and correcting erroneously published solutions. In real-world applications such as telecommunications frequency assignment, the ab-sence of these exact guarantees can have severe practical consequences; relying TITLE WILL BE SET BY THE PUBLISHER 5on heuristic algorithms, which are prone to stagnating in local optima and heav-ily dependent on extensive parameter tuning, often yields suboptimal allocations, ultimately leading to costly spectrum waste and signal interference. To address the need for mathematical guarantees, exact formulations for the BMCP have been explored through the lens of Constraint Programming and Inte-ger Programming. Dias et al. [6, 7] proposed both CP and IP models designed to find provably optimal solutions. In their CP model, they utilize integer variables 
+
+x(i, k ) to represent the k-th color assigned to vertex i (1 ≤ k ≤ w(i)). This is sup-ported by a global constraint, allMinDistance , which ensures that the minimum distance between any two colors assigned to the same vertex is at least the vertex’s minimum separation distance. The CP formulation is given by: Minimize max 
+
+> i∈V
+> 1≤k≤w(i)
+
+x(i, k ) (1) Subject to |x(i, k ) − x(j, m )| ≥ d({i, j }) ∀{ i, j } ∈ E, (2) 1 ≤ k ≤ w(i)1 ≤ m ≤ w(j)allMinDistance( {x(i, k ) : 1 ≤ k ≤ w(i)}, d ({i, i })) ∀i ∈ V (3) 
+
+x(i, k ) ∈ Z+ ∀i ∈ V, (4) 1 ≤ k ≤ w(i)Alternatively, their IP model introduces two sets of variables: xic , a binary variable indicating whether color c is assigned to vertex i, and zmax , an integer variable representing the maximum color used. The IP formulation is expressed 6 TITLE WILL BE SET BY THE PUBLISHER as: Minimize zmax (5) Subject to 
+
+> U B
+
+X
+
+> c=1
+
+xic = w(i) ∀i ∈ V (6) 
+
+xic + xje ≤ 1 ∀{ i, j } ∈ E, i ̸ = j, 
+
+1 ≤ c, e ≤ U B, 
+
+|c − e| < d ({i, j })(7) 
+
+xic + xie ≤ 1 ∀i ∈ V, 
+
+1 ≤ c, e ≤ U B, 
+
+|c − e| < d ({i, i })(8) 
+
+zmax ≥ c x ic ∀i ∈ V, 
+
+1 ≤ c ≤ U B 
+
+(9) 
+
+xic ∈ { 0, 1} ∀i ∈ V, 
+
+1 ≤ c ≤ U B 
+
+(10) 
+
+zmax ∈ R (11) Their comparative studies of these formulations show that the IP model gener-ally outperforms the CP model in terms of computational efficiency, particularly for larger instances. While the IP model is more computationally efficient at prov-ing optimality, they note that the CP model still holds a specific advantage in certain scenarios. If the solvers hit the designated time limit without finding the optimal solution, the CP model tends to return a higher-quality feasible solution than the IP model. However, both models face significant challenges when scaling to larger problem sizes due to the exponential growth of the search space. By translating complex combinatorial constraints into a unified Boolean for-mula, SAT methods leverage the highly optimized inference engines of modern SAT solvers. Because these solvers utilize advanced techniques such as Conflict-Driven Clause Learning (CDCL) [18], which allows the algorithm to learn from dead ends and drastically prune the search tree, they excel at navigating tightly constrained problem spaces. For the BCP, the most significant recent advance-ment was made by Faber et al. (2024) [10], who proposed highly effective partial-ordering-based SAT encodings (POP-S-B and POPH-S-B). By generalizing ear-lier ordering approaches, their encodings optimally solved several previously open GEOM benchmark instances for the first time. Consequently, the current state of the literature reveals a significant research gap in solving the BMCP. First, while metaheuristic algorithms produce excellent feasible solutions, they inherently lack the mathematical mechanisms required to prove optimality. Second, exact approaches such as the CP and IP models devel-oped by Dias et al. [6, 7] successfully provide these strict optimality guarantees, yet their scalability remains highly restricted, severely limiting their application to TITLE WILL BE SET BY THE PUBLISHER 7larger problem instances. Finally, despite the fact that SAT-based methods demon-strated tremendous success and computational efficiency for the related BCP in 2024, there is currently no existing SAT encoding formulated for the BMCP. Bridg-ing this gap requires more than trivial adaptations; relying on naive reductions, such as transforming a BMCP instance into a standard BCP by splitting vertices into dense cliques, inherently triggers a catastrophic proliferation of variables and clauses that neutralizes the advanced CDCL mechanisms. Therefore, there is an imperative need to formulate compact, native SAT encodings that directly capture both intra-vertex and inter-vertex distance constraints to effectively harness the deductive power of SAT solvers for the BMCP. 
+
+## 3. SAT Encodings for the Bandwidth Multicoloring Problem 
+
+In this section, we develop three SAT formulations for the BMCP. To establish our framework, we first introduce a Flat Encoding (FE) as a direct baseline, fol-lowed by an intermediate Slot-Based Encoding (SBE) that utilizes local bounds. Finally, we present the core contribution of this paper: the highly optimized Order-Based Encoding (OBE), which elegantly overcomes the spatial and computational limitations of the prior models. 3.1. Global and Local Bound Computation 
+
+To reduce the search space and accelerate SAT-based solving, we establish tight lower and upper bounds for the span, as well as restricted color domains for indi-vidual vertices. The minimum span is constrained by the densest substructures within the graph. For any clique C ⊆ V , the required span is at least 1+( WC −1) ·dCmin , where 
+
+WC = P 
+
+> v∈C
+
+w(v) is the total color requirement and dCmin = min u,v ∈C d({u, v })is the tightest distance constraint in C. We define the lower bound LB as the maximum bound discovered across maximal cliques, which are extracted using the Bron-Kerbosch algorithm [3]. A formal proof is provided in Appendix A. Conversely, an upper bound ( U B ) caps the SAT variables’ domains. The triv-ial bound 1 +  P  
+
+> u∈V
+
+w(u) − 1 · max {u,v }∈ E d({u, v }) is overly large and yields intractable SAT formulas. Instead, we compute a tighter U B via a greedy heuris-tic [7] (Algorithm 1). By prioritizing vertices with the largest weight w(u), the algorithm sequentially assigns colors, incrementally increasing candidate values until all distance constraints are satisfied. The maximum color utilized by this heuristic becomes our global U B .Given a target span k ∈ [LB, U B ], we restrict the allowed color domains for each vertex to preemptively prune invalid assignments. To explicitly break symmetries, we enforce a strict ascending order for the colors assigned to any vertex u: c(u)1 <c(u)2 < · · · < c (u)w(u). This ordering dictates tight bounds on the minimum 8 TITLE WILL BE SET BY THE PUBLISHER (LB u,i ) and maximum ( U B u,i ) possible values for the i-th color of vertex u:
+
+LB u,i = 1 + ( i − 1) · d({u, u }) ∀u ∈ V, i ∈ [1 , w (u)] 
+
+U B u,i = k − (w(u) − i) · d({u, u }) ∀u ∈ V, i ∈ [1 , w (u)] If U B u,i < LB u,i for any vertex u and index i, the targeted span k is math-ematically too small to accommodate u’s intra-vertex constraints. Consequently, we can immediately deduce that k is invalid without generating or evaluating the SAT formula. 
+
+Algorithm 1 Greedy Upper Bound Computation for BMCP 
+
+Require: Graph G = ( V, E ) with vertex weights w and edge weights d
+
+Ensure: Upper bound U B on the optimal span  
+
+> 1:
+
+V ′ ← V 
+
+> 2:
+
+numCol (i) ← 0 for all i ∈ V 
+
+> 3:
+
+c(i) ← ∅ for all i ∈ V 
+
+> 4:
+
+while V ′̸ = ∅ do  
+
+> 5:
+
+u ← arg max v∈V ′ w(v) ▷ Select unassigned vertex with max weight  
+
+> 6:
+
+while numCol (u) < w (u) do  
+
+> 7:
+
+candColor ← numCol (u) × d({u, u }) + 1  
+
+> 8:
+
+violated ← true  
+
+> 9:
+
+while violated do  
+
+> 10:
+
+violated ← false  
+
+> 11:
+
+for v ∈ (V \ V ′) ∪ { u} do  
+
+> 12:
+
+for k ∈ c(v) do  
+
+> 13:
+
+if |k − candColor | < d ({u, v }) then  
+
+> 14:
+
+violated ← true  
+
+> 15:
+
+candColor ← candColor + 1  
+
+> 16:
+
+break  
+
+> 17:
+
+end if  
+
+> 18:
+
+end for  
+
+> 19:
+
+if violated then  
+
+> 20:
+
+break  
+
+> 21:
+
+end if  
+
+> 22:
+
+end for  
+
+> 23:
+
+end while  
+
+> 24:
+
+c(u) ← c(u) ∪ { candColor } 
+
+> 25:
+
+numCol (u) ← numCol (u) + 1  
+
+> 26:
+
+end while  
+
+> 27:
+
+V ′ ← V ′ \ { u} 
+
+> 28:
+
+end while  
+
+> 29:
+
+U B ← max v∈V,k ∈c(v) k 
+
+> 30:
+
+return U B TITLE WILL BE SET BY THE PUBLISHER 93.2. Flat Encoding (FE) 
+
+Serving as our initial baseline, this flat SAT encoding is a direct transformation of the IP model proposed by Dias et al. [6,7]. The encoding uses Boolean variables for each vertex u ∈ V and each available color m ∈ { 1, 2, . . . , k } with the semantics that xu,m = true ⇐⇒ m ∈ c(u). The constraints are defined as follows: 
+
+• Color cardinality constraint: 
+
+> k
+
+X
+
+> m=1
+
+xu,m = w(u) ∀u ∈ V (12) 
+
+• Intra-vertex color distance constraint: 
+
+¬xu,m ∨ ¬ xu,n 
+
+∀u ∈ V, ∀m, n ∈ { 1, . . . , k }
+
+s.t. m < n and n − m < d ({u, u }) (13) 
+
+• Inter-vertex color distance constraint: 
+
+¬xu,m ∨ ¬ xv,n 
+
+∀{ u, v } ∈ E, u ̸ = v, ∀m, n ∈ { 1, . . . , k }
+
+s.t. |m − n| < d ({u, v }) (14) 3.3. Slot-Based Encoding (SBE) 
+
+The flat encoding does not take advantage of the restricted color domains com-puted for each vertex, as it evaluates all colors up to the target span k. To address this issue and build towards our primary formulation, this encoding leverages the local bounds to exploit the strict ascending order for the colors assigned to any vertex. It employs Boolean variables xu,i,m = true ⇐⇒ c(u)i = m ∀u ∈ V, i ∈
+
+[1 , w (u)] , m ∈ [LB u,i , U B u,i ]. The constraints for this encoding are: 
+
+• Exactly-one value for the i-th color: 
+
+> U B u,i
+
+X
+
+> m=LB u,i
+
+xu,i,m = 1 ∀u ∈ V, ∀i ∈ [1 , w (u)] (15) 
+
+• Intra-vertex color distance constraint: 
+
+¬xu,i,m ∨ ¬ xu,i +1 ,n 
+
+∀u ∈ V, ∀i ∈ [1 , w (u) − 1] ,
+
+∀m ∈ [LB u,i , U B u,i ], ∀n ∈ [LB u,i +1 , U B u,i +1 ]s.t. n − m < d ({u, u })(16) 10 TITLE WILL BE SET BY THE PUBLISHER 
+
+• Inter-vertex color distance constraint: 
+
+¬xu,i,m ∨ ¬ xv,j,n 
+
+∀{ u, v } ∈ E, u ̸ = v, ∀i ∈ [1 , w (u)] , ∀j ∈ [1 , w (v)] 
+
+∀m ∈ [LB u,i , U B u,i ], ∀n ∈ [LB v,j , U B v,j ]s.t. |m − n| < d ({u, v })(17) The Color cardinality constraint is inherently satisfied by instantiating variables over the explicit index i ∈ [1 , w (u)], which naturally guarantees that each vertex 
+
+u is assigned exactly w(u) colors, making an explicit encoding of this constraint unnecessary. 3.4. Order-Based Encoding (OBE) 
+
+Representing the primary contribution of this work, we extend the partial-ordering concepts proposed by Faber et al. [10] and our intermediate slot-based approach to develop the Order-Based Encoding (OBE) for the BMCP. The encod-ing uses the following variables: 
+
+• xu,i,m = true ⇐⇒ c(u)i = m
+
+• gu,i,m = true ⇐⇒ c(u)i ≥ m
+
+The constraints are defined as follows: 
+
+• Linkage between variables x and g:
+
+xu,i,m ↔ gu,i,m ∧ ¬ gu,i,m +1 ∀u ∈ V, i ∈ [1 , w (u)] ,m ∈ [LB u,i , U B u,i − 1] (18) 
+
+xu,i,U B u,i ↔ gu,i,U B u,i ∀u ∈ V, i ∈ [1 , w (u)] (19) 
+
+• Monotonicity of variable g:
+
+gu,i,m → gu,i,m −1 ∀u ∈ V, i ∈ [1 , w (u)] ,m ∈ [LB u,i + 1 , U B u,i ](20) 
+
+• Lower bound of the color value assigned to each vertex: 
+
+gu,i,LB u,i ∀u ∈ V, i ∈ [1 , w (u)] (21) 
+
+• Intra-vertex color distance constraint: 
+
+gu,i,m → gu,i +1 ,m +d({u,u }) ∀u ∈ V, i ∈ [1 , w (u) − 1] ,m ∈ [LB u,i , U B u,i ](22) TITLE WILL BE SET BY THE PUBLISHER 11 
+
+• Inter-vertex color distance constraint: 
+
+xu,i,m → (gv,j,m +d({u,v }) ∨ ¬ gv,j,m −d({u,v })+1 ) ∀{ u, v } ∈ E, u ̸ = v, i ∈ [1 , w (u)] , j ∈ [1 , w (v)] ,m ∈ [LB u,i , U B u,i ](23) 
+
+(Non-existent variables are considered as true or false constants accordingly and do not appear in the formula). 
+
+Explicit SAT clauses for the Exactly-one value for the i-th color constraint are unnecessary in this formulation. Specifically, linkage and monotonicity constraints ensure that the sequence gu,i,m transitions from true to false exactly once, forcing exactly one xu,i,m to evaluate to true for each index i. A formal proof for the order-based encoding is provided in Appendix B. 3.5. Complexity Analysis 
+
+In this section, we analyze the spatial complexity of the proposed SAT encodings by comparing the asymptotic number of variables and clauses they generate. To facilitate this comparison, let W = max u∈V w(u) denote the maximum weight among all vertices in the graph. Table 2 provides a theoretical summary of the encoding sizes for the FE, SBE, and OBE. It is important to note that both the FE and SBE formulations utilize Sinz’s sequential counter encoding [20]. 
+
+Table 2. Comparison of encoding sizes 
+
+Encoding Variables Clauses 
+
+FE O(|V | · k2) O(( |V | + |E|) · k2)SBE O(|V | · W · k) O(|E| · W 2 · k2)OBE O(|V | · W · k) O(|E| · W 2 · k)3.6. Finding the optimal solution 
+
+The SAT formulation described in the preceding sections models the BMCP as a decision problem: determining whether a valid coloring exists for a given fixed span. To solve the optimization variant of the BMCP—finding the minimum possible span k∗—we must systematically evaluate different span values. Rather than repeatedly generating and solving independent SAT instances from scratch, which discards valuable learned clauses and incurs significant encoding overhead, we employ an incremental SAT-solving strategy. Our optimization process utilizes a top-down linear search. As established in Section 3.1, the upper bound algorithm guarantees an initial valid span U B .Therefore, the solver is instantiated exactly once with the complete encoding for 12 TITLE WILL BE SET BY THE PUBLISHER the span value U B . To progressively search for a better span, we iteratively restrict the search space by forbidding the maximum currently allowed color. To evaluate if the graph can be colored with a span of k − 1 (given that k
+
+is currently valid), we do not need to alter the existing constraints. Instead, we dynamically inject unit clauses that strictly prohibit any vertex from being assigned the color value k. Depending on the chosen encoding, we append the corresponding incremental formula to the solver: 
+
+• Flat encoding: 
+
+¬xu,k ∀u ∈ V (24) 
+
+• Slot-based encoding: 
+
+¬xu,i,k ∀u ∈ V, i ∈ [1 , w (u)] s.t. LB u,i ≤ k ≤ U B u,i (25) 
+
+• Order-based encoding: 
+
+¬gu,i,k ∀u ∈ V, i ∈ [1 , w (u)] s.t. LB u,i ≤ k ≤ U B u,i (26) By adding these unit clauses, the SAT solver structurally invalidates any as-signment relying on the color k, effectively forcing the target span to k − 1. This process is repeated, decrementing the target span one by one, until the solver returns an UNSAT status. The optimal span k∗ is then strictly the last value for which a SAT status was achieved. The complete procedure is formalized in Algorithm 2. 
+
+Algorithm 2 Incremental Optimal Solving for BMCP 
+
+Require: Graph G = ( V, E ), initial valid upper bound U B and lower bound LB 
+
+Ensure: Optimal span k∗ 
+
+> 1:
+
+Encode complete BMCP instance for span U B  
+
+> 2:
+
+k ← U B  
+
+> 3:
+
+while k > LB do  
+
+> 4:
+
+Add unit clauses forbidding color k (i.e., ¬xu,k , ¬xu,i,k , or ¬gu,i,k ) 
+
+> 5:
+
+result ← SATSolve()  
+
+> 6:
+
+if result = UNSAT then  
+
+> 7:
+
+return k ▷ The last valid span before the problem became infeasible  
+
+> 8:
+
+end if  
+
+> 9:
+
+k ← k − 1 ▷ Prepare to test the next smaller span  
+
+> 10:
+
+end while  
+
+> 11:
+
+return k ▷ If loop finishes, the optimal solution is exactly LB TITLE WILL BE SET BY THE PUBLISHER 13 
+
+## 4. Experimental Evaluation 
+
+4.1. Dataset 
+
+We evaluate the proposed Order-Based Encoding (OBE) using 53 established benchmark instances from prior BMCP literature, divided into two distinct suites. The first suite comprises 33 geometric instances, known as the GEOM set, introduced by Trick [21]. Vertices are distributed across a 10 , 000 × 10 , 000 grid, with edges connecting nodes within a predefined distance threshold; edge weights are inversely proportional to this distance. This set includes sparse (GEOMn) and dense (GEOMna, GEOMnb) configurations. Vertex weights are uniformly distributed in [1 , 10] for GEOMn and GEOMna, and [1 , 3] for GEOMnb. The second suite contains the remaining 20 instances, derived from the classic Philadelphia (21 vertices) and Helsinki (25 vertices) instances, originally formu-lated for the Minimum Span Channel Assignment Problem (MS-CAP) [4], plus a 55-vertex artificial extension. These instances directly model the physical topology and interference constraints of real-world cellular telecommunication networks. 4.2. Experimental Setup 
+
+All local experiments were conducted on an Intel Core i5-12500H with 16 GB RAM running Ubuntu 24.04 LTS. A 3600-second time limit was applied to these experiments, covering both the encoding and search phases. To isolate encoding effectiveness, all SAT-based methods utilized CaDiCaL (v3.0.0) [2]. Additionally, all local experiments used identical initial lower and upper bounds (see Section 3.1). The baseline FE and SBE formulations, alongside our main OBE model, were implemented in C++. Specifically, the FE and SBE method utilizes the sequential counter encoding [20] to enforce its cardinality constraints, whereas the OBE method handles these inherently. We conducted two primary sets of comparisons: First, we compared OBE against FE, SBE, and two SAT models (POP-S-B and POPH-S-B) by Faber et al. [10]. Because the latter models only apply to the BCP, BMCP instances were first converted into equivalent BCP instances. We executed POP-S-B and POPH-S-B using the authors’ original Python 3.14 source code 1.Second, OBE was compared against exact models, heuristics, and metaheuris-tics. We re-implemented the CP and IP models proposed by Dias et al. [6, 7], evaluating them with CPLEX v22.2 2 and Gurobi v13.0.2 3. For the LPR heuris-tic [15] and VNS metaheuristic [19], we cite the authors’ published computational results directly; consequently, these were the only comparisons not bound by our shared hardware or the 3600-second time limit. 
+
+> 1https://github.com/s6dafabe/popsatgcpbcp
+> 2https://www.ibm.com/products/ilog-cplex-optimization-studio
+> 3https://www.gurobi.com/
+
+14 TITLE WILL BE SET BY THE PUBLISHER 4.3. Metrics 
+
+To comprehensively evaluate and compare the performance of the various ap-proaches, we defined specific evaluation metrics tailored to the two primary sets of comparisons outlined in Section 4.2. Two main metrics were consistently applied across all comparisons: the best span value obtained ( k∗) and the total computa-tional time required to find or report the solution. To ensure statistical rigor, the evaluated methods were subsequently ranked using the Friedman test [11], with the analysis conducted exclusively based on the best span value. In addition to the core metrics, we evaluated the number of instances where the optimal span was successfully found and proven. This metric was applied to the entirety of the first set of comparisons (evaluating OBE against FE, SBE, POP-S-B, and POPH-S-B) as well as to the exact models evaluated in the second set. This metric was omitted for the LPR heuristic and VNS metaheuristic portions of the second comparison set, as approximate methods cannot definitively prove solution optimality. 4.4. Results and Analysis 
+
+In the following tables, underlined and boldface values indicate the best span (k∗) and proven optimal solutions, respectively. The rows #OPTIMAL and #BEST denote the total counts of optimal and best-known spans, while #AVG. Rank re-ports the average Friedman test ranking. The Gap column shows the difference between the OBE model’s span and the overall minimum k∗. Finally, TO, MO, and a hyphen (-) represent Time Out (3600s), Memory Out, and failure to find a feasible solution, respectively. 4.4.1. Comparison of OBE with Alternative SAT Encodings 
+
+The computational results evaluating the efficacy of the proposed Order-Based Encoding (OBE) against alternative SAT encodings, specifically SBE, FE, POP-S-B, and POPH-S-B [10], reveal a substantial performance paradigm shift in both solving capacity and solution quality. Tables 3 and 4 detail this comparison across the GEOM and MS-CAP benchmark datasets, respectively. Regarding the capacity to prove optimality, the proposed OBE formulation demonstrates a superiority over existing models. Most strikingly, on the GEOM dataset, OBE exactly doubles the number of proven optimal solutions compared to FE, solving 14 instances to optimality versus FE’s 7. Furthermore, OBE is the only SAT encoding capable of proving optimality on instances such as GEOM30, GEOM50, GEOM60, and GEOM70b, where all other models prematurely ex-hausted the computational time limit. While the performance gap narrows on the MS-CAP dataset, with OBE, SBE, and FE each proving optimality for 16 out of 20 configurations, OBE maintains its top-tier status while simultaneously ex-posing the limitations of the specialized POP-S-B and POPH-S-B models, which TITLE WILL BE SET BY THE PUBLISHER 15 
+
+Table 3. Performance comparison of the OBE model with other SAT approaches on GEOM instances. Instance OBE SBE FE POP-S-B [10] POPH-S-B [10] Gap 
+
+k∗ t(s) k∗ t(s) k∗ t(s) k∗ t(s) k∗ t(s) GEOM20 149 4.10 149 TO 149 731.76 149 TO 149 TO 0GEOM20a 169 2.13 169 TO 169 25.26 169 TO 169 TO 0GEOM20b 44 0.03 44 0.47 44 0.07 44 0.24 44 0.37 0GEOM30 160 213.36 164 TO 161 TO 160 TO 160 TO 0GEOM30a 209 1,240.10 218 TO 210 TO 214 TO 217 TO 0GEOM30b 77 0.40 77 146.48 77 27.09 77 3.03 77 4.37 0GEOM40 167 5.66 171 TO 167 41.87 167 TO 167 TO 0GEOM40a 213 13.15 267 TO 213 339.3 213 TO 213 TO 0GEOM40b 74 1.50 74 351.17 74 1400.41 74 296.77 74 385.48 0GEOM50 224 1,193.77 272 TO 225 TO 224 TO 224 TO 0GEOM50a 311 TO 404 TO 318 TO 326 TO 326 TO 0GEOM50b 83 22.37 86 TO 84 TO 83 TO 83 TO 0GEOM60 258 1,013.92 305 TO 259 TO 258 TO 258 TO 0GEOM60a 357 TO 469 TO 363 TO 368 TO 370 TO 0GEOM60b 113 858.64 114 TO 114 TO 114 TO 113 TO 0GEOM70 266 TO 301 TO 271 TO 276 TO 278 TO 0GEOM70a 472 TO 578 TO 477 TO 483 TO 486 TO 0GEOM70b 115 3,025.24 124 TO 119 TO 116 TO 116 TO 0GEOM80 383 TO 511 TO 388 TO 400 TO 404 TO 0GEOM80a 364 TO 479 TO 373 TO 386 TO 388 TO 0GEOM80b 138 TO 145 TO 141 TO 139 TO 138 TO 0GEOM90 328 TO 422 TO 334 TO 337 TO 337 TO 0GEOM90a 375 TO 468 TO 379 TO 385 TO 387 TO 0GEOM90b 142 TO 165 TO 150 TO 145 TO 147 TO 0GEOM100 411 TO 494 TO 420 TO 421 TO 424 TO 0GEOM100a 447 TO - MO 464 TO 472 TO 487 TO 0GEOM100b 152 TO 223 TO 156 TO 156 TO 156 TO 0GEOM110 379 TO - MO 386 TO 396 TO 398 TO 0GEOM110a 494 TO - MO 507 TO 524 TO 536 TO 0GEOM110b 202 TO 261 TO 205 TO 204 TO 203 TO 0GEOM120 399 TO - MO 414 TO 418 TO 425 TO 0GEOM120a 554 TO - MO 569 TO 603 TO 620 TO 0GEOM120b 189 TO 260 TO 194 TO 191 TO 191 TO 0#OPTIMAL 14 3 7 3 3 -#BEST 33 5 7 11 13 -#AVG. Rank 1.55 4.67 2.82 2.85 3.12 -managed to prove only 8 and 6 optimal solutions, respectively. This disparity indi-cates that OBE’s underlying logical structure significantly accelerates the solver’s ability to prune the search space and verify lower bounds. Beyond the verification of exact optima, the true practical significance of the OBE formulation lies in its robustness when processing difficult instances. In this regard, OBE is exceptionally reliable. Across the entirety of the 53 instances span-ning both datasets, the calculated gap between the span identified by OBE and the minimum overall k∗ is zero for 51 instances. Consequently, even when interrupted by a timeout, OBE consistently returns a solution that is highly competitive with, 16 TITLE WILL BE SET BY THE PUBLISHER 
+
+Table 4. Performance comparison of the OBE model with other SAT approaches on MS-CAP instances. Const. Matr. Demd. Vect. OBE SBE FE POP-S-B [10] POPH-S-B [10] Gap 
+
+k∗ t(s) k∗ t(s) k∗ t(s) k∗ t(s) k∗ t(s) 
+
+C121 D121 533 63.87 533 66.94 533 10.54 533 44.80 - TO 0
+
+C121 D221 309 21.82 309 14.29 309 5.85 309 4.74 309 3.74 0
+
+C221 D121 533 54.40 533 164.33 533 30.12 535 TO - TO 0
+
+C221 D221 309 36.66 309 145.31 309 124.28 312 TO 317 TO 0
+
+C321 D121 457 55.33 457 48.86 457 6.65 457 1,346.18 - TO 0
+
+C321 D221 265 15.86 265 10.42 265 6.54 265 45.66 265 1,224.81 0
+
+C421 D121 457 74.31 457 906.15 457 271.2 485 TO 489 TO 0
+
+C421 D221 265 39.68 265 447.98 265 104.58 279 TO 282 TO 0
+
+C521 D121 381 44.67 381 35.62 381 4.28 - TO - TO 0
+
+C521 D221 221 19.21 221 35.16 221 34.78 221 739.30 221 2,296.05 0
+
+C621 D121 427 TO 461 TO 428 TO 474 TO 469 TO 0
+
+C621 D221 253 TO 283 TO 254 TO 263 TO 265 TO 0
+
+C721 D121 305 30.70 305 24.46 305 7.46 307 TO 307 TO 0
+
+C721 D221 180 50.79 180 236.95 180 63.67 181 TO 183 TO 0
+
+C821 D121 432 TO 534 TO 428 TO 464 TO 461 TO 4
+
+C821 D221 256 TO 338 TO 255 TO 264 TO 263 TO 1
+
+C125 D325 73 1.89 73 1.05 73 0.12 73 0.12 73 0.12 0
+
+C125 D425 200 44.13 200 131.86 200 1.72 200 14.93 200 21.38 0
+
+C155 D555 309 58.49 309 36.83 309 31.52 - TO - TO 0
+
+C155 D655 71 2.26 71 5.50 71 2.78 71 54.74 71 182.59 0#OPTIMAL 16 16 16 8 6 -#BEST 18 16 18 8 6 -#AVG. Rank 2.25 2.85 2.25 3.63 4.03 -and frequently superior to, the best solutions generated by alternative SAT en-codings, with FE being the only model to find marginally tighter bounds on two specific MS-CAP configurations. The interpretation of the bounds further underscores OBE’s dominance. OBE successfully secured the best-known span in the vast majority of the evaluated configurations (33 out of 33 in GEOM, and 18 out of 20 in MS-CAP). In stark contrast, the search trajectories of alternative encodings often stagnated far from the optimal region. For example, on the GEOM dataset, the closest competitor in terms of solution quality (POPH-S-B) could only reach the best bound in approxi-mately 39% of the instances (13 out of 33), while FE reached it in only about 21% (7 out of 33). On challenging MS-CAP instances utilizing the C621 matrices, alter-native models struggled to find high-quality spans, whereas OBE reported tighter bounds. Conversely, FE demonstrated a slight advantage on instances utilizing the 
+
+C821 matrices, where it managed to surpass OBE. This empirical evidence signifies that OBE not only elevates the ceiling of SAT-based optimization by solving more instances to proven optimality, but also fundamentally raises the floor by consis-tently providing highly competitive, near-optimal bounds when exact verification remains computationally intractable. TITLE WILL BE SET BY THE PUBLISHER 17 
+
+> Table 5.  Performance comparison of the OBE model with exact models, heuristics, and metaheuristics on GEOM instances. Instance Our implementation (TO = 3600s)  Dias et al. [6, 7] (TO = 172,800s)  Lai et al. [15]  Mati´ c et al. [19] Gap OBE  CPLEX CP  CPLEX ILP  Gurobi  CP  IP  LPR  VNS
+> k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s) GEOM20  149  4.10  149  TO  149  137.4  149  2.59  149  TO  149  15.17  149  0.00  149  54.27  0GEOM20a  169  2.13  169  TO  169  4.72  169  1.49  169  TO  169  18.49  169  0.10  169  3,289  0GEOM20b  44  0.03  44  0.01  44  0.70  44  0.65  44  476.9  44  1.58  44  0.00  44  0.02  0GEOM30  160  213.4  160  TO  160  TO  160  1,656  160  TO  160  TO  160  0.00  160  5.70  0GEOM30a  209  1,240  210  TO  215  TO  210  TO  215  TO  211  TO  209  1.40  209  4,124  0GEOM30b  77  0.40  77  46.91  77  0.85  77  0.68  77  TO  77  41.87  77  0.00  77  1.29  0GEOM40  167  5.66  167  TO  167  18.47  167  15.03  168  TO  167  1,192.28  167  0.00  167  2,107  0GEOM40a  213  13.15  213  TO  - TO  213  153.1  225  TO  213  111,262  213  6.20  213  13,192  0GEOM40b  74  1.50  74  182.6  74  1,053  74  62.69  74  TO  74  17,028  74  0.10  74  1,822  0GEOM50  224  1,194  224  TO  226  TO  224  17.19  226  TO  224  52,451  224  0.10  224  1,671  0GEOM50a  311  TO  315  TO  - TO  337  TO  332  TO  361  TO  311  3,560  311  21,686  0GEOM50b  83  22.37  83  TO  111  TO  90  TO  85  TO  87  TO  83  16.80  83  14,261  0GEOM60  258  1,014  258  TO  - TO  258  49.48  259  TO  258  156,988  258  0.10  258  5,780  0GEOM60a  357  TO  358  TO  460  TO  368  TO  380  TO  448  TO  353  3,819  353  23,989  4GEOM60b  113  858.6  113  TO  - TO  122  TO  117  TO  125  TO  113  710.30  114  16,381  0GEOM70  266  TO  270  TO  374  TO  270  TO  284  TO  305  TO  266  1,569  267  12,384  0GEOM70a  472  TO  467  TO  577  TO  472  TO  483  TO  578  TO  465  9,790  463  20,686  9GEOM70b  115  3,025  117  TO  - TO  130  TO  123  TO  134  TO  115  764.6  116  16,783  0GEOM80  383  TO  382  TO  - TO  379  511.7  395  TO  511  TO  379  1,983  379  16,539  4GEOM80a  364  TO  366  TO  461  TO  397  TO  382  TO  479  TO  352  7,880  355  29,209  12 GEOM80b  138  TO  139  TO  179  TO  152  TO  145  TO  170  TO  138  51.80  138  13,704  0GEOM90  328  TO  331  TO  418  TO  328  2,105  342  TO  423  TO  328  2,168  329  18,761  0GEOM90a  375  TO  380  TO  - TO  407  TO  392  TO  452  TO  372  3,912  373  24,087  3GEOM90b  142  TO  144  TO  210  TO  173  TO  156  TO  212  TO  140  2,142  142  19,997  2GEOM100  411  TO  405  TO  - TO  404  TO  426  TO  493  TO  404  64.80  404  14,817  7GEOM100a  447  TO  444  TO  - TO  532  TO  465  TO  596  TO  426  13,060  429  35,663  21 GEOM100b  152  TO  155  TO  - TO  198  TO  169  TO  220  TO  151  3,179  156  24,776  1GEOM110  379  TO  378  TO  483  TO  450  TO  399  TO  500  TO  375  3,510  375  22,997  4GEOM110a  494  TO  492  TO  - TO  - TO  527  TO  610  TO  478  10,979  480  46,955  16 GEOM110b  202  TO  203  TO  - TO  218  TO  207  TO  250  TO  201  1,920  202  22,077  1GEOM120  399  TO  399  TO  - TO  402  TO  427  TO  505  TO  396  999.2  396  17,919  3GEOM120a  554  TO  547  TO  - TO  606  TO  585  TO  641  TO  531  24,880  539  59,717  23 GEOM120b  189  TO  192  TO  - TO  226  TO  202  TO  247  TO  187  1,837.4  190  22,836  2#OPTIMAL  14  3 6 12  1 9 - - -#BEST  18  12  7 13  6 10  32  20  -#AVG. Rank  3.30  3.80  7.05  4.95  5.48  6.20  2.32  2.89  -
+
+18 TITLE WILL BE SET BY THE PUBLISHER 
+
+> Table 6.  Performance comparison of the OBE model with exact models on MS-CAP instances. Const. Matr. Demd. Vect. Our implementation (TO = 3600s)  Dias et al. [6, 7] (TO = 172,800s) Gap OBE  CPLEX CP  CPLEX ILP  Gurobi  CP  IP
+> k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)  k∗ t(s)
+> C121  D121  533  63.87  533  1.16  533  1.07  533  0.54  533  4.2  533  0.5  0
+> C121  D221  309  21.82  309  0.75  309  0.81  309  0.35  309  1.34  309  1.22  0
+> C221  D121  533  54.40  533  0.50  533  4.55  533  51.07  533  10.53  533  308.0  0
+> C221  D221  309  36.66  309  0.37  309  9.02  309  3.97  309  625.9  309  165.5  0
+> C321  D121  457  55.33  457  1.11  457  0.89  457  0.54  457  3.96  457  0.39  0
+> C321  D221  265  15.86  265  0.74  265  1.28  265  0.47  265  3.54  265  1.52  0
+> C421  D121  457  74.31  457  0.52  457  59.83  457  5.68  457  41.24  457  202.0  0
+> C421  D221  265  39.68  265  2.66  265  68.34  265  7.85  266  TO  265  214.0  0
+> C521  D121  381  44.67  381  1.12  381  0.72  381  0.39  381  3.23  381  0.29  0
+> C521  D221  221  19.22  221  0.73  221  3.57  221  0.75  221  100.8  221  5.09  0
+> C621  D121  427  TO  427  TO  427  408.3  427  63.16  449  TO  427  6,827  0
+> C621  D221  253  TO  253  TO  253  1,609  253  130.52  266  TO  253  2,027  0
+> C721  D121  305  30.70  305  1.08  305  0.90  305  0.34  305  12.85  305  1.1  0
+> C721  D221  180  50.79  180  1.49  180  3.30  180  1.52  180  TO  180  24.54  0
+> C821  D121  432  TO  436  TO  427  373.9  427  18.54  435  TO  427  1,185  5
+> C821  D221  256  TO  257  TO  253  2,222  253  80.84  267  TO  253  1,116  3
+> C125  D325  73  1.89  73  0.08  73  0.00  73  0.04  73  TO  73  1.1  0
+> C125  D425  200  44.13  200  1.02  200  0.17  200  0.00  200  TO  200  2.18  0
+> C155  D555  309  58.49  309  2.10  309  4.57  309  3.16  309  11,079  309  460.1  0
+> C155  D655  71  2.26  71  0.17  71  2.91  71  2.64  71  6.33  71  28.56  0#OPTIMAL  16  16  20  20  12  20  -#BEST  18  18  20  20  15  20  -#AVG. Rank  3.48  3.63  3.28  3.28  4.08  3.28  -
+
+TITLE WILL BE SET BY THE PUBLISHER 19 The most significant interpretation of these results lies in the disproportionate computational expenditure required by competing methods to achieve compara-ble solution quality. To reach the bounds on challenging instances, LPR and VNS required an exorbitant allocation of time. For example, on the GEOM120a instance, LPR consumed over 24,800 seconds, and the VNS metaheuristic de-manded a staggering 59,717 seconds. Similarly, VNS required more than 21,600 seconds just to process GEOM50a. By stark contrast, all OBE evaluations were strictly truncated at 3,600 seconds. Despite this severe computational restriction, OBE consistently matched the best-known bounds established by these special-ized approximate methods on massive instances like GEOM70, GEOM80b, and GEOM90, resulting in a gap of zero. The ability of OBE to yield identical or superior span values in a mere fraction of the time redefines the practical utility of SAT encodings. It proves that the OBE model does not merely compete with heuristics on solution quality, but fundamentally outclasses them in computational efficiency, offering a balance between rigorous exactness and execution speed. 
+
+## 5. Conclusion 
+
+This paper presented the first SAT-based exact framework for the Bandwidth Multicoloring Problem (BMCP). The proposed approach is centered on an ef-ficient SAT encoding that compactly models both intra-vertex and inter-vertex color distance constraints. Combined with tight color domain reduction and in-cremental SAT solving, the resulting formulation effectively reduces the search space while preserving exactness. Experimental results on the standard GEOM and MS-CAP benchmark suites demonstrate that the proposed framework signif-icantly advances the state of the art in exact BMCP solving. Within a one-hour time limit, it proves optimality for several benchmark instances that remained un-solved by previous exact approaches and verifies the optimality of previously re-ported best-known solutions. In particular, on the challenging GEOM benchmark, our comprehensive evaluation increases the total number of instances with proven optimality from 9 to 16, compared with the previous state-of-the-art CP/IP-based exact approach. Specifically, the proposed OBE framework independently solves 14 instances to optimality, while our modern Gurobi re-implementation of the IP model uniquely resolves 2 additional instances. Remarkably, these advancements were achieved requiring a computational time limit of only one hour rather than 48 hours. These results demonstrate a substantial improvement in the practical scalability and effectiveness of exact BMCP solving. Although state-of-the-art metaheuristics remain superior in terms of solution quality on the most difficult instances, the proposed framework consistently strengthens the performance of existing exact approaches while preserving the ability to certify global optimality. These results demonstrate that SAT-based reasoning provides an effective and scalable foundation for exact BMCP optimization and significantly extends the frontier of provably optimal solutions. Several directions for future research re-main promising. First, the proposed SAT encoding could be further strengthened 20 TITLE WILL BE SET BY THE PUBLISHER through additional symmetry-breaking techniques and tighter constraint formu-lations. Second, integrating SAT with optimization paradigms such as MaxSAT or hybrid SAT-based approaches may further improve scalability on large and difficult instances. Finally, extending the proposed framework to other graph col-oring variants involving distance or multicoloring constraints represents another interesting direction for future investigation. 
+
+## Funding 
+
+This work has been supported by VNU University of Engineering and Technol-ogy under project number CN26.01. 
+
+## Data Availability Statement 
+
+The source code for all encoding implementations, benchmark instances, and experimental datasets are publicly available in a GitHub repository: https:// github.com/homulily85/bmcp [8] 
+
+## Appendix A. Correctness of Lower Bound for the BMCP 
+
+In this appendix, we establish the formal correctness of the lower bound for the BMCP. 
+
+Theorem 1. Let C ⊆ V be a clique in G. Let WC = P 
+
+> v∈C
+
+w(v) be the total color requirement of the clique, and let dCmin = min u,v ∈C d({u, v }) be the tightest distance constraint among all vertices in C. The minimum span k of a valid coloring must satisfy: 
+
+k ≥ 1 + ( WC − 1) · dCmin (27) 
+
+Proof. Let SC = S 
+
+> v∈C
+
+c(v) represent the union of all colors assigned to the vertices within the clique C.First, we prove that SC contains exactly WC distinct elements. Suppose m, n ∈
+
+SC . If x and y are assigned to the same vertex u ∈ C, by Intra-vertex color distance constraint , |m − n| ≥ d({u, u }) ≥ dCmin . If x is assigned to u ∈ C and y
+
+is assigned to v ∈ C (u̸ = v), by Condition 3, |x − y| ≥ d({u, v }) ≥ dCmin . Because 
+
+d(e) ∈ Z+, we know dCmin ≥ 1. Therefore, no two colors in SC can be equal, implying |SC | = P 
+
+> v∈C
+
+|c(v)| = WC .Let us arrange the WC distinct colors of SC in strictly increasing order: SC =
+
+{s1, s 2, . . . , s WC } such that s1 < s 2 < · · · < s WC .As established above, the absolute difference between any two colors in SC ,regardless of whether they belong to the same vertex or adjacent vertices, is strictly bounded below by dCmin . Therefore, for consecutive colors: 
+
+si+1 − si ≥ dCmin ∀i ∈ { 1, . . . , W C − 1} (28) TITLE WILL BE SET BY THE PUBLISHER 21 By recursively summing these inequalities from s1 to sWC , we find: 
+
+sWC ≥ s1 + ( WC − 1) · dCmin (29) Because colors must be positive integers, s1 ≥ 1. Consequently: 
+
+sWC ≥ 1 + ( WC − 1) · dCmin (30) Since the global span k is the maximum over all assigned colors in the graph, it must be greater than or equal to the maximum color in the clique SC . Thus, 
+
+k ≥ sWC , which completes the proof. □
+
+## Appendix B. Correctness of Order-Based Encoding 
+
+This appendix establishes the correctness of the proposed order-based encod-ings. 
+
+Theorem 2. Given a BMCP instance G = ( V, E ) and a target span k, there exists a valid coloring c : V → P (Z+) with span k if and only if the proposed order-based formulation is satisfiable. Proof. (Soundness) Assume a satisfying assignment exists. Construct the coloring 
+
+c(u)i = m ⇐⇒ xu,i,m = 1. 
+
+• Color cardinality constraint: Linkage and monotonicity constraints force the sequence gu,i,m to transition from 1 to 0 exactly once. Thus, exactly one xu,i,m = 1 per index i, assigning each vertex u exactly w(u) colors. 
+
+• Intra-vertex color distance constraint: For consecutive colors m = c(u)i
+
+and n = c(u)i+1 , xu,i,m = 1 =⇒ gu,i,m = 1. The constraint gu,i,m →
+
+gu,i +1 ,m +d({u,u }) forces gu,i +1 ,m +d({u,u }) = 1 = ⇒ n ≥ m + d({u, u }). 
+
+• Inter-vertex color distance constraint: For adjacent u, v , let m = c(u)i
+
+and n = c(v)j . Since xu,i,m = 1, the constraint xu,i,m → (gv,j,m +d({u,v }) ∨¬gv,j,m −d({u,v })+1 ) forces either n ≥ m + d({u, v }) or n ≤ m − d({u, v }). Both cases ensure |m − n| ≥ d({u, v }). 
+
+• Span: The target span is respected as variables are bounded by U B u,i ≤ k.Thus, c is a valid BMCP coloring. 
+
+(Completeness) Assume a valid coloring c with span k. Assign truth values as 
+
+xu,i,m = 1 ⇐⇒ c(u)i = m and gu,i,m = 1 ⇐⇒ c(u)i ≥ m.
+
+• Domain & Basic Constraints: A valid coloring inherently satisfies the the-oretical bounds LB u,i ≤ c(u)i ≤ U B u,i . This bounds compliance trivially satisfies the lower bound, linkage, and monotonicity clauses. 
+
+• Distance Constraints: Since c is valid, it inherently satisfies c(u)i+1 ≥
+
+c(u)i+d({u, u }) and |c(u)i−c(v)j | ≥ d({u, v }). These inequalities perfectly mirror and satisfy the intra-vertex ( gu,i,a → gu,i +1 ,a +d({u,u })) and inter-vertex ( xu,i,a → gv,j,a +d({u,v }) ∨ ¬ gv,j,a −d({u,v })+1 ) SAT clauses. Since all constraints naturally hold under this mapping, the order-based formula is satisfiable. □22 TITLE WILL BE SET BY THE PUBLISHER 
+
+## References 
+
+[1] Karen Aardal, Stan P. M. van Hoesel, Arie M. C. A. Koster, Carlo Mannino, and Anto-nio Sassano. Models and solution techniques for frequency assignment problems. Annals of Operations Research , 153(1):79–129, 2007. [2] Armin Biere, Mathias Fleury, and Florian Pollitt. Cadical vivinst, isasat, gimsatul, kissat, and tabularasat entering the sat competition 2023. Proc. of SAT Competition , pages 14–15, 2023. [3] Coen Bron and Joep Kerbosch. Algorithm 457: finding all cliques of an undirected graph. 
+
+Communications of the ACM , 16(9):575–577, 1973. [4] Goutam Chakraborty. An efficient heuristic algorithm for channel assignment problem in cellular radio networks. IEEE transactions on vehicular technology , 50(6):1528–1539, 2001. [5] Munmun Dey and Amitava Bagchi. Satisfiability methods for colouring graphs. ACER 2013 ,3:135–147, 2013. [6] Bruno Dias, Rosiane de Freitas, Nelson Maculan, and Philippe Michelon. Constraint and integer programming models for bandwidth coloring and multicoloring in graphs. In Pro-ceedings of the XLVIII Brazilian Symposium on Operations Research , pages 4116–4127, 2016. [7] Bruno Dias, Rosiane de Freitas, Nelson Maculan, and Philippe Michelon. Integer and con-straint programming approaches for providing optimality to the bandwidth multicoloring problem. RAIRO-Operations Research , 55:S1949–S1967, 2021. [8] Trung Kim Nguyen Duc and Van To Khanh. Source code and datasets for ”proving opti-mality for the bandwidth multicoloring problem via sat”. https://github.com/homulily85/ bmcp , 2025. GitHub repository. [9] Andreas Eisenbl¨ atter, Martin Gr¨ otschel, and Arie M. C. A. Koster. Frequency planning and ramifications of coloring. Discussiones Mathematicae Graph Theory , 22(1):51–88, 2002. [10] Daniel Faber, Adalat Jabrayilov, and Petra Mutzel. SAT encoding of partial ordering models for graph coloring problems. In 27th International Conference on Theory and Applications of Satisfiability Testing (SAT 2024) , volume 305 of LIPIcs , pages 12:1–12:23. Schloss Dagstuhl – Leibniz-Zentrum f¨ ur Informatik, 2024. [11] Milton Friedman. The use of ranks to avoid the assumption of normality implicit in the analysis of variance. Journal of the american statistical association , 32(200):675–701, 1937. [12] Marijn J. H. Heule, Anthony Karahalios, and Willem-Jan van Hoeve. From cliques to color-ings and back again. In 28th International Conference on Principles and Practice of Con-straint Programming (CP 2022) , volume 235 of LIPIcs , pages 26:1–26:10. Schloss Dagstuhl - Leibniz-Zentrum f¨ ur Informatik, 2022. [13] Yan Jin and Jin-Kao Hao. Effective learning-based hybrid search for bandwidth coloring. 
+
+IEEE Transactions on Systems, Man, and Cybernetics: Systems , 45(4):624–635, 2014. [14] Yan Jin and Jin-Kao Hao. Effective learning-based hybrid search for bandwidth coloring. 
+
+IEEE Transactions on Systems, Man, and Cybernetics: Systems , 45(4):624–635, 2015. [15] Xiangjing Lai, Jin-Kao Hao, Zhipeng L¨ u, and Fred Glover. A learning-based path relink-ing algorithm for the bandwidth coloring problem. Engineering Applications of Artificial Intelligence , 52:81–91, 2016. [16] Xiangjing Lai and Zhipeng L¨ u. Multistart iterated tabu search for bandwidth coloring prob-lem. Computers & Operations Research , 40(5):1401–1409, 2013. [17] Enrico Malaguti and Paolo Toth. A survey on vertex coloring problems. International trans-actions in operational research , 17(1):1–34, 2010. [18] Joao Marques-Silva, Inˆ es Lynce, and Sharad Malik. Conflict-driven clause learning sat solvers. Handbook of satisfiability , pages 131–153, 2009. [19] Dragan Mati´ c, Jozef Kratica, and Vladimir Filipovic. Variable neighborhood search for solv-ing bandwidth coloring problem. Computer Science and Information Systems , 14(2):309– 327, 2017. TITLE WILL BE SET BY THE PUBLISHER 23 
+
+[20] Carsten Sinz. Towards an optimal cnf encoding of boolean cardinality constraints. In Inter-national conference on principles and practice of constraint programming , pages 827–831. Springer, 2005. [21] Michael Trick. DIMACS graph coloring instances. https://mat.tepper.cmu.edu/COLOR04/ ,2002.
