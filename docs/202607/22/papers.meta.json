@@ -1,0 +1,24 @@
+{
+  "label": "2026-07-22",
+  "date": "2026-07-22",
+  "generated_at": "2026-07-22T20:35:53",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202607/22/2607.16126v1-a-unified-theory-of-sparsification",
+      "section": "deep",
+      "title_en": "A Unified Theory of Sparsification",
+      "authors": "Sanjeev Khanna, Aaron Putterman, Madhu Sudan",
+      "date": "2026-07-17",
+      "pdf": "https://arxiv.org/pdf/2607.16126v1",
+      "score": "8.0",
+      "evidence": "面向CSP和CNF公式约简的统一稀疏化理论",
+      "tldr": "本文提出实值编码稀疏化的统一理论，将组合稀疏化（如CSP）与谱图稀疏化纳入同一框架。核心创新是定义连续值非冗余度(CVNRD)作为关键参数，它刻画了编码中最大近似块对角障碍。主要结果证明，任意实值编码都存在大小近乎线性于CVNRD的（1±ε）稀疏化器，且CVNRD是任意无偏随机稀疏化方案的下界障碍。该统一理论揭示了组合与连续稀疏化间的深层联系，为设计更高效的稀疏化算法提供了结构指导。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "We study the sparsifiability of \\emph{real-valued codes}, a unifying abstraction that generalizes both combinatorial and continuous notions of sparsification, including spectral sparsification. In our setting, a code $C \\subseteq \\mathbb{R}_{\\geq 0}^m$ is simply a collection of nonnegative real-valued vectors, and for a parameter $ε> 0$, a \\emph{$(1 \\pm ε)$-sparsifier} of $C$ is a subset $T \\subseteq [m]$, together with weights $w \\in \\mathbb{R}_{\\geq 0}^T$, such that, for every $c \\in C$, $\\sum_{i \\in T} w_i c_i \\in (1 \\pm ε)\\sum_{i=1}^m c_i$. When $C \\subseteq \\{0,1\\}^m$, this specializes to code sparsification, and hence captures CSP sparsification, as studied by Khanna--Putterman--Sudan (SODA 2024, STOC 2025) and Brakensiek--Guruswami (STOC 2025). Similarly, for a graph $G=(V,E)$, if one defines $C=\\{c^{(x)}:x\\in\\mathbb R^V\\}\\subseteq\\mathbb R_{\\geq 0}^E$ by $c^{(x)}_{(u,v)}=(x_u-x_v)^2$, then sparsifying $C$ is exactly spectral graph sparsification, as studied by Spielman--Teng (SICOMP 2011).   Although the techniques driving combinatorial and continuous sparsification have traditionally been largely disjoint, our main result is a single structural theorem governing the sparsifiability of arbitrary real-valued codes $C\\subseteq\\mathbb{R}_{\\geq 0}^m$. The central parameter is \\emph{continuous-valued non-redundancy} ($\\mathrm{CVNRD}$), a real-valued analogue of non-redundancy that captures the largest approximately block-diagonal obstruction contained in $C$. Our theorem gives sparsifiers of size nearly-linear in $\\mathrm{CVNRD}$, and shows that $\\mathrm{CVNRD}$ is also a lower-bound obstruction for the broad class of coordinate-wise unbiased randomized sparsification schemes.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
