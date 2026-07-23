@@ -1,0 +1,24 @@
+{
+  "label": "2026-07-23",
+  "date": "2026-07-23",
+  "generated_at": "2026-07-23T21:20:37",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202607/23/2607.17290v1-lookahead-branching-for-neural-network-verification",
+      "section": "quick",
+      "title_en": "Lookahead Branching for Neural Network Verification",
+      "authors": "Liam Davis, Duo Zhou, Huan Zhang, Guy Katz, Clark Barrett, Haoze Wu",
+      "date": "2026-07-19",
+      "pdf": "https://arxiv.org/pdf/2607.17290v1",
+      "score": "7.0",
+      "evidence": "回看分支策略可迁移至SAT求解中的分支启发式",
+      "tldr": "神经网络验证面临分支定界效率瓶颈，本文提出前向分支策略，通过前瞻模拟和引理生成提升分支决策质量。该策略可集成到任意分支定界验证器，在Marabou和α-β-CROWN上实现一致加速，最多多解决57%的实例。工作为验证分支启发式提供了新视角和通用框架。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "In this work, we investigate the effect of lookahead branching strategies in neural network verification. We present a general recipe to integrate lookahead into any branch-and-bound verifier and demonstrate how one of the current state-of-the-art branching heuristics, FSB, can be viewed as a special instantiation of the lookahead branching strategy. We also describe how, in addition to improving the quality of branching decisions, lookahead can generate additional lemmas that accelerate verification. We instantiate the method in two representative branch-and-bound-based verifiers (Marabou and $α$-$β$-CROWN), and demonstrate that lookahead leads to consistent speedups in verification time and up to $57\\%$ more solved instances. Code is available at https://github.com/ai-ar-research/lookahead-branching.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

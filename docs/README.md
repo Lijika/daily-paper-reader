@@ -18,26 +18,24 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-22
-- 运行时间：2026-07-22 20:35:47 UTC
+- 最新运行日期：2026-07-23
+- 运行时间：2026-07-23 21:20:32 UTC
 - 运行状态：成功
 - 本次总论文数：1
-- 精读区：1
-- 速读区：0
+- 精读区：0
+- 速读区：1
 
 ### 今日简报（AI）
-今日精读高分论文《A Unified Theory of Sparsification》（8.0/10），聚焦稀疏化理论统一框架。
-核心方向是通过通用稀疏化原理显著提升大模型推理效率，值得深入掌握。
-下一步可关注如何将该理论应用于实际模型压缩与部署。
-- 详情：[/202607/22/README](/202607/22/README)
+今日速读了一篇关于神经网络验证的论文。值得关注的是《Lookahead Branching for Neural Network Verification》提出的前瞻性分支策略。建议读者重点了解该方法如何提升验证效率。
+- 详情：[/202607/23/README](/202607/23/README)
 
 ### 精读区论文标签
-1. [A Unified Theory of Sparsification](/202607/22/2607.16126v1-a-unified-theory-of-sparsification)  
-   标签：评分：8.0/10、query:sat-bva-cnf
-   evidence：面向CSP和CNF公式约简的统一稀疏化理论
+- 本次无精读推荐。
 
 ### 速读区论文标签
-- 本次无速读推荐。
+1. [Lookahead Branching for Neural Network Verification](/202607/23/2607.17290v1-lookahead-branching-for-neural-network-verification)  
+   标签：评分：7.0/10、query:sat-bva-cnf
+   evidence：回看分支策略可迁移至SAT求解中的分支启发式
 
 
 <div class="dpr-home-promo-card dpr-home-panel">
