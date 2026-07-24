@@ -1,0 +1,274 @@
+Title: Identifying Good Rules for Efficient SAT Encodings of Single-Constant Multiplication Using Machine Learning
+
+URL Source: https://arxiv.org/pdf/2607.21188v1
+
+Published Time: Fri, 24 Jul 2026 00:59:58 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+> W. Faber, L. Giordano, R. Rocha, V. Santos Costa (Eds.): 42nd International Conference on Logic Programming (ICLP 2026) EPTCS 450, 2026, pp. 81–95, doi:10.4204/EPTCS.450.6 © C. Jiang and N. Zhou This work is licensed under the Creative Commons Attribution License.
+
+# Identifying Good Rules for Efficient SAT Encodings of Single-Constant Multiplication Using Machine Learning 
+
+Chufeng Jiang 
+
+> The City University of New York New York, USA
+> cjiang@gradcenter.cuny.edu
+
+Neng-Fa Zhou 
+
+> The City University of New York New York, USA
+> nzhou@brooklyn.cuny.edu
+
+The Single Constant Multiplication problem is a fundamental NP-hard optimization task in hard-ware design, which seeks to decompose a fixed constant using only additions, subtractions, and bit-shifts. Although dynamic programming methods can produce near-optimal SAT encodings for SCM, their encoding cost remains high for large constants. We propose a neuro-symbolic framework that accelerates SCM SAT encoding by identifying good rules for guiding operator selection during decomposition. Our approach employs a graph neural network model to predict promising operator types from constant decompositions, and exploits the resulting confidence scores to prune no-good choices in the symbolic search. Experimental results on unseen 17–32 bit constants demonstrate one to two orders of magnitude reductions in encoding time, over 97% reduction in memory usage, and an order-of-magnitude decrease in branching, while preserving near-optimal encoding quality in terms of additions. These results show that learning-guided symbolic strategies can significantly improve the scalability and efficiency of SCM encoding. Our code and data are publicly available at: https://github.com/Chufeng-Jiang/SCM_MLDP 
+
+# 1 Introduction 
+
+Constant multiplication by fixed coefficients, known as Single Constant Multiplication (SCM), is a fun-damental operation in digital systems, especially in digital signal processing, image processing, commu-nication circuits, and hardware accelerators for linear transforms [19, 21]. When the coefficient is known at compile time, implementing the multiplication using a general-purpose multiplier is often unnecessar-ily expensive in terms of area, delay, and energy [9]. A standard optimization is therefore to realize the multiplication using only additions, subtractions, and bit-shifts, where shifts are typically much cheaper than arithmetic operators because they can often be implemented by wiring [8]. The quality of such an implementation depends critically on how the constant is decomposed: different decompositions of the same constant can lead to substantially different numbers of adders, and thus to different circuit sizes and optimization costs. SCM is important not only for arithmetic circuit design, but also for SAT-based optimization. An SCM constraint, of the form c · x = y where c is an integer constant, and x and y are integer-domain variables, can be encoded into SAT via additions, subtractions, and shifts [6, 3]. Since subtractions can be expressed as additions, and bit-shifts are free in SAT, the encoding quality is primarily determined by minimizing the number of additions (the min-k objective) or the number of full/half adders (the min-a 
+
+objective). In SAT encodings, each addition or subtraction is translated into boolean variables and clauses that model bit-level sum and carry propagation [17]. As a result, the chosen decomposition directly deter-mines the quality of the resulting boolean encoding. However, finding high-quality SCM decompositions is computationally challenging. The problem is NP-hard, and the number of possible decompositions 82 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+grows rapidly with the magnitude of the constant, leading to an exponential increase in search time and making exhaustive approaches impractical for large instances [2]. Traditional approaches, such as searching directed acyclic graphs of intermediate values [20] or applying heuristic representations like canonical signed digit forms [10], typically yield sub-optimal solutions. More recent methods mitigate this cost by relying on precomputed recipes of optimal SCM encodings for selected constants and bit-widths [3]. However, it is infeasible for encoders to carry the full range of constants encountered in practice. Our previous work addressed this challenge by introducing a dynamic programming (DP) approach implemented with tabling in Picat [22]. The method recursively decomposes a target constant c using one of three operator types: SPLUS ((cl ≪ s) + cr), SMINUS ((cl ≪ s) − cr), or MINUSS (cl − (cr ≪ s)), where 
+
+≪ s denotes a left shift by s bits [3]. By reusing intermediate subproblems, DP substantially improves over naive exhaustive search. However, it still needs to explore all possible candidate decompositions, leading to high time and memory costs as the constant size increases. In this paper, we propose to accelerate SCM decomposition by integrating machine learning (ML) to guide the symbolic search process. Motivated by recent work in neuro-symbolic and explainable ML for logic-based systems [18, 16], we learn good rules that guide operator selection during decomposition. Concretely, we represent SCM decompositions as graphs and train a Graph Neural Network (GNN) model to predict promising operator choices from decompositions. The learned predictions are used as strategies to prune unpromising branches in the DP search. Overall, our approach combines data-driven learning with symbolic reasoning: the GNN model pro-vides high-level learned guidance, while Picat’s logic programming framework ensures precise and ex-haustive exploration of the constrained search space. This neuro-symbolic integration leverages the strengths of both paradigms, enabling more efficient and scalable solutions to the SCM problem. The paper is structured as follows: Section 2 introduces the background, Section 3 details the method-ologies of the ML model, Section 4 presents the experiments and evaluation, Section 5 reviews related work, and Section 6 provides the conclusion. 
+
+# 2 Background 
+
+We consider the SCM of the form 
+
+c · x = y, (1) where c is a fixed integer constant and x, y are integer-domain variables. As any even constant can be written as c = c′ · 2s for some odd c′ and s ≥ 1. Without loss of generality, we restrict our attention to 
+
+odd constants c > 1. In SAT encodings, multiplication by an odd constant c is recursively decomposed using the following operator types: SPLUS: c = ( cl ≪ s) + cr,
+
+SMINUS: c = ( cl ≪ s) − cr,
+
+MINUSS: c = cl − (cr ≪ s),
+
+where cl , cr are positive odd integers, s ≥ 1, and ≪ denotes a left-shift [3]. Each application of an operator corresponds to one arithmetic operation combined with a shift. The shift-and-add algorithm only uses SPLUS, requiring n − 1 additions, where n is the number of 1 bits in binary representation. C. Jiang and N. Zhou 83 
+
+Example 1. Consider the constant multiplication 1759 · x. The binary representation is 11011011111, which contains nine 1’s, and so the shift-and-add algorithm requires eight additions, thus the cost is 8. Figure 1 shows a more efficient decomposition. 1759 · x = ( 27 · x) ≪ 6 + 31 · x, 1759 = 27 · 26 + 31 ,
+
+27 · x = 31 · x − x ≪ 2, 27 = 31 − 1 · 22,
+
+31 · x = x ≪ 5 − x. 31 = 1 · 25 − 1.
+
+Figure 1: Example decomposition of 1759. The first equation decomposes 1759 into two smaller constants, 27 and 31, with a left shift of 6, while the remaining equations recursively decompose 27 and 31 until reaching the base constant 1. This de-composition uses three arithmetic operations, one for each non-base constant. Since shifts are cost-free in the min-k objective, only additions and subtractions are counted, yielding a total cost of 3. 
+
+Dynamic Programming Method. The DP method constructs an SCM encoding by decomposing the binary representation of c into bit-stream chunks using one of the operator types when c is not equal to 1, and it recursively applies the method to each chunk or its complement. When multiple decompositions are possible, the DP method explores all of them [22]. The corresponding Picat implementation is presented below.    
+
+> import ordset. table (+, +, mmin, -) scm(1, XBits, Cost, Plan) => Cost = 0, Plan = []. scm(C, XBits, Cost, Plan) => (split_pp(C, C1, C2, S), % SPLUS: C = (C1 << S) + C2 OP = $splus(C, C1, C2, S) ;split_pn(C, C1, C2, S), % SMINUS: C = (C1 << S) - C2 OP = $sminus(C, C1, C2, S) ;split_np(C, C1, C2, S), % MINUSS: C = C1 - (C2 << S) OP = $minuss(C, C1, C2, S) )comp_op_cost(XBits, OP, ThisCost), scm(C1, XBits, _Cost1, Plan1), scm(C2, XBits, _Cost2, Plan2), Plan12 = union(Plan1, Plan2), Plan = Plan12.insert((OP, ThisCost)), Cost = sum([T : (_, T) in Plan]).
+
+As a plan is represented as an ordered set, the program imports the ordset module in the beginning. The predicate scm(C, XBits, Cost, Plan) returns a plan ( Plan ) with cost ( Cost ) for the multipli-cation C*X , where XBits is the bit-width of X. It minimizes the number of additions when XBits is 0. The first rule handles the base case when C = 1 . The second rule encodes the DP recurrences using a 84 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+disjunction of three branches. After decomposing the binary representation of C into C1 and C2 , the rule recursively obtains a plan Plan1 for C1 and a plan Plan2 for C2 . It then forms a plan for C by taking the union of Plan1 and Plan2 , adding the newly derived operation together with its associated cost. The total cost is the sum of the costs of all operations in the resulting plan. Note that the table mode mmin is used, which instructs Picat to table all minimum-cost solutions. If the min table mode were used instead, the final solution might not be as optimal. The disjunction introduces nondeterministic search: if one branch fails, the next branch is auto-matically tried. The branching factor is 3, and the search cost remains high for large constants. The 
+
+comp_op_cost(XBits, OP, Cost) predicate binds Cost to the cost of operation OP . For the min-k 
+
+objective, the cost is always 1. For the min-a objective, the cost is the number of adders needed for the operation, which is dependent on XBits . In this paper, we focus on the min-k objective only. 
+
+# 3 Identifying Good Rules Using Machine Learning 
+
+This section presents our approach to learning operator-selection heuristics for the SCM decomposition problem. We model each decomposition step as a directed graph and train a GNN to predict promising operator types. As illustrated in Figure 2, each SCM decomposition is converted into a PyG data object (directed graph), where nodes correspond to decomposition steps and edges encode the dependency relations be-tween subproblems (described in Section 3.1.1). The GNN is trained to predict the operator type at each decomposition step, with ground-truth labels derived from the decomposition plans generated by the DP method. During inference, as presented in Figure 3, the trained GNN outputs a probability distribution over the three operator types for each encountered constant. 
+
+Figure 2: Training workflow of the proposed framework. DP-generated decomposition plans are con-verted into graph-structured data, enabling a GNN to learn operator-selection rules. 
+
+Figure 3: Inference pipeline and integration of learned rules. The trained GNN produces operator prob-ability distributions, which are translated into high-confidence rules and incorporated into the DP solver to guide symbolic search. C. Jiang and N. Zhou 85 
+
+3.1 GNN Framework 
+
+This section first describes how SCM decompositions are represented as graphs, followed by the feature design and the message-passing mechanism used for operator prediction. 
+
+3.1.1 Graph-Based Representation for SCM Decomposition 
+
+To capture the evolving nature of the search process, we model each decomposition step as a directed graph G = ( V , E ). This representation treats the SCM problem not merely as a numerical task, but as a graph-structured reasoning problem, where: • Nodes ( V ) are a set of values, including the target and intermediate constants. • Edges ( E ) encode the operational dependencies between the node and its left and right operands. 
+
+Figure 4: Graph-based representation of the decomposition process for constant 1759. Each intermediate graph, corresponding to a prefix of the decomposition, forms a training instance. As illustrated in Figure 4, each graph instance corresponds to a decomposition step with a prefix of length k (also referred to as a k-step history decomposition). This formulation reflects the fact that different constants admit decompositions with varying numbers of steps and intermediate subproblems. Consequently, a single SCM solution induces a sequence of graph instances, each representing the de-composition step at a particular recursion depth. At each step, the current constant to be decomposed is designated as a prediction node (shown as the red node), while previously resolved constants form the historical context (purple nodes). The decompo-sition terminates when the constant 1 is reached (green node). We explicitly model intermediate steps by associating each node requiring a decomposition decision with a corresponding partial graph, enabling the model to predict operator types incrementally rather than only at the final solution level. As a result, the GNN model is trained to perform relational reasoning by leveraging accumulated structural context while guiding the next decomposition decision. By abstracting multipliers as nodes and decomposition relationships as edges, we combine graph-level structure with local vertex attributes. This alignment with symbolic search allows the model to 86 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+function as a learned heuristic: extending the graph via a predicted operator corresponds to expanding a promising search branch (the red-node branch), while low-confidence predictions provide a principled basis for pruning unpromising paths in the DP table. Table 1: Selected Node and Edge Features 
+
+Features Description 
+
+Node Features (subset) 
+
+Numerical Features 
+
+Normalized Log-space Positions 
+
+Calculated as log 2(c + 1)
+
+32 , approximating the relative shift depth of constant. 
+
+Ones Density Calculated as #ones in binary representation bit length o f c , evaluating the fraction of 1s in c.
+
+Relational Features 
+
+Left/Right-operand Distance The normalized index difference between a node and its left operand in the graph ordering, reflecting their relative positions in the decomposition sequence. 
+
+Left/Right-to-parent Ratio This feature measures how large the left operand is relative to the parent constant. 
+
+Common 1-bit Ratio This feature counts how many bit positions are set to 1 in both the current constant cl or cr and the target c, indicating their similarity at the bit level. 
+
+Structural Features 
+
+Absolute DFS Level The normalized index of a node in the depth-first traversal order, indicating its relative position (early vs. late) in the decomposition. The traversal corresponds to a DFS-style tree search over the DP method, in which cl and cr are fully explored before backtracking to their parent c.
+
+Binary Indicator Features 
+
+Operator Type One-hot over four operator classes, indicating operator types. 
+
+Binary Representation A fixed-length binary vector encoding the bit pattern of the constant c.
+
+Edge Features (subset) 
+
+Relational Features 
+
+Is Left Operand True if the edge corresponds to the left operand cl of the current constant c.
+
+Normalized Relative Signed Distance 
+
+The normalized signed index difference between two connected nodes, showing whether the edge points backward or forward in the decomposition order, normalized by the graph size. 
+
+Structural Features 
+
+Normalized Absolute Index Distance 
+
+The absolute difference between the indices of the root and child nodes in the graph ordering, normal-ized by the graph size. 
+
+Next-step Edge Indicating currently-available nodes should be the future prediction node. 
+
+Numerical Features 
+
+Normalized Shift Amount Calculated as sSmax 
+
+, indicating the relative magnitude of the left shift applied on the edge. 
+
+3.1.2 Feature Engineering 
+
+We design a comprehensive set of node and edge features to characterize each decomposition step in an instance. Each node is represented by a 199-dimensional feature vector, while each edge is encoded using a 12-dimensional vector. A subset of node and edge features is summarized in Table 1. These features can be broadly grouped into four categories: (i) numerical features capturing arithmetic properties of constants (e.g., magnitude and bit patterns), (ii) relational features describing dependencies between nodes and operands, (iii) structural features encoding the position of nodes within the decomposition C. Jiang and N. Zhou 87 process, and (iv) binary indicator features representing operator types and functional roles. 
+
+Example 2: Node Feature Representation. As illustrated in Figure 5, each node (e.g., Node(31)) is represented by a 199-dimensional feature vector. The first feature encodes the log-normalized mag-nitude of the constant, computed as log 2(31 + 1)/32 = 0.156. The remaining features are constructed using various transformations to capture both numerical and structural properties of the node. Among these, the operator type is encoded using a one-hot vector (e.g., [0, 1, 0, 0] for the MINUSS operator). In addition, the 32-bit binary representation of the constant is included at the beginning of the final row of the feature segment, stored in reversed bit order. All features are concatenated to form the complete node representation. 
+
+Figure 5: Node feature representation for the constant 31. 
+
+Example 3: Edge Feature Representation. Figure 6 illustrates how relational dependencies in a graph state with prefix length k = 2 are encoded using edge feature vectors. The first two dimensions serve as functional indicators, specifying whether the edge corresponds to a left operand ( cl ) or a right operand (cr). These are followed by numerical attributes that quantify arithmetic relationships, such as shift-related information. The second-to-last dimension encodes the structural status of the Next-step edge, marking frontier nodes that are candidates for further expansion. 
+
+Figure 6: Edge feature representation for a graph with prefix k = 2. 
+
+3.1.3 Graph Neural Network Model 
+
+We employ a lightweight GNN that operates directly on the decomposition graphs introduced in the pre-vious section. The GNN serves as a learned control model that scores candidate operator types based on the current decomposition step. We adopt a message-passing architecture because SCM decomposition graphs are irregular, dynamically growing, and vary substantially in size and topology across instances. Message-passing GNNs naturally accommodate these properties and satisfy key invariance requirements, namely permutation invariance and equivariance, ensuring that predictions are insensitive to the ordering or naming of intermediate constants [11]. 88 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+Given a constant as input, the model transforms it into a graph PyG data object for training and produces a probability distribution over the operator types. The architecture consists of four main com-ponents: 1. Input Projection. Each node feature vector xi ∈ R199 is projected into a shared hidden space of dimension d using a linear layer. This allows heterogeneous symbolic features to be embedded into a common latent representation. 2. Message-Passing Layers. A stack of N graph attention layers performs iterative message pass-ing over the decomposition graph. Edge attributes are incorporated directly into the attention mechanism, enabling the model to condition information flow on operand roles, shift values, and structural edge types. 3. Normalization and Residual Connections. Each message-passing layer is followed by graph nor-malization and a residual connection. Graph normalization stabilizes training across graphs of different sizes, while residual connections preserve low-level arithmetic information and improve gradient flow in deeper networks. 4. Global Pooling and Prediction Head. Node representations are aggregated via global mean pool-ing to obtain a graph-level embedding. This embedding is passed to a multi-layer perceptron that produces logits over operator types. The model predicts only the operator type for the current decomposition step. This design keeps the learning task focused while preserving the soundness and correctness guarantees of the underlying symbolic encoding. We adopt a GNN instead of an MLP or CNN because SCM decomposition is inherently relational and history-dependent. Graph representations naturally capture dependencies among intermediate constants and subexpressions, while message passing enables past subproblems to inform future decisions, aligning with DP search. Global mean pooling suffices as predictions depend on the overall state and should be invariant to graph size and node ordering. 
+
+3.1.4 Message Passing Semantics 
+
+Figure 7 illustrates the message-passing process on a partial SCM decomposition graph with prefix length 
+
+k = 2, using the constant c = 1759 as a running example. In this graph, each node corresponds to an intermediate multiplier appearing in the decomposition (e.g., 1759, 31, 27, 1), and directed edges encode operand dependencies induced by previously selected SCM operators. In the figure, the rows of colored squares attached to nodes and edges visualize their associated feature vectors: different colors represent different node or edge features. These features constitute the raw information exchanged during message passing. At each GNN layer, messages are propagated along directed operand edges. For example, if the constant 1759 was decomposed, then information flows from node 1759 toward nodes 31 and 27. The edge features encode semantic information, allowing the model to distinguish, for instance, a shifted-left operand from a subtractive one. Formally, at message-passing layer k, the hidden representation of a node v is updated as: 
+
+h(k) 
+
+> v
+
+= γ(k)
+
+h(k−1) 
+
+> v
+
+, M 
+
+> u∈N(v)
+
+φ (k)
+
+h(k−1) 
+
+> v
+
+, h(k−1) 
+
+> u
+
+, evu 
+
+ , (2) C. Jiang and N. Zhou 89 
+
+Figure 7: Messages propagate from the target node to its operand nodes where h(k) 
+
+> v
+
+denotes the latent embedding of node v, N (v) is the set of predecessor nodes connected to v, and evu represents the edge features between nodes u and v.In the SCM setting, this update has a clear semantic interpretation. Messages are propagated from a parent node to its child nodes along directed operand edges. For example, information flows from the current target constant 1759 toward its subcomponents 27 and 31. The node features of 1759 encode global arithmetic properties such as bit-length, density of set bits, and proximity to powers of two, while the associated edge features specify how this constant is decomposed, including operand roles and shift-related attributes. Through message passing, each child node (e.g., 27 or 31) receives contextual information describing 
+
+why and how it was generated from 1759. This enables the model to contextualize the local properties of a sub-constant within the broader decomposition objective, such as whether it is expected to be realized via shifts, additions, or subtractions in subsequent steps. 
+
+3.2 Good Rules Generation and Confidence Quantification 
+
+After training the GNN model, we deploy it for inference to predict the optimal operator(s) for decom-posing a given constant, as presented in Figure 3. Since ML models are inherently probabilistic rather than deterministic, we use the prediction probabilities as confidence scores for each candidate operator. These confidence scores form the basis for extracting actionable pruning rules. We define the following policy to translate predicted probabilities into symbolic good rules :1. High-Confidence Rule : If the top-ranked operator’s predicted confidence exceeds that of the second-ranked operator by more than a threshold δ (set to 0.2), only the top operator is selected as a good rule for that decomposition step. good_rule (c, s, o, conf ) ⇔ conf (o) − max   
+
+> o′̸=o
+
+conf (o′) > δ (3) where c is the constant, s is the graph state, o is the operator, and conf (o) is its predicted confidence. 2. Ambiguity-Aware Multiple Rules : If the confidence gap between the top two operators is less than or equal to δ , the decision is considered ambiguous and both operators are selected as good rules 90 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+to avoid prematurely pruning potentially optimal branches. good_rule (c, s, o1, conf 1) ∧ good_rule (c, s, o2, conf 2) ⇔|conf 1 − conf 2| ≤ δ ∧ o1, o2 ∈ top_two_predictions (4) This policy produces a set of recommended operators for a given constant. Conversely, operators whose confidence consistently falls below a minimum threshold ε are compiled as no-good rules and excluded from search to prune unpromising branches. 
+
+3.3 Integrating Rules into the SAT Encoding 
+
+For each constant c, the GNN model outputs a probability distribution over the SCM operator types. These probabilities are translated into symbolic predicates, producing an interface that contains facts of the form op (c, o), indicating that operator o is recommended for decomposing constant c. The identified 
+
+good rules are then integrated into the DP-mink encoding by constraining the predicate op/2 . Concretely, instead of non-deterministically exploring all three operators at every decomposition step, the solver consults the identified good rules and restricts the operator domain accordingly. The resulting rule-guided DP encoding is shown below.     
+
+> import ordset. import Good_Rules. table (+, mmin, -) dpscm(1, Size, Plan) => Size = 0, Plan = []. dpscm(C, Size, Plan) => op(C, OP), % Good Rules as an additional constraint scm(C, Size, Plan, OP) scm(C, Size, Plan, OP) => if OP = SPLUS then split_pp(C, C1, C2, S), % SPLUS: C = (C1 << S) + C2 OP = $splus(C, C1, C2, S) elif OP = SMINUSS then split_pn(C, C1, C2, S), % SMINUS: C = (C1 << S) - C2 OP = $sminus(C, C1, C2, S) else split_np(C, C1, C2, S), % MINUSS: C = C1 - (C2 << S) OP = $minuss(C, C1, C2, S), ......
+
+# 4 Experiments and Results Evaluation 
+
+In this section, we evaluate the effectiveness of the proposed ML-DP framework. Our evaluation focuses on four aspects of the SCM encoding process: encoding quality, encoding time, memory consumption, and search scalability. We compare four methods: C. Jiang and N. Zhou 91 • Baseline: a direct shift-and-add encoding without decomposition optimization; • Min-k: the min-k encoding strategy that minimizes the number of additions as used in [3] using MiniZinc; • DP: the DP method implemented in Picat [22]; • ML-DP: the proposed ML-guided DP approach with learned good rules. 
+
+4.1 Dataset 
+
+The training set is constructed from two sources of constants. First, we include all odd constants in the range 1–65 ,535, which were used in previous SCM studies [3, 22]. Second, to expose the model to larger numerical structures, we randomly sample 6,000 odd constants for each bit-length from 17 to 32. In total, the training set contains 128,767 constants, with training labels generated by the Picat DP solver. For each constant and its recipe, a sequence of graphs as shown in Figure 4 are generated as training instances. To evaluate generalization, the test set consists of previously unseen constants with bit-lengths from 17 to 32. For each bit-length in this range, we randomly generate 1,000 odd constants, resulting in a total of 16,000 test instances. Although the proposed method can naturally be applied to larger constants, in this experiment, we restrict our evaluation to the 17–32 bit range. The framework can be readily applied to larger bit-widths (e.g., 64 or 128 bits) by generating additional training data, without modifying the underlying symbolic solver. 
+
+4.2 Encoding Time and Encoding Quality 
+
+Encoding time is the dimension in which our method demonstrates the most substantial advantage. En-coding quality is measured by the number of additions (#adds), which directly reflects the size and complexity of the resulting arithmetic circuit. The Min-k method times out in our experiments, failing to solve all test instances within the 24-hour time limit. Therefore, we report results only for the remaining three methods. As shown in Table 2, the Baseline method achieves the fastest runtime but produces encodings with the largest number of additions. In contrast, the runtime of DP grows rapidly with increasing bit-length, reaching over 4.6 seconds at 32 bits. Our ML-DP solver consistently operates within milliseconds, even for the largest constants tested. At 32 bits, ML-DP achieves a speedup of approximately 87 × over DP. More generally, across the range of 17–32 bits, we observe speedups ranging from about 10 × to over 100 ×. This improvement stems from the learned good rules, which significantly reduce backtracking and operator branching during DP recursion. Importantly, this acceleration is achieved without sacrificing symbolic correctness of the encodings produced, while maintaining near-optimal quality in practice. In terms of encoding quality, Table 2 shows that the DP method consistently produces the smallest number of additions across all bit-lengths. Our ML-DP method yields slightly larger encodings but still substantially improves over the Baseline. For example, for 32 bits, the Baseline requires on average 18 additions, while DP achieves 7.26 additions and ML-DP produces 8.85 additions. Thus, compared to the Baseline, ML-DP reduces the number of additions by approximately 9 operations. At the same time, it introduces only about 1.6 additional operations relative to DP, corresponding to roughly one to two extra additions in the resulting recipe. 92 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+Overall, these results demonstrate a favorable trade-off: ML-DP achieves near-optimal encoding quality while providing orders-of-magnitude improvements in encoding time. Table 2: Comparison of average encoding time (in seconds) and encoding quality (# additions)                                                                                                         
+
+> Length Baseline DP ML-DP time #adds time #adds time #adds 17 0.001 10 0.025 4.452 0.000 5.226 18 0.001 90.037 4.663 0.000 5.525 19 0.001 80.056 4.857 0.001 5.779 20 0.001 12 0.085 5.059 0.001 6.059 21 0.001 14 0.123 5.267 0.001 6.317 22 0.001 15 0.177 5.451 0.002 6.518 23 0.001 12 0.258 5.613 0.002 6.723 24 0.001 15 0.376 5.786 0.003 7.006 25 0.001 12 0.521 6.007 0.004 7.257 26 0.001 16 0.717 6.180 0.006 7.500 27 0.001 12 0.982 6.375 0.008 7.714 28 0.001 19 1.388 6.581 0.011 7.973 29 0.001 15 1.895 6.738 0.016 8.228 30 0.001 17 2.673 6.918 0.023 8.399 31 0.001 18 3.600 7.099 0.033 8.610 32 0.001 18 4.634 7.260 0.053 8.846
+
+Table 3: Comparison of average memory con-sumption (in MB) and branching times                                                                      
+
+> Length DP ML-DP memory branch memory branch 17 1.634 4863 0.066 135 18 2.295 6317 0.087 155 19 3.089 7988 0.118 185 20 4.335 10104 0.146 215 21 5.742 12360 0.198 252 22 7.583 15055 0.258 288 23 9.866 18421 0.322 318 24 12.847 22144 0.399 357 25 17.070 26386 1.536 409 26 21.581 31228 0.687 465 27 27.926 36710 0.858 519 28 35.688 43059 1.070 561 29 45.772 50258 1.411 627 30 55.727 57884 1.676 682 31 69.843 66487 2.131 745 32 87.553 76483 2.688 825
+
+4.3 Memory Consumption and Branching Behavior 
+
+We evaluate memory consumption and branching behavior for methods that rely on dynamic program-ming with tabling. The Baseline and Min-k methods do not employ DP-based search or maintain inter-mediate DP tables; therefore, memory and branching metrics are not applicable to these methods. Memory usage reflects the size of the DP tables maintained during search. As shown in Table 3, DP exhibits steep memory growth as the bit-length increases, exceeding 87 MB on average at 32 bits. In contrast, our ML-DP approach maintains consistently low memory usage, consuming only 2.7 MB on average at 32 bits. This corresponds to a reduction of approximately 97% in memory consumption. This reduction is a direct consequence of the smaller DP tables induced by rule-guided pruning, which prevents the solver from exploring unproductive branches. Such efficiency is particularly important for deployment in resource-constrained environments, including edge-device pipelines and hardware-oriented synthesis settings. To further understand the scalability of the proposed method, we examine the number of branchings explored during search. As shown in Table 3, DP method exhibits rapid growth in branching, exceeding 76,000 branches at 32 bits. In contrast, our ML-DP approach maintains fewer than 1,000 branches even at 32 bits, representing an order-of-magnitude reduction in search complexity. These results demonstrate that the learned good rules effectively reshape the symbolic search tree, transforming an otherwise combinatorial explosion into a more controlled and predictable exploration process. Importantly, although the guidance is learned from data, the resulting pruning is not purely heuristic in the conventional sense. Instead, it is explicitly compiled into symbolic constraints, making the pruning process explainable and preserving the soundness of the underlying symbolic search. C. Jiang and N. Zhou 93 
+
+4.4 GNN Hyperparameter Analysis 
+
+To assess the sensitivity of the proposed GNN model to architectural choices, we conduct a hyperparam-eter ablation study over three key factors: hidden dimension d ∈ { 128 , 256 , 512 }, number of message-passing layers N ∈ { 3, 4, 5}, and number of attention heads H ∈ { 4, 8}. All variants are trained under identical conditions (batch size 256, initial learning rate 2 × 10 −4, cosine warm-restart schedule, up to 800 epochs with early stopping based on validation loss with patience 20) and evaluated on the same validation set. Among all configurations, the model with d = 256, N = 4, and H = 4 achieves the best performance (98.52%). This configuration is therefore adopted in all subsequent experiments. Table 4: Hyperparameter ablation study of the GNN.                                                             
+
+> Hidden Dim Layers #Heads Val Acc (%) 128 3498.47 256 3498.42 512 3498.48 128 4498.46
+> 256 4498.52
+> 512 4498.46 128 5498.43 256 5498.50 512 5498.50 Hidden Dim Layers #Heads Val Acc (%) 128 3898.50 256 3898.47 512 3898.45 128 4898.45 256 4898.51 512 4898.48 128 5898.43 256 5898.51 512 5898.48
+
+As shown in Table 4, the model achieves consistently high accuracy (above 98%) across a wide range of configurations, demonstrating strong robustness to hyperparameter variations. This indicates that the effectiveness of the method is primarily driven by the underlying design rather than careful tuning. 
+
+# 5 Related Work 
+
+The SCM problem has been extensively studied in hardware design and shown to be NP-hard for min-imizing additions and subtractions [5, 4]. Its generalization, Multiple Constant Multiplication (MCM), has been formulated as a combinatorial optimization problem, notably by Gustafsson as a Steiner hy-pertree on directed hypergraphs, solved optimally via ILP with practical constraints such as adder depth and fan-out [9]. To further reduce adder cost in multiplierless realizations, recursive common subexpres-sion elimination methods were proposed [15]. Subsequent ILP-based formulations improved hardware awareness by supporting multi-input adders, low-power optimization, and error-aware cost models, but still suffer from scalability limitations [9, 12, 7]. As a result, SAT-based approaches emerged as a pow-erful alternative, enabling optimal or provably minimal SCM/MCM synthesis even for large bit-width constants and general linear transforms [13]. Bierlee et al. further advanced SAT-based SCM synthesis by introducing SAT-specific encodings that minimize full/half adders and by providing a reusable library of optimal SCM recipes to accelerate solving [3]. In parallel, approximate methods have been proposed to trade optimality for scalability in practical digital signal processing and filter design [1, 14]. 
+
+# 6 Conclusion 
+
+In this paper, we presented a neuro-symbolic framework for accelerating SAT encodings of the SCM problem. By integrating a GNN with a DP solver, the approach learns good rules that guide opera-94 Identifying Good Rules for SAT Encoding of SCM Using Machine Learning 
+
+tor selection during decomposition, reducing the search space while maintaining near-optimal encoding quality. Experimental results show substantial improvements in encoding time, memory usage, and branching, demonstrating that learning-guided pruning can significantly improve the scalability of sym-bolic search. More broadly, this work highlights the potential of combining ML with declarative and logic-based frameworks. Rather than replacing symbolic reasoning, the learned model complements it by improving search efficiency. This paradigm may extend to other combinatorial optimization and SAT-encoding problems. Future work includes extending the approach to the min-a objective, exploring richer rule represen-tations, and applying the framework to other symbolic decomposition tasks. 
+
+# References 
+
+[1] Levent Aksoy, Paulo Flores & Jos’e Monteiro (2014): Exact and Approximate Algorithms for the Filter Design Optimization Problem . IEEE Transactions on Signal Processing 63(1), pp. 142–154, doi:10.1109/TSP.2014.2366713. [2] Robert Bernstein (1986): Multiplication by Integer Constants . Software: Practice and Experience 16(7), pp. 641–652, doi:10.1002/spe.4380160704. [3] Hidde Bierlee, J. J. Dekker, Vitaly Lagoon, Peter J. Stuckey & Guido Tack (2024): Single Constant Multipli-cation for SAT . In: Proceedings of the International Conference on Integration of Constraint Programming, Artificial Intelligence, and Operations Research , Lecture Notes in Computer Science, Springer, pp. 84–98, doi:10.1007/978-3-031-60597-0_6. [4] P. Cappello & K. Steiglitz (1984): Some complexity issues in digital signal processing . IEEE Transactions on Acoustics, Speech, and Signal Processing 32(5), pp. 1037–1041, doi:10.1109/TASSP.1984.1164433. [5] Florent de Dinechin & Martin Kumm (2023): Multiplication by Constants . In: Application-Specific Arith-metic , Springer, pp. 365–426, doi:10.1007/978-3-031-42808-1_12. [6] Andrew G. Dempster & Malcolm D. Macleod (1994): Constant Integer Multiplication Using Minimum Adders . IEE Proceedings: Circuits, Devices and Systems 141(5), pp. 407–413, doi:10.1049/ip-cds:19941191. [7] R. Garcia & Anastasia Volkova (2023): Toward the Multiple Constant Multiplication at Minimal Hard-ware Cost . IEEE Transactions on Circuits and Systems I: Regular Papers 70(5), pp. 1976–1988, doi:10.1109/TCSI.2023.3241859. [8] David Goldberg (1990): Computer Arithmetic . In David A. Patterson & John L. Hennessy, editors: Computer Architecture: A Quantitative Approach , Elsevier. Appendix A. [9] Oscar Gustafsson (2008): Towards Optimal Multiple Constant Multiplication: A Hypergraph Approach .In: Proceedings of the Asilomar Conference on Signals, Systems and Computers , pp. 1805–1809, doi:10.1109/ACSSC.2008.5074738. [10] R. M. Hewlitt & E. S. Swartzlantler (2000): Canonical Signed Digit Representation for FIR Dig-ital Filters . In: Proceedings of the IEEE Workshop on Signal Processing Systems , pp. 416–426, doi:10.1109/SIPS.2000.886740. [11] Nicolas Keriven & Gabriel Peyré (2019): Universal Invariant and Equivariant Graph Neural Networks . In H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alché-Buc, E. Fox & R. Garnett, editors: Advances in Neural Information Processing Systems , 32, Curran Associates, Inc. Available at https://proceedings. neurips.cc/paper_files/paper/2019/file/ea9268cb43f55d1d12380fb6ea5bf572-Paper.pdf .[12] Martin Kumm (2018): Optimal Constant Multiplication Using Integer Linear Programming . IEEE Transac-tions on Circuits and Systems II: Express Briefs 65(5), pp. 567–571, doi:10.1109/TCSII.2018.2823780. C. Jiang and N. Zhou 95 
+
+[13] Vitaly Lagoon & Amit Metodi (2020): Deriving Optimal Multiplication-by-Constant Circuits with a SAT-Based Constraint Engine . In: Proceedings of ModRef , pp. 1–6. [14] Vincent Lef‘evre (2001): Multiplication by an Integer Constant . Ph.D. thesis, INRIA. Available at https: //inria.hal.science/inria-00072430v1 .[15] Malcolm D. Macleod & Andrew G. Dempster (2004): Common Subexpression Elimination Algorithm for Low-Cost Multiplierless Implementation of Matrix Multipliers . Electronics Letters 40(11), pp. 651–652, doi:10.1049/el:20040436. [16] L. McGinness & Peter Baumgartner (2024): CON-FOLD: Explainable Machine Learning with Confidence .
+
+Theory and Practice of Logic Programming 24(4), pp. 663–681, doi:10.1017/S1471068424000346. [17] Amit Metodi, Michael Codish & Peter J. Stuckey (2013): Boolean Equi-Propagation for Concise and Effi-cient SAT Encodings of Combinatorial Problems . Journal of Artificial Intelligence Research 46, pp. 303–341, doi:10.1613/jair.3809. [18] P. Padalkar, H. Wang & Gopal Gupta (2024): Using Logic Programming and Kernel-Grouping for Improving Interpretability of Convolutional Neural Networks . In: Proceedings of the International Symposium on Practical Aspects of Declarative Languages , Lecture Notes in Computer Science, Springer, pp. 134–150, doi:10.1007/978-3-031-52038-9_9. [19] Miodrag Potkonjak, Mani B. Srivastava & Anantha P. Chandrakasan (1996): Multiple Constant Multipli-cations: Efficient and Versatile Framework and Algorithms for Exploring Common Subexpression Elimina-tion . IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 15(2), pp. 151–165, doi:10.1109/43.486662. [20] Peter Tummeltshammer, James C. Hoe & Markus P"uschel (2007): Time-Multiplexed Multiple-Constant Multiplication . IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 26(9), pp. 1551–1563, doi:10.1109/TCAD.2007.893549. [21] Yevgen Voronenko & Markus P"uschel (2007): Multiplierless Multiple Constant Multiplication . ACM Trans-actions on Algorithms 3(2), doi:10.1145/1240233.1240234. [22] Neng-Fa Zhou, Chufeng Jiang, Hidde Bierlee & Peter J. Stuckey (2026): Dynamic Programming and Tabled Logic Programming for Encoding Single-Constant Multiplication into SAT (Declarative Pearls) . In: Pro-ceedings of the International Symposium on Functional and Logic Programming , Lecture Notes in Computer Science, Springer, pp. 293–305, doi:10.1007/978-981-92-0184-6_14.

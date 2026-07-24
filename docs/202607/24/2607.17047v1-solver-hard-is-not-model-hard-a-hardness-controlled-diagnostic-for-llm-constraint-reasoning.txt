@@ -1,0 +1,341 @@
+Title: Solver-Hard Is Not Model-Hard: A Hardness-Controlled Diagnostic for LLM Constraint Reasoning
+
+URL Source: https://arxiv.org/pdf/2607.17047v1
+
+Published Time: Tue, 21 Jul 2026 00:54:42 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Solver-Hard Is Not Model-Hard: A Hardness-Controlled Diagnostic for LLM Constraint Reasoning 
+
+Lucky Verma 
+
+Independent Researcher 
+
+luckyv1@umbc.edu 
+
+Abstract 
+
+LLM constraint reasoners are often evaluated near the random-SAT phase transition, con-founding density and solver hardness. We test instance-level transfer while near-matching clause density. At aligned size bins, with near-matched density and matched maximum clause width, we compare proof-hard expander-Tseitin and proof-easy ladder-Tseitin formulas, pigeonhole anchors, and density-mismatched controls. Theory separates their resolution hard-ness; a solver-specific Glucose mean-conflict proxy differs by up to 51 ×, and five other solvers preserve the direction. Across three included models (243 instances each; a fourth is excluded for abstention), the near-matched-density accuracy gaps range from −32 to +20 
+
+points, with a pooled gap of +1 .7 points ( p =0.74 ) and a wrong-signed correctness–conflict association ( r = +0 .15 ). A proof-preserving relabeling lowers accuracy in all five clusters for one model (mean −93 points) but not an-other, exposing model-specific surface sensi-tivity. In a pre-registered extension, provider-reported completion-token spend does not con-sistently increase with the proxy after account-ing for formula length and censoring. At 16k, the reasoning model spends more on proof-easy matched formulas and exhausts its bud-get on the solver-easiest UNSAT family; the 32k C1 gap is absent. These scoped dissoci-ations concern verdict accuracy and observed token spend, not certificate solving, exact proof length, or allocation efficiency. 
+
+1 Introduction 
+
+A growing literature reports that neural reasoners fail on Boolean satisfiability (SAT) and related constraint-satisfaction problems as instances ap-proach the satisfiability phase transition, and a sec-ond literature attributes such limits to model ar-chitecture, contrasting autoregressive transformers with recurrent, diffusion, or energy-based alterna-tives. Evaluations used to support either account often leave the same density–hardness confound unresolved. On uniformly random formulas the clause-to-variable density α = m/n and the algorithmic hardness of the instance co-vary near the phase transition. A model that uses density as a surface cue can therefore reproduce a qualitative “fails near the threshold” curve without tracking instance-level search cost. Testing whether a structural hardness axis orders model failures requires a construction that separates it from density. We decouple them with controlled dissociations. The headline Tseitin pair shares maximum clause width and near-matched density while graph struc-ture changes the known resolution-hardness order-ing: expander formulas require exponential reso-lution (Urquhart, 1987; Ben-Sasson and Wigder-son, 2001), whereas ladder formulas (treewidth two) have polynomial proofs. Pigeonhole formu-las provide a second exponential-resolution anchor (Haken, 1985), and random-UNSAT formulas pro-vide a high-density, low-CDCL-cost control; these auxiliary families are not density-matched pairs. The empirical hardness measure is the per-instance conflict count of a conflict-driven clause-learning (CDCL) solver, used as a solver-specific proxy for refutation cost rather than as the shortest proof length itself. This design directly adjudicates two instance-level accounts: clause density and proof-complexity transfer (Jiang and Cai, 2026). Architecture-level accounts (Zhang, 2025) motivate the broader question but require a cross-paradigm panel; our all-autoregressive evaluation does not test them. Holding the model fixed while near-matching density, matching maximum width, and intervening on graph structure supplies a controlled test of whether the resulting proof-hardness order-ing predicts model outcomes. Graph topology nec-essarily co-varies with formal proof hardness, so this is not a claim that proof length is the only 1arXiv:2607.17047v1 [cs.LG] 19 Jul 2026 12 18 24 36 48 60                              
+
+> expander variables (matched size bin)
+> 3
+> 10
+> 30
+> median conflict ratio
+> expander / ladder
+> registered 10 × gate
+> 47.4x
+> A. Median conflict ratio (Glucose)
+> 020 40 60 80 100
+> verdict accuracy (%)
+> Llama 3.3
+> Llama 4
+> Mistral 3
+> Pooled
+> +20.0
+> −31.7
+> +16.7
+> +1.7
+> gap (pp)
+> B. C1 verdict accuracy
+> expander ladder 16k original 32k harder
+> 0
+> 8192
+> 16384
+> 24576
+> 32768
+> completion tokens (median and IQR)
+> 28/28 at cap
+> 16k cap
+> 32k cap
+> C. C1 token spend
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0
+> log 10 (1 + CDCL conflicts) (solver-cost proxy)
+> 0
+> 8192
+> 16384
+> 24576
+> 32768
+> completion tokens
+> D. Tokens versus solver cost (raw)
+> expander ( n= 24 ,ρ= −0.16 )
+> ladder ( n= 24 ,ρ= +0.15 )
+> random-UNSAT ( n= 12 ,ρ= −0.02 )
+> random-SAT ( n= 2 )
+
+Figure 1: Four views of the solver–model dissociation. A: at matched maximum width and near-matched density, the pre-specified median Glucose-conflict criterion between proof-hard expander and proof-easy ladder Tseitin clears 10 × in the two largest bins (Section 4). B: the ladder-minus-expander accuracy gap changes sign across models and is +1 .7 points pooled ( p = .74 ); orange circles denote expander and blue squares ladder. C: among non-abstained, uncensored rows, a reasoning model spends more tokens on ladder at 16k (raw p = .0115 ; post-hoc two-budget Bonferroni p = .0231 ), while the 32k contrast is null (raw p = .170 ). The X separately marks 28/28 non-abstained random-UNSAT rows censored at the 16,384-token cap. D: the raw 32k scatter reports per-family n
+
+and Spearman ρ; registered length-controlled results are in Section 7. Bars in B are Wilson 95% intervals and bars in C are IQRs. C’s bars and D exclude abstained and budget-censored rows (C: expander/ladder n = 53 /48 at 16k, 
+
+n = 24 /24 at 32k). 
+
+changed property. The claim-bearing question is whether LLM accuracy on these formula families tracks proof complexity, tracks the clause-density proxy, or tracks neither; the evaluation object is per-instance SAT/UNSAT accuracy at near-matched density and maximum width, scored against the classical-solver oracle, not a downstream task or benchmark leaderboard position. 
+
+Contributions. 
+
+1. A construct-validity diagnostic that separates proof complexity from clause density at matched maximum width and near-matched density. On the solver, its hard/easy separation grows to 51 × (Sections 2–4). 2. A pre-specified three-model refutation: the predicted accuracy ordering changes sign across models, while a proof-preserving rela-beling exposes a model-specific surface-form confound (Sections 5–6). 3. A pre-registered extension showing that ob-served completion-token spend also fails to track the solver-cost proxy across aligned size bins and near-matched density on the tested models and budgets (Section 7). 
+
+2 The dissociation, stated precisely 
+
+We distinguish two properties of an UNSAT in-stance that are confounded on random formulas. 
+
+Clause density (the surface proxy). For a CNF formula with n variables and m clauses, α = m/n .2L3.3 L4  
+
+> −100
+> −75
+> −50
+> −25
+> 0
+> 25
+> permuted  − canonical (pp)
+> 5/5 drops
+> 1/5 rises
+> A. Paired effect by base formula
+> L3.3 L4
+> 0
+> 25
+> 50
+> 75
+> 100
+> false-UNSAT rate (%)
+> B. SAT lookalike control
+
+Figure 2: Surface dependence is strong for one model and absent as a common law. A: each blue point is the permuted-minus-canonical accuracy effect for one of five base PHP formulas; orange diamonds are means and bars span the five observed cluster effects. B: false-UNSAT rate on 48 satisfiable PHP-lookalikes (orange circles) versus 48 size-and-density-matched random-SAT controls (blue squares), with Wilson 95% intervals. L3.3 is Llama 3.3 and L4 is Llama 4. 
+
+On random k-SAT, α controls the satisfiability phase transition (Ding et al., 2015; Mézard and Montanari, 2009) and is readable from the formula without search. It is the variable a pattern-matcher can exploit. 
+
+Proof complexity (the structural variable). The length of the shortest resolution refutation of an UNSAT formula. By the size–width relation (Ben-Sasson and Wigderson, 2001), proof size is ex-ponential in the resolution width, which is in turn controlled by combinatorial expansion of the under-lying structure. We use the CDCL conflict count of Glucose as a solver-specific empirical proxy: CDCL learns clauses through resolution, but its realized conflict count is neither the shortest res-olution proof nor an implementation-independent complexity measure. On random formulas these two co-vary, which is why they cannot be told apart there. We engineer families in which they are decoupled, and form three contrasts. 
+
+C1 (near-matched-density expansion contrast, the headline). Tseitin formulas encode a parity constraint per graph vertex; the formula is UN-SAT when the total charge is odd. On a 3-regular expander, refutation requires exponential resolu-tion (Urquhart, 1987; Ben-Sasson and Wigderson, 2001); on a ladder graph (treewidth two) it is poly-nomial. Both encodings share maximum clause width three, label, and, by construction, nearly iden-tical clause density; the ladder’s four degree-two corner vertices contribute eight width-two clauses per instance (20% of its clauses in the evaluated size range), while every expander clause has width three. The designed intervention is graph expan-sion, which changes known resolution hardness; topology, including this clause-length difference, is therefore a co-varying structural feature visible in the formula. Prediction: if this proof-hardness ordering transfers, accuracy on ladder exceeds ac-curacy on expander at matched size. Writing Cs(F ) for solver s’s conflict count, we keep the descriptive mean ratio and the pre-specified median statistic distinct: 
+
+Rmean  
+
+> s
+
+(b) = E[Cs(F ) | F ∈ expander (b)] 
+
+E[Cs(F ) | F ∈ ladder (b)] ,Rmed  
+
+> s
+
+(b) = med F ∈expander (b) Cs(F )med F ∈ladder (b) Cs(F ) .
+
+The 10 × apparatus criterion applies to Rmed ;the mean ratio is descriptive. For model M ,the pre-specified transfer estimand is ∆M =
+
+AM (ladder ) − AM (expander ). The hypothesis re-quires Rmean  
+
+> s
+
+(b), R med  
+
+> s
+
+(b) > 1 on the solver and 
+
+∆M > 0 on the model; Figure 1 makes their op-posing empirical behavior visible. 
+
+C2 (density is anti-predictive). The Tseitin ex-pander family has density α ≈ 2.67 ; a random-UNSAT family at α ≈ 6 has low Glucose conflict counts at the sizes we test. Density ranks the high-
+
+α random family as harder, whereas the solver-cost proxy ranks the low-α expander as harder. Predic-tion: accuracy on the expander is lower than on the denser random-UNSAT family. 
+
+C3 (pigeonhole anchor). Pigeonhole PHP n+1 
+
+> n
+
+requires exponential resolution (Haken, 1985) and 3provides a second proof-hard family with no graph structure, contrasted against random-UNSAT at matched variable count. 
+
+Falsifiable prediction and gate. If failure is gov-erned by proof complexity rather than clause den-sity, then (i) the C1 accuracy gap is positive and large at near-matched density, (ii) the C2 gap shows density inverting, and (iii) per-instance correctness is negatively associated with log 10 (conf) pooled across families. The author-recorded, pre-specified decision rule requires, in at least two of three models, a C1 gap ≥ 20 percentage points with either non-overlapping Wilson 95% confidence intervals or a two-proportion p < . 05 . It addi-tionally requires a significant negative correctness– 
+
+log 10 (conf) association pooled across families and treats near-zero random-SAT accuracy as an un-informative UNSAT-bias failure. A gap below 10 
+
+points rejects the pre-specified transfer prediction. The implemented scorer narrows the association to UNSAT rows to avoid the SAT/conflict-zero con-trast and checks its sign rather than significance. We disclose both departures; neither can rescue the hypothesis because the UNSAT-only coefficient is positive and no model clears the full transfer gate. 
+
+3 Apparatus 
+
+Families. The near-matched-density contrast pairs UNSAT Tseitin formulas on 3-regular ex-panders (exponential resolution hardness) with Tseitin formulas on ladder graphs (treewidth two, polynomial proofs). Pigeonhole formulas provide a second proof-hard anchor. Random UNSAT formu-las at α ≈ 6 provide a high-density, low-conflict control, and random SAT formulas at α ≈ 3 mea-sure verdict bias. Ground truth is mechanical. All instances use held-out seeds ( ≥ 1000 ) and carry generator, solver, and code provenance; Appendix Table 2 lists the full roles. 
+
+Proof-complexity proxy. Every instance is solved by Glucose 4.2 (via PySAT); we record the conflict, decision, and propagation counts from the solver’s accumulated statistics. Conflicts are the primary proxy because CDCL clause learning can be represented as resolution; the realized count re-mains solver- and implementation-dependent and is not the shortest refutation size. The classical solver also serves as the exact label oracle on these generated instances and as a runtime baseline. 
+
+Near-matched-density construction. Each ex-pander instance uses a connected random 3-regular graph on V vertices ( 1.5V edge variables, 4V
+
+clauses, α ≈ 2.67 ), sampled from an ensemble that is expanding with high probability; we do not certify per-instance expansion. The ladder control uses ladder_graph (V / 2) at the same maximum width and nearly the same density. Charges are random with an enforced odd sum, which forces UNSAT on the connected graph. Random families are matched to the Tseitin variable counts. Be-cause ladder_graph (m) yields about two fewer variables than the matched 3-regular expander, the C1 contrast pairs families by size bin ( ⌊n/ 6⌉), not by exact variable count. 
+
+Shared harness. The autoregressive arm uses one frozen prompt and parser (released as 
+
+scripts/prompt_harness.py ) across every fam-ily: each instance is rendered as DIMACS CNF, the model is asked to decide satisfiability and emit 
+
+VERDICT: SAT /UNSAT at temperature zero, and the verdict line is parsed; a response without a parseable verdict line is an abstention. The pri-mary endpoint is therefore verdict accuracy, not certificate-verified SAT solving. Hosted-model calls used NVIDIA NIM’s OpenAI-compatible API; this serving backend is part of the protocol but not an internal-compute measurement. Using the identical harness makes the comparison a prop-erty of the instances rather than a family-specific prompt. The API and solver arms log JSON with provenance; no checkpoints are produced. No predictive model is fitted, so there is no train/test split or learned decision threshold. All protocol-specified generated instances are evalua-tion rows with generator seeds held out from appa-ratus development. The solver supplies the binary SAT/UNSAT target label; within each included-model cohort an abstention remains in the denomi-nator and is scored as incorrect. The pre-specified contrast thresholds determine the paper-level gate, while per-family uncertainty is reported with Wil-son 95% confidence intervals. 
+
+Reproducibility. The public release at https://github.com/lucky-verma/ solver-hard-is-not-model-hard contains the generator, CDCL scorer, LLM harness, pinned statistics receipts, per-instance derived measurements, and claim-to-result manifest. Generated response text is not redistributed. No model checkpoints are produced: the reproduction 4units are generator seed/version pairs and provider identifiers with run timestamps. Provider APIs do not expose immutable weight hashes, so exact weight-level reproduction depends on provider stability. 
+
+4 The hardness separation appears on the solver 
+
+Before evaluating models, we verify that the con-struction separates solver cost from clause density. Figure 1A and Appendix Table 3 report the frozen solver-scaling set (10 instances per nondeterminis-tic cell). At matched maximum width and near-matched density, the mean Glucose-conflict ratio between expander and ladder Tseitin grows monotonically across the six size bins: 3.3×, 3.5×, 3.6×, 10 .2×,
+
+28 .5×, and 51 .4×. At about 60 variables, their median conflict counts are 5,550 and 117. The high-density random-UNSAT control ( α = 6 ) is easier still (median 43.5), despite having 2.25 × the expander’s density. The second theoretical anchor, pigeonhole, rises from 7 to 7,100 conflicts between 12 and 56 variables, consistent with its established resolution lower bound; this finite sequence does not estimate an asymptotic exponent. A locked post-primary sensitivity repeats all 245 instances with five additional CDCL implemen-tations. All 1,470 labels agree, and every solver preserves the large-bin direction: the weakest ex-pander/ladder ratio from 36 variables onward is 
+
+7.0×; the non-Glucose medians are 18 .4×, 47 .7×,and 165 .2× (Appendix Table 4). Conflict scales remain solver-specific. The pre-specified solver-side criterion is a me-dian expander-to-ladder conflict ratio of at least 
+
+10 ×. The protocol did not state how many scal-ing bins had to clear, so we report the full curve rather than convert it into a binary confirmatory pass. Figure 1A plots the six median ratios: 3.6×,
+
+3.4×, 3.4×, 9.3×, 30 .4×, and 47 .4×, clearing the threshold only at the two largest bins. The de-scriptive mean-ratio series reported above crosses 
+
+10 × from the 36-variable bin onward. The proto-col’s PHP–random-UNSAT criterion also clears at large size: 7,100 versus 43.5 median conflicts at 56 and 60 variables, respectively. Thus the appa-ratus supplies the ordering the model test requires: density stays approximately fixed while the solver-specific refutation-cost proxy diverges. The model test asks whether accuracy inherits that ordering at                      
+
+> Table 1: Verdict accuracy by family. C1 is ladder mi-nus expander; parenthetical values are raw two-sided
+> p-values. Full Wilson intervals are in Appendix Table 5.
+> family Llama 3.3 Llama 4 Mistral 3 random-SAT .92 1.00 .38 expander .18 .53 .30 ladder .38 .22 .47 random-UNSAT .27 .00 .02 PHP ( n=3 )1.00 .33 1.00 C1 gap +.20 (.015) −.32 ( <.001) +.17 (.060)
+
+the smaller sizes where verdict accuracy remains measurable. 
+
+5 The dissociation does not transfer to LLMs 
+
+We evaluate Llama 3.3 70B Instruct, Llama 4 Mav-erick 17B-128E Instruct, and Mistral Large 3 675B Instruct at temperature zero; exact provider iden-tifiers are listed in Appendix D. Each model re-ceives the same 243 instances: 60 from each large family and three pigeonhole anchors. Abstentions remain in the denominator and count as incorrect. We report Wilson 95% intervals, two-sample pro-portion tests for the pre-specified contrasts, and point-biserial correlation between correctness and 
+
+log 10 (1 + conf) . The per-model gate is primary; pooled p-values aggregate response rows descrip-tively and do not support population inference over models. A fourth model, gpt-oss-120b , abstains on 189/243 instances (77.8%) and is excluded from the primary pooled summaries under a predeclared abstain-dominated contingency. Including it yields a pooled +2 .5-point C1 gap ( p = .55 ) and zero of four models passing the gate (Section 9). 
+
+The near-matched-density ordering does not transfer (C1). The ladder-minus-expander gap is +20 points for Llama 3.3, −32 for Llama 4, and +17 for Mistral 3 (Figure 1B). Pooled, it is 
+
++1 .7 points ( p = 0 .74 ). Two models point in the predicted direction, but neither satisfies the pre-specified magnitude, interval, and correlation con-ditions jointly; the third reverses the effect signifi-cantly. No included or excluded model reopens the transfer account. 
+
+Neither alternative hardness proxy orders ac-curacy. The densest UNSAT family, random-UNSAT ( α = 6 ), is answered worst or near-worst by every model, even though it is the easiest UN-SAT family for Glucose. Conversely, the proof-5hard PHP anchor is answered most accurately by two models. PHP contains only three instances per model and is corroborating rather than load-bearing. Across all UNSAT rows, correctness has a wrong-signed pooled association with solver cost (r = +0 .15 ); the per-model values are +0 .03 ,
+
++0 .28 , and +0 .16 . Thus neither clause density nor the conflict proxy induces a consistent error ordering. 
+
+Satisfiability status is the dominant pooled con-trast. The two low-abstention models score .92 and 1.00 on the satisfiable control, while their larger UNSAT cells are substantially weaker. Mistral 3 scores .38 on that control because it abstains on 58% of those prompts; its pooled abstention rate is 29.2%, versus below 0.5% for the two Llama models. The pooled included-model abstention rate is 9.9% (72/729). This is consistent with a witness-availability asymmetry, but a verdict-only endpoint cannot establish that a model constructed or checked a satisfying assignment. The remaining family differences motivate the proof-preserving surface test in Section 6. 
+
+6 Solver hardness does not transfer to model hardness 
+
+The experiment tests one transfer assumption: an ordering that separates a SAT solver should also order a model’s verdict accuracy on the same in-stances. Glucose exhibits a growing, 51 × near-matched-density separation; the three LLMs ex-hibit a sign-changing accuracy contrast and no negative correctness–conflict association. In this regime, solver-hard is not model-hard. 
+
+A proof-preserving surface intervention. To probe the residual family effects, we pre-specified a second control on pigeonhole formulas. For each 
+
+n ∈ { 3, . . . , 7}, we retain one canonical serializa-tion and create 15 versions by bijectively relabeling variables and shuffling clauses and literals. These operations preserve the formula, satisfiability, and minimum resolution length/width while changing only its serialized surface (Appendix Proposition 1). We treat the base formula, not each rendering, as the independent unit. Llama 3.3 drops in all five paired clusters by 86.7–100 points (mean −93 .3;raw accuracies 1.00 versus .067). Llama 4 changes only for n = 3 and is zero in the other four clusters (mean +6 .7; raw .00 versus .067). Thus a logically irrelevant surface change can alter one model’s ver-dicts sharply, but it does not induce a common law across models (Figure 2A). A pre-specified SAT control reaches the same boundary. We compare satisfiable pigeonhole lookalikes with random-SAT formulas matched on variable count and density. For Llama 3.3, the false-UNSAT rate is .188 versus .021 over 48 instances per family (a +16 .7-point shift, p = .0075 ); for Llama 4 the shift is only +2 .1 points. The re-sult therefore misses the pre-specified five-model causal-recognizability gate ( ≥ 25 points with non-overlapping Wilson intervals in at least two of five planned models); neither completed model quali-fies. We conclude surface dependence, not template recognition as a uniform mechanism (Figure 2B). 
+
+What the negative rules out. On these families, models, and scales, neither clause density nor the Glucose-conflict proxy is a reliable predictor of verdict accuracy. This is a boundary on those pre-dictors, not a claim that density or proof structure is irrelevant to every formula distribution or scale. Graph topology necessarily co-varies with the for-mal hardness intervention, and the primary end-point is a verdict rather than a certificate. 
+
+Architecture remains unresolved. All included systems are API-served autoregressive transform-ers. Their disagreement rules out a common em-pirical ordering in this panel, but it neither identi-fies nor refutes a shared architectural mechanism. Statistical-physics and proof-complexity theories still describe the instances and classical search pro-cedures (Gamarnik, 2021; Mézard and Montanari, 2009; Krzakala et al., 2007); Section 4 verifies their solver-side relevance here. The narrower result is that this ordering fails to predict LLM verdicts at the tested scale. 
+
+7 Token spend also dissociates 
+
+Accuracy leaves open a second channel: a model might spend more test-time compute on proof-hard inputs even when its verdicts remain poor. Prior work finds that reasoning length often tracks heuris-tic difficulty weakly or encourages overthinking (Pu et al., 2025; Liu et al., 2026; Ghosal et al., 2025; Zhou et al., 2026). We instead ask whether the provider-reported completion-token count, a coarse output-length proxy for test-time spend rather than an internal-compute counter, tracks the validated solver-cost axis across aligned size bins and near-matched density. 6Registered design and censor operationaliza-tion. For each family we measure Spearman correlation between token count and log(1 + conf) , then partial rank correlation controlling for-mula length ( nclauses ). The matched expander– ladder contrast uses a two-sided Mann–Whitney test. At the model-arm level, feasibility re-quires a parseable verdict and reported completion-token count on at least 60% of rows, with bud-get censoring on at most 30%. The preregis-tration named finish_reason=length but did not specify the censoring denominator. At 16k, the provider returned no length flags even when counts reached the cap. The pinned scorer there-fore uses a disclosed post-hoc, conservative rule (finish_reason=length or at least 95% of the cap) and divides by token-bearing rows: 45/171 (26.3%) are censored, versus 0/171 under the lit-eral flag; both pass the 30% gate. Correlations and medians exclude abstentions and rows cen-sored under the post-hoc rule. The design covers the three instruct models, Nemotron 3 Ultra 550B at a 16,384-token budget on the original 243 in-stances, and a registered 32,768-token follow-up on larger fresh instances. The latter spans expander conflict counts of 183–11,579 and random-UNSAT counts of 16–62 in the evaluated subsample. Asecond reasoning lineage, R1-Distill-Qwen-32B, fails the feasibility gate with 72.8% abstention and is excluded. Pinned SciPy code recomputes every statistic from raw rows; the tests and multiplicity sensitivities are enumerated in Appendix C. 
+
+Instruct-model spend does not consistently fol-low proof hardness. Eight of 12 family cells have |ρ| < . 3. The only two large raw correla-tions, both on ladder ( −.58 and −.61 ), cannot be separated from formula length because ranked con-flicts and nclauses are collinear in those cells; the registered partial correlations are therefore unde-fined, not zero. No instruct model spends more on the proof-hard matched family: Llama 3.3 has medians 555 versus 557 tokens (expander versus ladder); Llama 4 spends less on expander (1,222.5 versus 1,387; raw p = .0137 , Holm p = .0412 
+
+over the three model contrasts); Mistral 3 is null (p = .825 ). 
+
+Reasoning-model spend also dissociates. At 16k, Nemotron’s non-censored medians are 8,385 tokens on expander and 9,998 on ladder, reversing the proof-hardness prediction. The expander cell’s raw correlation of .33 becomes −.01 after length control; a nominal small-size correlation does not survive the registered three-tier correction. At 32k on harder inputs, the matched medians reverse di-rection (19,976 versus 17,889) but remain non-significant ( p = .170 ), and every defined length-controlled association is negative. Across the three instruct models and two feasible Nemotron budgets, neither the length-controlled cells nor the matched-family contrasts show a consistent positive relation between spend and the proxy. The most severe spending occurs on the solver-easiest UNSAT family: at 16k, all 28 non-abstained random-UNSAT rows hit the 16,384-token cap and accuracy is .036, whereas the satisfiable control is answered at 1.00. Those censored correlations are unmeasurable, not zero. Together, the results do not show consistent tracking of this proof-hardness proxy on the tested configurations. They do not es-tablish allocation inefficiency: an allocator should optimize marginal accuracy gain, which would re-quire paired effort interventions that we did not run (Zhai et al., 2026; Wu et al., 2026). 
+
+8 Related work 
+
+SAT and controlled reasoning diagnostics. 
+
+Prior SAT evaluations vary the clause-to-variable ratio near the phase transition (Hazra et al., 2024, 2025), clause count (Wei et al., 2025), or size and depth across broader reasoning tasks (Li et al., 2024; Srivastava et al., 2026; Dziri et al., 2023; Mirzadeh et al., 2025; Shojaee et al., 2025). SATQuest supplies controllable, verifier-backed generation and evaluation across instance, prob-lem, and format axes (Zhao et al., 2026); we claim neither a new SAT harness nor generic controlled SAT evaluation. On random formulas, density and search cost co-vary. The closest comparator is Jiang and Cai (2026), which proposes proof com-plexity as a lens on UNSAT failures and reports that clause-controlled Tseitin families with different graph structures differ substantially in difficulty; its evidence is family-level, with clause budgets matched while variable counts, input lengths, and clause widths vary across families, and it names instance-level regression against solver-based hard-ness signals as future work. We ask that comple-mentary transfer question with an instance-level, six-solver-validated expander–ladder ordering un-der aligned size bins, near-matched density, and matched maximum clause width; that ordering does not consistently transfer to model accuracy. Param-7eterized 2-CNF work controls different structural and surface axes (Es-sebbani et al., 2026), while matched-pair work studies SAT/UNSAT asymme-try near the threshold with a paired-formula proto-col that scopes out proof complexity (Zhang et al., 2026). 
+
+Proof complexity and architecture claims. The construction draws on exponential resolution lower bounds for pigeonhole (Haken, 1985) and Tseitin formulas on expanders (Tseitin, 1968; Urquhart, 1987), together with the size–width relation (Ben-Sasson and Wigderson, 2001). Statistical-physics accounts describe threshold and clustering structure in random k-SAT (Mézard and Montanari, 2009; Krzakala et al., 2007; Ding et al., 2015; Gamarnik, 2021); they target algorithms, optimizers, and sam-plers rather than LLM verdict accuracy. Neural samplers on spin-glass distributions are adjacent but address generative sampling efficiency (Ghio et al., 2024). A separate literature attributes symbolic-reasoning failures to architecture (Zhang, 2025), while recurrent, recursive, diffusion, and energy-based systems report gains on Sudoku, mazes, ARC, and related tasks (Wang et al., 2025; Jolicoeur-Martineau, 2025; Du et al., 2024; Xu et al., 2025; Gladstone et al., 2025). These systems are usually evaluated on fixed tiers or size-based distribution shifts rather than proof complexity at near-matched density. Subsequent reanalysis also shows that apparent architectural gains can depend on augmentation or repeated guessing (Ren and Liu, 2026). Our all-autoregressive panel cannot ad-judicate architecture. Indeed, a constructive result shows that a decoder-only Transformer can decide 3-SAT with backtracking and deduction through chain-of-thought (Pan et al., 2025); our empirical negative is not an architecture-impossibility result. It tests only the prior construct assumption that clas-sical instance hardness should order model failure. 
+
+Test-time compute and surface form. Reason-ing length is often treated as an adaptive resource, yet models can overthink easy problems (Pu et al., 2025; Liu et al., 2026), and longer traces need not improve accuracy (Ghosal et al., 2025; Zhou et al., 2026). Allocation methods therefore estimate dif-ficulty or per-input budget–response curves (Wu et al., 2026; Zhai et al., 2026). Verbose surface form can itself induce unnecessary reasoning (Ren et al., 2026), while intermediate tokens need not be faithful traces of an internal reasoning process (Kambhampati et al., 2026). We do not propose an allocator or equate intrinsic hardness with value of compute. The extension supplies a construct test: does observed token spend track a solver-grounded hardness proxy when size and density are controlled? 
+
+Methodological kin. Like controlled remeasure-ment work on apparent capability boundaries (Schaeffer et al., 2023), the contribution changes the measurement before changing the model. The result is a scoped failure of construct transfer, not a universal account of reasoning difficulty. 
+
+9 Conclusion 
+
+We separated clause density from a solver-grounded hardness ordering before evaluating LLMs. The control works on Glucose: near-matched-density expander and ladder formulas sep-arate by up to 51 ×. It does not transfer to model verdicts. The corresponding accuracy gap changes sign across three models, pools to +1 .7 points, and correctness never has the predicted negative associ-ation with solver conflicts. A proof-preserving relabeling shows why uncon-trolled family comparisons are hazardous: all five base-formula clusters move sharply for one model, while four of five are unchanged for another. The registered token-spend extension reaches a parallel boundary; observed spend does not consistently increase with the validated solver-cost proxy once formula length and censoring are considered, with the strongest censoring on the solver-easiest UN-SAT family. The methodological conclusion is narrower than a theory of reasoning failure. Classical hardness is a property of an instance–solver pair, not an automatic measure of model difficulty. Claims that invoke it should first demonstrate transfer under a controlled dissociation. 
+
+Limitations 
+
+Scale and hardness construct. The accuracy re-sult is read at 12–30 variables, where at least some families remain measurable for the LLMs. The solver-side separation is already present there but grows much larger at sizes where verdict accuracy approaches a floor. The conclusion is therefore lim-ited to the tested, LLM-tractable regime. Moreover, Glucose conflicts are a solver- and implementation-specific proxy, not shortest resolution length. In the matched Tseitin pair, graph expansion is both 8the source of the known resolution-hardness dif-ference and a structural feature visible in the seri-alization. The intervention does not isolate proof length from every topological property, including the clause-length difference at the ladder’s corner vertices (Section 2), and the random 3-regular con-struction is expanding with high probability rather than per-instance certified. 
+
+Verdicts, witnesses, and labels. The harness scores a final SAT/UNSAT verdict. It does not require a SAT prediction to include a solver-verified assignment, while UNSAT has no com-parably short certificate in this setup. A correct re-sponse may therefore be a correct guess. The high satisfiable- control accuracy of the low-abstention models is consistent with witness availability but does not establish that a witness was constructed or verified. Ground-truth labels are mechanical, so this is not a human-label uncertainty; it is an endpoint-validity limit. 
+
+Model coverage and API reproducibility. The included panel contains three API-served autore-gressive models from two model families, not an architecture-diverse sample. Mistral 3 is re-tained despite its 29.2% abstention because most re-sponses remain substantive. The fourth completed model, gpt-oss-120b , is excluded from primary pooled summaries under a predeclared abstain-dominated contingency after 77.8% abstention. A four-model sensitivity leaves zero models passing the gate. Provider identifiers and timestamps are recorded, but immutable checkpoint hashes are un-available, so exact weight-level reproduction de-pends on provider stability. 
+
+Surface dependence is model-specific. The rela-beling experiment has only five independent base-formula clusters, each with one canonical and 15 permuted renderings. A post-hoc unit-of-analysis repair finds a decline in all five Llama 3.3 clus-ters, but five clusters cannot reach conventional two-sided sign-test significance ( p = .0625 ); the second model changes in only one cluster. The satisfiable-lookalike control likewise misses the pre-specified cross-model causal-recognizability gate. These experiments identify surface form as a material confound; they do not show that template recognition explains all residual family differences. 
+
+Completion-token spend is a coarse, censored measure. Only Nemotron passes the reasoning-model feasibility gates; R1-Distill-Qwen-32B is abstain-dominated. Reported completion tokens include the final answer and do not expose inter-nal computation; they are an output-length proxy for test-time spend. Cells at the budget cap (espe-cially all 28 non-abstained random-UNSAT rows at 16k) have unmeasurable correlations rather than observed null effects. Larger budgets or other rea-soning models could produce different coupling. Finally, proof hardness is not the same as the marginal value of additional compute. Because we do not run each instance under paired effort interventions, the token results cannot estimate al-location regret or identify an optimal policy. 
+
+Claim boundary. These results do not establish general claims about LLM reasoning, proof struc-ture, or architecture. At this scale, the tested or-dering and conflict proxy predict neither verdict accuracy on these families nor spontaneous token spend on feasible configurations. 
+
+References       
+
+> Eli Ben-Sasson and Avi Wigderson. 2001. Short proofs are narrow—resolution made simple. Journal of the ACM , 48(2):149–169. Jian Ding, Allan Sly, and Nike Sun. 2015. Proof of the satisfiability conjecture for large k. In Proceedings of the 47th Annual ACM Symposium on Theory of Computing , pages 59–68. Association for Computing Machinery. Yilun Du, Jiayuan Mao, and Joshua B. Tenenbaum. 2024. Learning iterative reasoning through energy diffusion. In Proceedings of the 41st International Conference on Machine Learning , volume 235 of
+> Proceedings of Machine Learning Research , pages 11764–11776. PMLR. Nouha Dziri, Ximing Lu, Melanie Sclar, Xiang (Lor-raine) Li, Liwei Jiang, Bill Yuchen Lin, Sean Welleck, Peter West, Chandra Bhagavatula, Ronan Le Bras, Jena Hwang, Soumya Sanyal, Xiang Ren, Allyson Et-tinger, Zaid Harchaoui, and Yejin Choi. 2023. Faith and fate: Limits of transformers on compositional-ity. In Advances in Neural Information Processing Systems , volume 36, pages 70293–70332. Curran As-sociates, Inc. Naïm Es-sebbani, Esteban Marquer, Yakoub Salhi, and Zied Bouraoui. 2026. Evaluating robustness of rea-soning models on parameterized logical problems.
+> arXiv preprint arXiv:2602.12665 .David Gamarnik. 2021. The overlap gap property: A topological barrier to optimizing over random struc-tures. Proceedings of the National Academy of Sci-ences , 118(41):e2108492118.
+
+9Davide Ghio, Yatin Dandi, Florent Krzakala, and Lenka Zdeborová. 2024. Sampling with flows, diffusion, and autoregressive neural networks from a spin-glass perspective. Proceedings of the National Academy of Sciences , 121(27):e2311810121. Soumya Suvra Ghosal, Souradip Chakraborty, Avinash Reddy, Yifu Lu, Mengdi Wang, Dinesh Manocha, Furong Huang, Mohammad Ghavamzadeh, and Am-rit Singh Bedi. 2025. Does thinking more always help? mirage of test-time scaling in reasoning mod-els. In Advances in Neural Information Processing Systems , volume 38, pages 172664–172691. Curran Associates, Inc. Alexi Gladstone, Ganesh Nanduru, Md Mofijul Islam, Peixuan Han, Hyeonjeong Ha, Aman Chadha, Yilun Du, Heng Ji, Jundong Li, and Tariq Iqbal. 2025. Energy-based transformers are scalable learners and thinkers. arXiv preprint arXiv:2507.02092 .Armin Haken. 1985. The intractability of resolution. 
+
+Theoretical Computer Science , 39:297–308. Rishi Hazra, Gabriele Venturato, Pedro Zuidberg Dos Martires, and Luc De Raedt. 2024. Can large language models reason? a characterization via 3-sat. 
+
+arXiv preprint arXiv:2408.07215 .Rishi Hazra, Gabriele Venturato, Pedro Zuidberg Dos Martires, and Luc De Raedt. 2025. Have large language models learned to reason? a characteriza-tion via 3-sat. In Second Conference on Language Modeling .Tao Jiang and Shaowei Cai. 2026. Beyond clause count: A study of proof-relevant difficulty in LLM SAT rea-soning. In ICLR 2026 Workshop on Logical Reason-ing of Large Language Models .Alexia Jolicoeur-Martineau. 2025. Less is more: Re-cursive reasoning with tiny networks. arXiv preprint arXiv:2510.04871 .Subbarao Kambhampati, Karthik Valmeekam, Siddhant Bhambri, Vardhan Palod, Lucas Saldyt, Kaya Stechly, Soumya Rani Samineni, Durgesh Kalwar, and Up-asana Biswas. 2026. Position: Stop anthropomor-phizing intermediate tokens as reasoning/thinking traces! In Proceedings of the 43rd International Conference on Machine Learning .Florent Krzakala, Andrea Montanari, Federico Ricci-Tersenghi, Guilhem Semerjian, and Lenka Zde-borová. 2007. Gibbs states and the set of solu-tions of random constraint satisfaction problems. 
+
+Proceedings of the National Academy of Sciences ,104(25):10318–10323. Zhaoyu Li, Jinpei Guo, and Xujie Si. 2024. G4SATBench: Benchmarking and advancing SAT solving with graph neural networks. Transactions on Machine Learning Research .Yongjiang Liu, Haoxi Li, Xiaosong Ma, Jie Zhang, and Song Guo. 2026. Think how to think: Mitigating overthinking with autonomous difficulty cognition in large reasoning models. In Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 38105– 38126. Association for Computational Linguistics. Marc Mézard and Andrea Montanari. 2009. Informa-tion, Physics, and Computation . Oxford University Press. Iman Mirzadeh, Keivan Alizadeh-Vahid, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. 2025. GSM-Symbolic: Understanding the limitations of mathematical reasoning in large language models. In The Thirteenth International Conference on Learning Representations .Leyan Pan, Vijay Ganesh, Jacob Abernethy, Chris Es-poso, and Wenke Lee. 2025. Can transformers reason logically? a study in SAT solving. In Proceedings of the 42nd International Conference on Machine Learning , volume 267 of Proceedings of Machine Learning Research , pages 47632–47671. PMLR. Xiao Pu, Michael Saxon, Wenyue Hua, and William Yang Wang. 2025. THOUGHTTERMI-NATOR: Benchmarking, calibrating, and mitigating overthinking in reasoning models. In Second Confer-ence on Language Modeling .Junnan Ren, Yan Zhang, Qian Chen, Yunhang Shen, Ke Li, Shengchuan Zhang, Liujuan Cao, and Ron-grong Ji. 2026. When simple problems wear complex costumes: Improving efficiency in LRM’s adaptive reasoning. In Proceedings of the 43rd International Conference on Machine Learning .Zirui Ren and Ziming Liu. 2026. Are your reasoning models reasoning or guessing? a mechanistic analy-sis of hierarchical reasoning models. arXiv preprint arXiv:2601.10679 .Rylan Schaeffer, Brando Miranda, and Sanmi Koyejo. 2023. Are emergent abilities of large language mod-els a mirage? In Advances in Neural Information Processing Systems , volume 36, pages 55565–55581. Curran Associates, Inc. Parshin Shojaee, Iman Mirzadeh, Keivan Al-izadeh Vahid, Maxwell Horton, Samy Bengio, and Mehrdad Farajtabar. 2025. The illusion of thinking: Understanding the strengths and limitations of reasoning models via the lens of problem complexity. In Advances in Neural Information Processing Systems , volume 38, pages 108018–108059. Curran Associates, Inc. Gaurav Srivastava, Aafiya Hussain, Zhenyu Bi, Swastik Roy, Priya Pitre, Meng Lu, Morteza Ziyadi, and Xuan Wang. 2026. BeyondBench: Contamination-resistant evaluation of reasoning in language models. In The Fourteenth International Conference on Learning Representations .
+
+10 G. S. Tseitin. 1968. On the complexity of proof in propositional calculus. In Studies in Constructive Mathematics and Mathematical Logic, Part II , vol-ume 8 of Zapiski Nauchnykh Seminarov LOMI , pages 234–259. Nauka, Leningrad Department. Alasdair Urquhart. 1987. Hard examples for resolution. 
+
+Journal of the ACM , 34(1):209–219. Guan Wang, Jin Li, Yuhao Sun, Xing Chen, Changling Liu, Yue Wu, Meng Lu, Sen Song, and Yasin Abbasi-Yadkori. 2025. Hierarchical reasoning model. arXiv preprint arXiv:2506.21734 .Anjiang Wei, Yuheng Wu, Yingjia Wan, Tarun Suresh, Huanmi Tan, Zhanke Zhou, Sanmi Koyejo, Ke Wang, and Alex Aiken. 2025. SATBench: Benchmarking LLMs’ logical reasoning via automated puzzle gener-ation from SAT formulas. In Proceedings of the 2025 Conference on Empirical Methods in Natural Lan-guage Processing , pages 33832–33849. Association for Computational Linguistics. Siye Wu, Jian Xie, Yikai Zhang, and Yanghua Xiao. 2026. CODA: Difficulty-aware compute al-location for adaptive reasoning. arXiv preprint arXiv:2603.08659 .Yudong Xu, Wenhao Li, Scott Sanner, and Elias Boutros Khalil. 2025. Self-supervised transformers as iter-ative solution improvers for constraint satisfaction. In Proceedings of the 42nd International Conference on Machine Learning , volume 267 of Proceedings of Machine Learning Research , pages 69432–69450. PMLR. Zhiyuan Zhai, Bingcong Li, Bingnan Xiao, Ming Li, and Xin Wang. 2026. Adaptive test-time compute allocation for reasoning LLMs via constrained policy optimization. arXiv preprint arXiv:2604.14853 .Leizhen Zhang, Shuhan Chen, and Sheng Chen. 2026. Satisfiability solving with llms: A matched-pair eval-uation of reasoning capability. Proceedings of the ACM on Software Engineering , 3(FSE):4599–4621. Zheng Zhang. 2025. Comprehension without compe-tence: Architectural limits of llms in symbolic com-putation and reasoning. Transactions on Machine Learning Research .Yanxiao Zhao, Yaqian Li, Zi-Hao Bo, Rinyoichi Take-zoe, Haojia Hui, Mo Guang, Renlei, Xiaolin Qin, and Kaiwen Long. 2026. SATQuest: A verifier for logical reasoning evaluation and reinforcement fine-tuning of LLMs. In Proceedings of the 64th Annual Meeting of the Association for Computational Lin-guistics (Volume 1: Long Papers) , pages 2109–2131. Association for Computational Linguistics. Shu Zhou, Rui Ling, Junan Chen, Xin Wang, Tao Fan, and Hao Wang. 2026. When more thinking hurts: Overthinking in LLM test-time compute scaling. In 
+
+Findings of the Association for Computational Lin-guistics: ACL 2026 , pages 23967–23977. Associa-tion for Computational Linguistics. 
+
+11 A Instance families and solver validation 
+
+Table 2: Instance families. Ground truth is mechani-cal. Theoretical resolution hardness is established for the canonical hard families; Glucose conflicts are the empirical, solver-specific cost proxy.             
+
+> family label/status role expander UNSAT, exp. hard, C1/C2 ladder UNSAT, poly. easy, C1 PHP UNSAT, exp. hard, C3 random-UNSAT UNSAT, low conflict easy, C2/C3 random-SAT SAT, no refutation base-rate control
+
+Surface-intervention invariance. Proposition 1. Let T bijectively rename a CNF for-mula’s variables and arbitrarily reorder its clauses and the literals within each clause. Then F and 
+
+T (F ) have the same satisfiability status and the same minimum resolution-refutation length and width. Proof. A satisfying assignment for F composes with the inverse renaming to satisfy T (F ), and conversely. A variable renaming also maps every resolution inference for F to an inference for T (F )
+
+with the same clause width; reordering does not change a clause as a set of literals. Thus any refu-tation maps to one of equal length and width. Ap-plying T −1 gives the reverse inequalities, so both minima are equal. 
+
+Table 3: Full solver-scaling table: median Glucose con-flicts. Nondeterministic families contain 10 generated instances per cell; PHP has one canonical formula per size. The ladder sizes are 10, 16, 22, 34, 46, and 58 variables and are paired to the nearest expander size bin. Figure 1A shows the corresponding pre-specified median-conflict ratios (Section 4).                                       
+
+> family ( α)median conflicts at ≈nvariables 12 18 24 36 48 60 expander 28.5 68.5 113 550 2,551 5,550 ladder 820 33 59 84 117 rnd-UNSAT 6.5 7.5 11 16.5 25.5 43.5 rnd-SAT 102.5 1.5 22PHP 730 a157 b888 c– 7,100 da20 variables; b30 variables; c42 variables; d56 variables.
+
+B Full verdict-accuracy intervals 
+
+Table 5 reports per-family verdict accuracies with Wilson 95% intervals for the three included models; 
+
+Table 4: Post-primary multi-solver sensitivity: within-solver mean-conflict ratios (expander/ladder) on the frozen rows. All 1,470 solver-instance labels agree. Raw conflict scales are not compared across implemen-tations.                      
+
+> solver ∼36 vars ∼48 vars ∼60 vars Glucose 4.2 10.2 28.5 51.4 CaDiCaL 1.9.5 24.1 73.3 215.4 MiniSat 2.2 11.2 47.7 227.4 MapleChrono 30.6 112.3 105.9 Lingeling 18.4 43.5 165.2 MergeSat 3 7.0 18.6 32.2
+
+Table 5: Per-family verdict accuracy with Wilson 95% confidence intervals. Abstentions remain in the denomi-nator.                    
+
+> model/family accuracy [95% CI]
+> Llama 3.3
+> random-SAT .92 [.82, .96] expander / ladder .18 [.11, .30] / .38 [.27, .51] random-UNSAT / PHP .27 [.17, .39] / 1.00 [.44, 1.00] C1 gap +.20 ( p=.015 )
+> Llama 4
+> random-SAT 1.00 [.94, 1.00] expander / ladder .53 [.41, .65] / .22 [.13, .34] random-UNSAT / PHP .00 [.00, .06] / .33 [.06, .79] C1 gap −.32 ( p=.00034 )
+> Mistral 3
+> random-SAT .38 [.27, .51] expander / ladder .30 [.20, .43] / .47 [.35, .59] random-UNSAT / PHP .02 [.00, .09] / 1.00 [.44, 1.00] C1 gap +.17 ( p=.060 )
+
+each block ends with its pre-specified C1 gap and raw two-sided p-value. 
+
+C Token-spend tests and sensitivities 
+
+All Spearman and tie-corrected Mann–Whitney p-values are SciPy asymptotic values. The preregis-tered censor rule named finish_reason=length 
+
+and left its denominator unstated. Because the 16k provider returned no such flags at the cap, the pinned analysis adds a post-hoc threshold at 95% of the cap and divides by token-bearing rows. This marks 45/171 16k rows as censored (26.3%); the literal flag marks zero, so either rule passes the 30% feasibility threshold. Reported correlations and medians exclude both abstentions and rows censored by the post-hoc rule. The instruct-model expander–ladder analysis contains three registered tests and uses Holm adjustment. The Nemotron cross-budget view contains two expander–ladder contrasts; the manuscript reports both raw values and a conservative two-test Bonferroni sensitivity. 12 The 32k within-family correlation family contains four registered tests and uses a four-test Bonferroni sensitivity. In the instruct-model ladder cells, ranked con-flicts and ranked clause count are collinear. The registered partial correlations are therefore unde-fined; floating-point residuals from regressing one rank vector on the other are not interpretable coef-ficients. At 16k, the Nemotron expander correlation is 
+
+ρ = .33 before and −.01 after the formula-length control. Within fixed size tiers, the only nominal association is at 12 variables ( ρ = .48 , raw p =
+
+.0355 ), which does not survive the three-tier Holm correction ( p = .107 ) and does not recur at 18 or 24 variables ( −.01 and .04 ). On the 32k set, treating capped random-UNSAT rows as observed at the cap gives ρ = −.507 (raw p = .0190 , four-test Bonferroni p = .0761 ); excluding those rows gives ρ = −.0175 (p = .957 ). The cell is therefore reported as censored, not as a negative association. An unregistered character-count sensitivity gives a matched-family difference in the expander direc-tion (raw p = .000553 ), but characters per token also differ by family (1.98 versus 1.59). Character count consequently conflates provider-token com-pute with output style and is not used as evidence for a compute gap. 
+
+D Reproduction inventory 
+
+The deterministic release maps manuscript claims to pinned receipts: • data/results/solver_scaling_summary. json (solver validation); • data/results/primary_three_model_ summary.json (accuracy); • data/results/surface_cluster_ summary.json (clustered surface control); • data/results/multi_solver_summary. json and 
+
+data/results/multi_solver_rows.jsonl 
+
+(solver sensitivity); • data/results/token_spend_summary. json (token-spend tests). The release also contains the instance genera-tors, DIMACS renderer, Glucose scorer, provider-response parser, figure scripts, held-out seed bands, and a claim-to-source manifest. API calls can-not be replayed against immutable weights when providers do not publish checkpoint hashes. The released per-instance derived measurements and mechanical labels remain re-analyzable; generated response text is not redistributed. 
+
+Protocol provenance. The Phase 1 and surface-control protocols are author-recorded; we cannot show that they preceded their results, so we do not call them preregistrations. The token-spend protocol was recorded before its result collection. The release preserves every protocol file alongside its results. The included verdict-model identifiers are • llama-3.3-70b-instruct ;• llama-4-maverick-17b-128e-instruct ;• mistral-large-3-675b-instruct-2512 .13

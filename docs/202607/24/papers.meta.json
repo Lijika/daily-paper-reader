@@ -1,0 +1,39 @@
+{
+  "label": "2026-07-24",
+  "date": "2026-07-24",
+  "generated_at": "2026-07-24T20:46:46",
+  "count": 2,
+  "papers": [
+    {
+      "paper_id": "202607/24/2607.21188v1-identifying-good-rules-for-efficient-sat-encodings-of-single-constant-multiplication-using-machine-learning",
+      "section": "deep",
+      "title_en": "Identifying Good Rules for Efficient SAT Encodings of Single-Constant Multiplication Using Machine Learning",
+      "authors": "Chufeng Jiang, Neng-Fa Zhou",
+      "date": "2026-07-23",
+      "pdf": "https://arxiv.org/pdf/2607.21188v1",
+      "score": "8.0",
+      "evidence": "机器学习用于高效SAT编码",
+      "tldr": "单常数乘法是硬件设计中的NP-hard优化问题，现有动态规划编码对大常数成本高昂。本文提出神经符号框架，用图神经网络预测算子类型，并利用置信度分数剪枝无效选择。在17-32位常数上，编码时间降低1-2个数量级，内存减少97%，分支减少一个数量级，同时保持近优的加法次数。该方法显著提升了SCM编码的可扩展性和效率。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "The Single Constant Multiplication problem is a fundamental NP-hard optimization task in hardware design, which seeks to decompose a fixed constant using only additions, subtractions, and bit-shifts. Although dynamic programming methods can produce near-optimal SAT encodings for SCM, their encoding cost remains high for large constants. We propose a neuro-symbolic framework that accelerates SCM SAT encoding by identifying good rules for guiding operator selection during decomposition. Our approach employs a graph neural network model to predict promising operator types from constant decompositions, and exploits the resulting confidence scores to prune no-good choices in the symbolic search. Experimental results on unseen 17-32 bit constants demonstrate one to two orders of magnitude reductions in encoding time, over 97% reduction in memory usage, and an order-of-magnitude decrease in branching, while preserving near-optimal encoding quality in terms of additions. These results show that learning-guided symbolic strategies can significantly improve the scalability and efficiency of SCM encoding. Our code and data are publicly available at: https://github.com/Chufeng-Jiang/SCM_MLDP",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/24/2607.17047v1-solver-hard-is-not-model-hard-a-hardness-controlled-diagnostic-for-llm-constraint-reasoning",
+      "section": "quick",
+      "title_en": "Solver-Hard Is Not Model-Hard: A Hardness-Controlled Diagnostic for LLM Constraint Reasoning",
+      "authors": "Lucky Verma",
+      "date": "2026-07-19",
+      "pdf": "https://arxiv.org/pdf/2607.17047v1",
+      "score": "6.0",
+      "evidence": "约束推理中的SAT求解器硬度诊断",
+      "tldr": "LLM约束推理评测常因未控制子句密度而混淆求解器难度与模型能力。本文通过匹配密度与子句宽度，比较了证明困难（expander-Tseitin）与证明容易（ladder-Tseitin）公式。结果显示，准确性差距在-32至+20点之间，聚合差距仅+1.7点（p=0.74），且正确性与冲突代理呈错误正相关（r=+0.15）。研究揭示了模型对公式表面特征的敏感性，并指出推理token花费与求解器难度的一致性在控制长度后消失。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "LLM constraint reasoners are often evaluated near the random-SAT phase transition, confounding density and solver hardness. We test instance-level transfer while near-matching clause density. At aligned size bins, with near-matched density and matched maximum clause width, we compare proof-hard expander-Tseitin and proof-easy ladder-Tseitin formulas, pigeonhole anchors, and density-mismatched controls. Theory separates their resolution hardness; a solver-specific Glucose mean-conflict proxy differs by up to $51\\times$, and five other solvers preserve the direction. Across three included models (243 instances each; a fourth is excluded for abstention), the near-matched-density accuracy gaps range from $-32$ to $+20$ points, with a pooled gap of $+1.7$ points ($p=0.74$) and a wrong-signed correctness-versus-conflict association ($r=+0.15$). A proof-preserving relabeling lowers accuracy in all five clusters for one model (mean $-93$ points) but not another, exposing model-surface sensitivity. In a preregistered extension, provider-reported completion-token spend does not consistently increase with the proxy after accounting for formula length and censoring. At 16k, the reasoning model spends more on proof-easy matched formulas and exhausts its budget on the solver-easiest UNSAT family; the 32k C1 gap is absent. These scoped dissociations concern verdict accuracy and observed token spend, not certificate solving, exact proof length, or allocation efficiency.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

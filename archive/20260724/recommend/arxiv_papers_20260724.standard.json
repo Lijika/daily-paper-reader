@@ -1,0 +1,90 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-24T20:45:05.090158+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 1,
+    "deep_cap": 6,
+    "deep_selected": 1,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [
+    {
+      "id": "2607.21188v1",
+      "source": "arxiv",
+      "title": "Identifying Good Rules for Efficient SAT Encodings of Single-Constant Multiplication Using Machine Learning",
+      "abstract": "The Single Constant Multiplication problem is a fundamental NP-hard optimization task in hardware design, which seeks to decompose a fixed constant using only additions, subtractions, and bit-shifts. Although dynamic programming methods can produce near-optimal SAT encodings for SCM, their encoding cost remains high for large constants. We propose a neuro-symbolic framework that accelerates SCM SAT encoding by identifying good rules for guiding operator selection during decomposition. Our approach employs a graph neural network model to predict promising operator types from constant decompositions, and exploits the resulting confidence scores to prune no-good choices in the symbolic search. Experimental results on unseen 17-32 bit constants demonstrate one to two orders of magnitude reductions in encoding time, over 97% reduction in memory usage, and an order-of-magnitude decrease in branching, while preserving near-optimal encoding quality in terms of additions. These results show that learning-guided symbolic strategies can significantly improve the scalability and efficiency of SCM encoding. Our code and data are publicly available at: https://github.com/Chufeng-Jiang/SCM_MLDP",
+      "authors": [
+        "Chufeng Jiang",
+        "Neng-Fa Zhou"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-23T11:15:55+00:00",
+      "link": "https://arxiv.org/pdf/2607.21188v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "machine learning for efficient SAT encodings",
+      "llm_evidence_cn": "机器学习用于高效SAT编码",
+      "llm_evidence": "机器学习用于高效SAT编码",
+      "canonical_evidence": "机器学习用于高效SAT编码",
+      "llm_tldr_en": "Proposes a neuro-symbolic framework that uses graph neural networks to predict promising operator types for SAT encoding of single-constant multiplication, achieving faster encoding with good rule identification.",
+      "llm_tldr_cn": "针对单常数乘法（SCM）的SAT编码成本高的问题，本文提出一种神经符号框架，通过图神经网络预测分解中的运算符类型，并利用置信度剪枝非优选择，从而加速SAT编码。实验表明该方法能显著减少编码时间，为硬件设计中的SAT编码提供了高效方案。",
+      "llm_tldr": "针对单常数乘法（SCM）的SAT编码成本高的问题，本文提出一种神经符号框架，通过图神经网络预测分解中的运算符类型，并利用置信度剪枝非优选择，从而加速SAT编码。实验表明该方法能显著减少编码时间，为硬件设计中的SAT编码提供了高效方案。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.17047v1",
+      "source": "arxiv",
+      "title": "Solver-Hard Is Not Model-Hard: A Hardness-Controlled Diagnostic for LLM Constraint Reasoning",
+      "abstract": "LLM constraint reasoners are often evaluated near the random-SAT phase transition, confounding density and solver hardness. We test instance-level transfer while near-matching clause density. At aligned size bins, with near-matched density and matched maximum clause width, we compare proof-hard expander-Tseitin and proof-easy ladder-Tseitin formulas, pigeonhole anchors, and density-mismatched controls. Theory separates their resolution hardness; a solver-specific Glucose mean-conflict proxy differs by up to $51\\times$, and five other solvers preserve the direction. Across three included models (243 instances each; a fourth is excluded for abstention), the near-matched-density accuracy gaps range from $-32$ to $+20$ points, with a pooled gap of $+1.7$ points ($p=0.74$) and a wrong-signed correctness-versus-conflict association ($r=+0.15$). A proof-preserving relabeling lowers accuracy in all five clusters for one model (mean $-93$ points) but not another, exposing model-surface sensitivity. In a preregistered extension, provider-reported completion-token spend does not consistently increase with the proxy after accounting for formula length and censoring. At 16k, the reasoning model spends more on proof-easy matched formulas and exhausts its budget on the solver-easiest UNSAT family; the 32k C1 gap is absent. These scoped dissociations concern verdict accuracy and observed token spend, not certificate solving, exact proof length, or allocation efficiency.",
+      "authors": [
+        "Lucky Verma"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "cs.LO"
+      ],
+      "published": "2026-07-19T03:23:22+00:00",
+      "link": "https://arxiv.org/pdf/2607.17047v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "SAT solver hardness diagnostic for constraint reasoning",
+      "llm_evidence_cn": "约束推理中的SAT求解器硬度诊断",
+      "llm_evidence": "约束推理中的SAT求解器硬度诊断",
+      "canonical_evidence": "约束推理中的SAT求解器硬度诊断",
+      "llm_tldr_en": "Investigates the hardness of SAT instances for LLM constraint reasoning, separating solver hardness from model hardness, and shows that solver-specific conflict counts can differ by 51x, yet accuracy gaps vary widely under near-matched density.",
+      "llm_tldr_cn": "本文针对LLM约束推理中通常使用随机SAT相变区域进行评测的问题，设计了硬度控制的实验，区分求解器硬度和模型硬度。通过匹配子句密度和宽度，比较了不同硬度公式的求解器冲突次数和模型准确率差异，发现求解器冲突数差异可达51倍，而模型准确率差距在-32至+20点之间，揭示了评测中需要控制求解器硬度的重要性。",
+      "llm_tldr": "本文针对LLM约束推理中通常使用随机SAT相变区域进行评测的问题，设计了硬度控制的实验，区分求解器硬度和模型硬度。通过匹配子句密度和宽度，比较了不同硬度公式的求解器冲突次数和模型准确率差异，发现求解器冲突数差异可达51倍，而模型准确率差距在-32至+20点之间，揭示了评测中需要控制求解器硬度的重要性。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

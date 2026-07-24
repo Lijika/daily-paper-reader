@@ -18,24 +18,26 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-23
-- 运行时间：2026-07-23 21:20:32 UTC
+- 最新运行日期：2026-07-24
+- 运行时间：2026-07-24 20:46:40 UTC
 - 运行状态：成功
-- 本次总论文数：1
-- 精读区：0
+- 本次总论文数：2
+- 精读区：1
 - 速读区：1
 
 ### 今日简报（AI）
-今日速读了一篇关于神经网络验证的论文。值得关注的是《Lookahead Branching for Neural Network Verification》提出的前瞻性分支策略。建议读者重点了解该方法如何提升验证效率。
-- 详情：[/202607/23/README](/202607/23/README)
+今日精选2篇论文，精读机器学习优化SAT编码的规则发现，速读LLM约束推理困难度诊断。重点推荐ML辅助单常数乘法SAT编码的高效规则，以及LLM推理中“求解器难≠模型难”的新视角。建议深入研究ML与SAT编码结合的方法，并关注LLM约束推理的针对性测试。
+- 详情：[/202607/24/README](/202607/24/README)
 
 ### 精读区论文标签
-- 本次无精读推荐。
+1. [Identifying Good Rules for Efficient SAT Encodings of Single-Constant Multiplication Using Machine Learning](/202607/24/2607.21188v1-identifying-good-rules-for-efficient-sat-encodings-of-single-constant-multiplication-using-machine-learning)  
+   标签：评分：8.0/10、query:sat-bva-cnf
+   evidence：机器学习用于高效SAT编码
 
 ### 速读区论文标签
-1. [Lookahead Branching for Neural Network Verification](/202607/23/2607.17290v1-lookahead-branching-for-neural-network-verification)  
-   标签：评分：7.0/10、query:sat-bva-cnf
-   evidence：回看分支策略可迁移至SAT求解中的分支启发式
+1. [Solver-Hard Is Not Model-Hard: A Hardness-Controlled Diagnostic for LLM Constraint Reasoning](/202607/24/2607.17047v1-solver-hard-is-not-model-hard-a-hardness-controlled-diagnostic-for-llm-constraint-reasoning)  
+   标签：评分：6.0/10、query:sat-bva-cnf
+   evidence：约束推理中的SAT求解器硬度诊断
 
 
 <div class="dpr-home-promo-card dpr-home-panel">
