@@ -1,0 +1,24 @@
+{
+  "label": "2026-07-25",
+  "date": "2026-07-25",
+  "generated_at": "2026-07-25T20:02:35",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202607/25/2607.19997v1-a-sat-based-exact-approach-for-radio-k-labeling",
+      "section": "deep",
+      "title_en": "A SAT-Based Exact Approach for Radio k-Labeling",
+      "authors": "Huong Vu Thanh, Duc Dao Van, Khanh To Van",
+      "date": "2026-07-22",
+      "pdf": "https://arxiv.org/pdf/2607.19997v1",
+      "score": "9.0",
+      "evidence": "基于SAT的精确方法，采用增量SAT求解用于无线电k标号问题",
+      "tldr": "针对无线网络中的radio k-labeling问题，现有方法难以提供认证最优解。本文提出基于SAT的精确求解框架，采用紧凑序编码和增量SAT求解，逐步收紧标签跨度。在146个基准实例上，该方法获得38个新最优解，并匹配或改进了130个实例的最优值，显著优于CPLEX和Gurobi。结合ILP模型后，成功认证109个实例的最优性，展示了增量SAT求解在图标记问题中的实用价值。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "The radio $k$-labeling (or $k$-coloring) problem seeks a minimum-span assignment of nonnegative integer labels to the vertices of a connected graph $G$ such that $ |f(u)-f(v)| \\ge k+1-d(u,v) $ for all vertex pairs. Although numerous theoretical constructions and some heuristic algorithms have been proposed, existing approaches generally fail to provide certified optimal solutions for broad graph classes. This paper presents an exact SAT-based framework for radio k-labeling that combines a compact order encoding with incremental SAT solving. The proposed framework incrementally tightens the admissible span while reusing learned clauses across SAT calls, avoiding repeated formula reconstruction. Experimental results on 146 benchmark instances from nine graph families demonstrate that the proposed approach establishes 38 new best-known radio numbers while matching or improving the best-known radio numbers on 130 of the 146 benchmark instances. The proposed SAT framework outperforms state-of-the-art commercial optimization solvers, including CPLEX and Gurobi, in terms of overall solution quality, and substantially improves upon previously published heuristic methods. Furthermore, by combining the SAT frameworks with ILP models solved by CPLEX and Gurobi, the study certifies optimal solutions for 109 of the 146 benchmark instances, substantially expanding the set of radio-labeling benchmarks with proven optimality. These results demonstrate the effectiveness of incremental SAT solving as a practical exact optimization framework for difficult graph-labeling problems.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

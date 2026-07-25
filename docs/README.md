@@ -18,26 +18,26 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-24
-- 运行时间：2026-07-24 20:46:40 UTC
+- 最新运行日期：2026-07-25
+- 运行时间：2026-07-25 20:02:27 UTC
 - 运行状态：成功
-- 本次总论文数：2
+- 本次总论文数：1
 - 精读区：1
-- 速读区：1
+- 速读区：0
 
 ### 今日简报（AI）
-今日精选2篇论文，精读机器学习优化SAT编码的规则发现，速读LLM约束推理困难度诊断。重点推荐ML辅助单常数乘法SAT编码的高效规则，以及LLM推理中“求解器难≠模型难”的新视角。建议深入研究ML与SAT编码结合的方法，并关注LLM约束推理的针对性测试。
-- 详情：[/202607/24/README](/202607/24/README)
+1) 今日精读一篇9分论文，用SAT求解器精确解决无线电k-标记问题，直击图论与组合优化前沿。  
+2) 最值得关注：基于布尔可满足性的精确算法在难解图标记问题中的高效表现。  
+3) 建议：若你学习算法或SAT应用，可深入此方法的编码技巧与实验对比。
+- 详情：[/202607/25/README](/202607/25/README)
 
 ### 精读区论文标签
-1. [Identifying Good Rules for Efficient SAT Encodings of Single-Constant Multiplication Using Machine Learning](/202607/24/2607.21188v1-identifying-good-rules-for-efficient-sat-encodings-of-single-constant-multiplication-using-machine-learning)  
-   标签：评分：8.0/10、query:sat-bva-cnf
-   evidence：机器学习用于高效SAT编码
+1. [A SAT-Based Exact Approach for Radio k-Labeling](/202607/25/2607.19997v1-a-sat-based-exact-approach-for-radio-k-labeling)  
+   标签：评分：9.0/10、query:sat-bva-cnf
+   evidence：基于SAT的精确方法，采用增量SAT求解用于无线电k标号问题
 
 ### 速读区论文标签
-1. [Solver-Hard Is Not Model-Hard: A Hardness-Controlled Diagnostic for LLM Constraint Reasoning](/202607/24/2607.17047v1-solver-hard-is-not-model-hard-a-hardness-controlled-diagnostic-for-llm-constraint-reasoning)  
-   标签：评分：6.0/10、query:sat-bva-cnf
-   evidence：约束推理中的SAT求解器硬度诊断
+- 本次无速读推荐。
 
 
 <div class="dpr-home-promo-card dpr-home-panel">

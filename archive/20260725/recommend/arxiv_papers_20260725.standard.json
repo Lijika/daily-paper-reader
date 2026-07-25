@@ -1,0 +1,53 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-25T20:01:01.188668+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 1,
+    "deep_cap": 6,
+    "deep_selected": 1,
+    "quick_candidates": 0,
+    "quick_skim_target": 11,
+    "quick_selected": 0
+  },
+  "deep_dive": [
+    {
+      "id": "2607.19997v1",
+      "source": "arxiv",
+      "title": "A SAT-Based Exact Approach for Radio k-Labeling",
+      "abstract": "The radio $k$-labeling (or $k$-coloring) problem seeks a minimum-span assignment of nonnegative integer labels to the vertices of a connected graph $G$ such that $ |f(u)-f(v)| \\ge k+1-d(u,v) $ for all vertex pairs. Although numerous theoretical constructions and some heuristic algorithms have been proposed, existing approaches generally fail to provide certified optimal solutions for broad graph classes. This paper presents an exact SAT-based framework for radio k-labeling that combines a compact order encoding with incremental SAT solving. The proposed framework incrementally tightens the admissible span while reusing learned clauses across SAT calls, avoiding repeated formula reconstruction. Experimental results on 146 benchmark instances from nine graph families demonstrate that the proposed approach establishes 38 new best-known radio numbers while matching or improving the best-known radio numbers on 130 of the 146 benchmark instances. The proposed SAT framework outperforms state-of-the-art commercial optimization solvers, including CPLEX and Gurobi, in terms of overall solution quality, and substantially improves upon previously published heuristic methods. Furthermore, by combining the SAT frameworks with ILP models solved by CPLEX and Gurobi, the study certifies optimal solutions for 109 of the 146 benchmark instances, substantially expanding the set of radio-labeling benchmarks with proven optimality. These results demonstrate the effectiveness of incremental SAT solving as a practical exact optimization framework for difficult graph-labeling problems.",
+      "authors": [
+        "Huong Vu Thanh",
+        "Duc Dao Van",
+        "Khanh To Van"
+      ],
+      "primary_category": "cs.LO",
+      "categories": [
+        "cs.LO"
+      ],
+      "published": "2026-07-22T10:31:13+00:00",
+      "link": "https://arxiv.org/pdf/2607.19997v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "SAT-based exact approach for radio k-labeling using incremental SAT solving",
+      "llm_evidence_cn": "基于SAT的精确方法，采用增量SAT求解用于无线电k标号问题",
+      "llm_evidence": "基于SAT的精确方法，采用增量SAT求解用于无线电k标号问题",
+      "canonical_evidence": "基于SAT的精确方法，采用增量SAT求解用于无线电k标号问题",
+      "llm_tldr_en": "This paper presents a SAT-based exact framework for radio k-labeling, using compact order encoding and incremental SAT solving with clause reuse, achieving certified optimal solutions.",
+      "llm_tldr_cn": "针对无线电k标号问题，现有方法无法提供认证最优解。本文提出一种基于SAT的精确求解框架，结合紧凑序编码和增量SAT求解，在多次SAT调用间复用学习子句，避免重复构建公式。在146个基准实例上的实验表明，该方法能高效求出最优解。该工作展示了SAT技术在组合优化中的强大能力，并为SAT预处理和公式压缩提供了实践参考。",
+      "llm_tldr": "针对无线电k标号问题，现有方法无法提供认证最优解。本文提出一种基于SAT的精确求解框架，结合紧凑序编码和增量SAT求解，在多次SAT调用间复用学习子句，避免重复构建公式。在146个基准实例上的实验表明，该方法能高效求出最优解。该工作展示了SAT技术在组合优化中的强大能力，并为SAT预处理和公式压缩提供了实践参考。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": []
+}

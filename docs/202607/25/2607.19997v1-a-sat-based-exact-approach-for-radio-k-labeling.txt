@@ -1,0 +1,807 @@
+Title: A SAT-Based Exact Approach for Radio k-Labeling
+
+URL Source: https://arxiv.org/pdf/2607.19997v1
+
+Published Time: Thu, 23 Jul 2026 00:43:57 GMT
+
+Number of Pages: 30
+
+Markdown Content:
+# A SAT-Based Exact Approach for Radio 
+
+# k-Labeling 
+
+Huong Vu Thanh 1,2 , Duc Dao Van 1, Khanh To Van 1* 
+
+1VNU University of Engineering and Technology, Hanoi, Vietnam. 
+
+2Vietnam Maritime University, Hai Phong, Vietnam. *Corresponding author(s). E-mail(s): khanhtv@vnu.edu.vn; Contributing authors: 25028017@vnu.edu.vn; 24021409@vnu.edu.vn; 
+
+Abstract 
+
+The radio k-labeling (or k-coloring) problem seeks a minimum-span assignment of nonnegative integer labels to the vertices of a connected graph G such that 
+
+|f (u) − f (v)| ≥ k + 1 − d(u, v ) for all vertex pairs. Although numerous theoretical constructions and some heuristic algorithms have been proposed, existing approaches generally fail to provide certified optimal solutions for broad graph classes. This paper presents an exact SAT-based framework for radio k-labeling that combines a compact order encoding with incremental SAT solv-ing. The proposed framework incrementally tightens the admissible span while reusing learned clauses across SAT calls, avoiding repeated formula reconstruc-tion. Experimental results on 146 benchmark instances from nine graph families demonstrate that the proposed approach establishes 38 new best-known radio numbers while matching or improving the best-known radio numbers on 130 of the 146 benchmark instances. The proposed SAT framework outperforms state-of-the-art commercial optimization solvers, including CPLEX and Gurobi, in terms of overall solution quality, and substantially improves upon previously published heuristic methods. Furthermore, by combining the SAT frameworks with ILP models solved by CPLEX and Gurobi, the study certifies optimal solu-tions for 109 of the 146 benchmark instances, substantially expanding the set of radio-labeling benchmarks with proven optimality. These results demonstrate the effectiveness of incremental SAT solving as a practical exact optimization framework for difficult graph-labeling problems. 
+
+Keywords: Channel assignment problem, Radio k-labeling, Radio k-coloring, Graph coloring, SAT encoding, Incremental SAT solving 
+
+1arXiv:2607.19997v1 [cs.LO] 22 Jul 2026 1 Introduction 
+
+The channel assignment problem, introduced by Hale [1], models the allocation of frequencies to radio transmitters while minimizing interference and total bandwidth usage. In graph-theoretic formulations, vertices represent transmitters and edge or distance relations represent interference constraints between pairs of transmitters. This problem has motivated a wide range of graph labeling models, including the well-known L(2 , 1)-labeling introduced by Griggs and Yeh [2], where adjacent vertices must receive labels at least two units apart and vertices at distance two must receive distinct labels. Computing optimal radio labelings is computationally challenging because every pair of vertices potentially introduces a distance-based constraint. Although many the-oretical constructions and heuristic algorithms have been proposed for specific graph families, exact solutions remain known only for limited classes of highly structured graphs [3–6]. For more general graphs, most existing methods provide only feasi-ble solutions or analytical bounds without certifying optimality [7, 8]. Integer linear programming (ILP) formulations can compute exact solutions in principle, but their scalability is often limited by the rapid growth of the search space [6]. Boolean satisfiability (SAT) solving is one of the most successful paradigms for solving difficult combinatorial optimization problems [9]. Modern SAT solvers combine clause learning, conflict analysis, restarts, propagation techniques, and sophisticated branching heuristics, enabling them to solve instances containing millions of variables and clauses [10, 11]. SAT-based methods have achieved strong performance in schedul-ing, verification, planning, graph problems, and combinatorial design [9]. In particular, incremental SAT solving allows a sequence of closely related formulas to be solved while preserving learned clauses across solver calls, significantly reducing redundant computations [12]. These developments motivate the use of SAT solving for the radio 
+
+k-labeling problem. The radio constraints are inherently combinatorial and involve a large number of pairwise distance conditions, making them suitable for Boolean encoding. Moreover, the optimization objective can be naturally handled through incremental tightening of the admissible span bound. Despite extensive research on theoretical constructions, analytical bounds, and heuristic algorithms, exact computa-tional approaches remain scarce. To the best of our knowledge, no general SAT-based exact optimization framework has been proposed for the radio k-labeling problem. In this paper, we present an exact SAT-based framework for radio k-labeling that combines an order-encoding representation of vertex labels with an incremental SAT solving strategy. The SAT model is constructed once and progressively strength-ened by iteratively forbidding previously obtained span values, reusing learned clauses across solver calls rather than rebuilding the formula from scratch. This design allows the framework to compute certified optimal spans within practical running times on many benchmark instances and, even when the optimality proof cannot be completed within the time limit, to still return feasible solutions that are consistently tighter than existing heuristic and ILP-based methods. The main contributions of this work are summarized as follows: 2• We propose an exact SAT framework for the radio k-labeling problem that combines a compact order encoding with an incremental optimization strategy. The framework progressively tightens the admissible labeling span while reusing learned clauses across successive SAT calls, eliminating the need to rebuild the SAT formula. 
+
+• We establish 38 new best-known radio numbers among the 98 benchmark instances without a closed-form optimum, and on the 48 path and cycle instances, whose optimal radio number is already known in closed form, the SAT framework independently recovers the proven-optimal value on 46 instances. 
+
+• By combining the proposed SAT frameworks with ILP models solved by CPLEX and Gurobi, we certify optimal solutions for 109 benchmark instances, substantially enlarging the collection of radio k-labeling benchmarks with proven optimality. 
+
+• More broadly, this work demonstrates that modern incremental SAT solving consti-tutes a practical exact optimization paradigm for graph labeling problems that have traditionally been dominated by theoretical constructions and heuristic algorithms. The remainder of the paper is organized as follows. Section 2 introduces the neces-sary preliminaries and the ILP formulation. Section 3 reviews related works on radio labeling. Section 4 presents the SAT encoding and the incremental solving framework. Experimental results are reported in Section 5, followed by concluding remarks. 
+
+## 2 Preliminaries 
+
+2.1 Basic Definitions and Notation 
+
+Let G = ( V, E ) be a finite, undirected, connected simple graph with |V | = n vertices and |E| = m edges. For any two vertices u, v ∈ V , let d(u, v ) denote the length of a shortest path between u and v. The diameter of G is defined as diam( G) = max u,v ∈V d(u, v ).
+
+Throughout this paper, we consider only the standard radio-labeling setting 
+
+k = diam( G). Consequently, the problem studied in this work corresponds to the classical radio-labeling problem. This choice is motivated by two complementary rea-sons. First, setting k = diam( G) yields the most constrained instance of the radio 
+
+k-labeling problem: since d(u, v ) ≤ diam( G) for every pair of distinct vertices, the required separation ∆ uv = k + 1 − d(u, v ) is strictly positive for all  n
+
+> 2
+
+ vertex pairs, so no pairwise radio constraint is trivially satisfied. For smaller values of k, pairs at distance greater than k contribute no constraint, strictly reducing the constraint den-sity and generally making the problem easier to solve. Second, this setting coincides with the classical radio labeling problem studied extensively in the literature [3, 13], enabling direct comparison with existing exact results, heuristic upper bounds, and ILP formulations on standard benchmark families. The exact optimization formula-tions developed in this paper (Section 4) apply directly to arbitrary values of k by substituting the desired parameter into the encoding of Section 4; the restriction to 
+
+k = diam( G) is adopted here solely to focus the experimental evaluation on the hardest and most widely studied case. 3Since d(u, v ) ≤ diam( G) = k for all distinct vertices u, v ∈ V , every pair of vertices induces a nontrivial radio constraint. For convenience, define the required label separation ∆ uv = k + 1 − d(u, v ). Then ∆ uv ≥ 1 for every distinct pair of vertices.                       
+
+> Definition 1(Radio labeling) A radio labeling of a graph Gis a mapping f:V→{0,1,2, . . . }such that |f(u)−f(v)| ≥ k+1 −d(u, v ) for every pair of distinct vertices u, v ∈V,where k= diam( G).
+
+The radio constraint requires vertices that are close in the graph to receive labels that are sufficiently far apart numerically. In particular, adjacent vertices require the largest label separation.               
+
+> Definition 2 (Span) The span of a radio labeling fis defined as span( f) = max v∈Vf(v).
+> Definition 3 (Radio number) The radio number of G, denoted by rn (G), is the minimum span among all feasible radio labelings of G:rn (G) = min fspan( f).Any labeling achieving this minimum value is called an optimal radio labeling.
+
+The radio-labeling problem can therefore be viewed as a combinatorial optimization problem whose objective is to minimize the maximum assigned label while satisfying all pairwise distance constraints. A classical characterization of the radio number is based on vertex orderings. Let (x1, x 2, . . . , x n) be an ordering of the vertices of G. If consecutive label differences satisfy 
+
+f (xi+1 ) − f (xi) = k + 1 − d(xi, x i+1 ),
+
+then the resulting span can be expressed as 
+
+rn (G) = ( n − 1)( k + 1) −
+
+> n
+
+X
+
+> i=2
+
+d(xi, x i−1) + 1 .
+
+This characterization shows that minimizing the radio span is closely related to maximizing the accumulated distance between consecutive vertices in a vertex order-ing. Such formulations play an important role in many theoretical constructions developed in the literature. However, constructing optimal orderings becomes increas-ingly difficult for general graphs, motivating the development of exact optimization formulations such as ILP and SAT encodings. 
+
+2.2 ILP Model 
+
+The study of Badr and Moussa [6] formulated the radio k-coloring problem as an integer program with an integer variable Lv denoting the label of vertex v, absolute-value pairwise constraints, and objective min P 
+
+> v
+
+Lv . This objective does not capture the radio number, minimizing the sum of labels is not equivalent to minimizing the 4maximum label, since a labeling with small sum may still have large maximum, and conversely; the correct objective is min max v Lv .To obtain an exact baseline that targets the correct objective and shares its vari-ables with the SAT encodings of Section 4, we use a binary formulation, referred to as ILP ; the baseline reported throughout is solved with CPLEX and denoted ILP CPLEX .
+
+xv,l =
+
+(
+
+1, if vertex v receives label l, 
+
+0, otherwise, ∀ v ∈ V, l ∈ { 1, . . . , UB }, (1) the single integer span variable lmax ∈ Z≥0. The label of a vertex is recovered as 
+
+f (v) = PUB  
+
+> l=1
+
+l x v,l .The ILP model (P) is min lmax (P) s.t. 
+
+> UB
+
+X
+
+> l=1
+
+xv,l = 1 ∀ v ∈ V, (2) 
+
+l x v,l ≤ lmax ∀ v ∈ V, l ∈ { 1, 2, . . . , UB }, (3) 
+
+xu,a + xv,b ≤ 1 ∀ u̸ = v, ∀ (a, b ) : |a − b| < ∆uv , (4) 
+
+xv,l ∈ { 0, 1}, lmax ∈ Z≥0. (5) Constraint (2) assigns exactly one label to each vertex. Constraint (3) forces lmax 
+
+to be at least the label of every vertex; minimized in the objective (P), it equals the span. Distance constraint (4) enforces the radio condition |f (u) − f (v)| ≥ ∆uv directly through conflict inequalities: whenever xu,a = 1 (i.e. f (u) = a), every label b within the forbidden interval |a − b| < ∆uv is excluded for v, since assigning both would force xu,a + xv,b = 2. This avoids the big-M linearization and the auxiliary direction variables entirely, as the disjunction f (u) > f (v) ∨ f (v) > f (u) is absorbed into the symmetric enumeration of all conflicting label pairs ( a, b ). The same set of conflict pairs underlies the direct SAT encoding of Section 4. The model contains n UB + 1 variables and O(n2 UB k) constraints, the latter dominated by the pairwise radio conflicts (4): each pair ( u, v ) contributes O(UB ∆ uv )inequalities and ∆ uv ≤ k + 1. Although exact, the large number of conflict inequalities causes the search space to grow rapidly, limiting scalability on larger graphs. The formulation shares the assignment variables xv,l with the SAT encodings of Section 4, so the formulations admit the same set of feasible labelings over the domain [1 , UB]. 
+
+## 3 Related Works 
+
+The radio k-labeling problem originates from the channel assignment problem intro-duced by Hale [1], in which frequencies must be assigned to transmitters so that graph distances model the interference constraints between communication devices. This line of research evolved into distance-constrained graph labeling problems, including 5Table 1 : Summary of related works. 
+
+Reference Graph families Main contribution Method 
+
+Exact Theoretical Constructions 
+
+[3] Paths Pn, cycles Cn Closed-form exact rn (Pn), rn (Cn) Vertex-ordering [14], [15] C2
+
+> n
+
+, P 2 
+
+> n
+
+Exact rn for squares of paths and cycles Vertex-ordering [4] Trees Exact rn (tree) Vertex-ordering [16] Complete m-ary trees Exact rn and feasible labeling Vertex-ordering [17] Generalized prism graphs Exact rn and feasible labeling Vertex-ordering [18], [19] Paths Pn, cycles Cn Exact antipodal number Vertex-ordering [20] Cartesian product 
+
+Pn□Km
+
+Exact rn and feasible labeling Vertex-ordering [21] Block graphs, line graphs of trees Exact rn and feasible labeling N&S condition [22] Full m-ary trees Exact rn and feasible labeling Vertex-ordering [23] Generalized Petersen 
+
+□ tree Exact rn and feasible labeling N&S condition [24] Cartesian product (tree □ Km)Exact rn and feasible labeling N&S condition [25] Powers of paths P mn Exact rn , linear-time labeling Modified DGNS + constructive 
+
+Analytical Bounds 
+
+[26] Trees, infinite paths Upper bound on rn (tree) Analytical bound [27] Binomial trees, Fibonacci trees Tightened upper bound Constructive heuristic [7] Arbitrary graphs General analytical lower bound Analytical lower bound [8] General graphs DGNS-type lower bound technique DGNS lower bound 
+
+Heuristic Algorithms 
+
+[5] General connected graphs Upper bound (Ub 1), feasible labeling Greedy [6] General graph Improved upper bound (Ub 3); Iterated greedy 
+
+Exact Optimization 
+
+[6] General graph ILP formulation, exact in principle; lim-ited scalability ILP (LINGO solver) 
+
+This work General graph Certified exact rn (G) on solved instances; on growing-diameter families, tighter fea-sible labeling than Ub 1, Ub 3, and ILP; on bounded-diameter families, ILP CPLEX is preferable and the two methods are com-plementary. Order-encoding SAT, incremental SAT, symmetry breaking 
+
+6the well-known L(2 , 1)-labeling of Griggs and Yeh [2], who established the NP-completeness of the problem for general graphs, and was generalized by Chartrand et al. [13] through the notions of radio labeling and the radio k-chromatic number rc k(G). Since then, the problem has attracted extensive attention from both the graph theory and the combinatorial optimization communities, and the resulting literature, summarized in Table 1, can be organized into four broad directions: exact theoret-ical constructions, analytical bounds, heuristic algorithms, and exact optimization formulations. The first and largest direction derives exact radio numbers for highly structured graph families through constructive combinatorial arguments, most often via carefully designed vertex orderings. Liu and Zhu [3] introduced the vertex-ordering tech-nique, constructing an ordering ( x1, . . . , x n) and assigning labels recursively through 
+
+f (xi+1 ) − f (xi) = k + 1 − d(xi, x i+1 ), which under suitable distance conditions satis-fies all pairwise radio constraints; this yielded the classical closed-form values rn (Pn)and rn (Cn). The methodology was subsequently applied to powers of paths and cycles [14, 15], antipodal labelings [18, 19, 28], hypercubes [29], generalized prism graphs [17], trees [4], complete m-ary trees [16], Cartesian product graphs [20], and full 
+
+m-ary trees [22]. A complementary line replaces explicit orderings by necessary-and-sufficient optimality conditions: Bantva [30] characterized optimal labelings through distance-sum maximization with vanishing slack, an approach later extended to block graphs and line graphs of trees [21], to the Cartesian product of the generalized Petersen graph with trees [23], and to the product of a tree with a complete graph 
+
+Km [24]. Other structural reductions include Sarkar and Adhikari [31], who reduced radio labeling to a path-covering problem on graph powers for triangle-free and circu-lant graphs, and Chakraborty et al. [25], who obtained exact radio numbers for powers of paths via a modified DGNS framework with linear-time labeling. While elegant, these results depend strongly on graph symmetries or family-specific structure and do not naturally generalize. The second direction provides analytical lower and upper bounds for families where exact values remain unknown. On the upper-bound side, Kchikech et al. [26] bounded 
+
+rn for trees that are neither stars nor paths, and Reddy and Iyer [27] refined these estimates for binomial and binary Fibonacci trees, proving rn (BT k) ≤ 2(2 k−1 −1)( k −
+
+1) + 3 · 2k−3. On the lower-bound side, Kola and Panigrahi [7] introduced a triameter-based framework, Saha and Panigrahi [32] a distance-matrix decomposition rc k(G) = (n − 1)( k + 1) − P d(xi, x i−1) + P εi + 1 with slack εi ≥ 0, and Das et al. [8] the DGNS layered-decomposition bound, which strictly improves [7] on several families. Such bounds illuminate the asymptotic behavior of rn but generally do not certify optimal labelings for finite instances. The third direction develops constructive heuristics. Saha and Panigrahi [5] pro-posed an O(n3) greedy algorithm, denoted Ub 1, that fixes the root label and assigns each vertex its minimum feasible label; it matches rn (Cn) for all even n up to 400. Badr and Moussa [6] iterated this construction over all roots to obtain the tighter bound Ub 3 in O(n4) time, improving Ub 1 on all tested families and also giving an exact 
+
+O(n) algorithm for Pn. Family-specific refinements followed for triangular and double 7triangular snakes [33] and for generalized friendship graphs [34]. These methods are effective in practice but produce only feasible labelings and cannot certify optimality. The fourth and least-explored direction concerns exact optimization. Badr and Moussa [6] formulated radio k-labeling as an integer linear program that is exact in principle but scales poorly beyond n > 100 (the formulation and its limitations are detailed in Section 2.2). More fundamentally, this and all existing exact approaches solve closely related optimization subproblems independently, discarding the informa-tion learned in previous iterations and thereby incurring substantial redundant search effort. Taken together, these limitations motivate the present work. Exact theoretical results remain confined to structured families; analytical bounds rarely yield cer-tified labelings; heuristics provide no optimality guarantee; and the single existing exact formulation scales poorly and reuses no search information. To address these gaps, we introduce an exact incremental SAT-based framework that combines a com-pact order encoding with clause-learning SAT technology. Unlike heuristic methods, it certifies optimality whenever an UNSAT proof is obtained; unlike the existing ILP formulation, it reuses learned clauses across optimization iterations, substantially reducing redundant search effort and improving feasible solution quality on challenging instances. 
+
+## 4 SAT-based Approaches for Radio k-labeling Problem 
+
+This section develops two Boolean satisfiability encodings of the radio k-labeling prob-lem. Both reuse the modeling conventions of the ILP formulation in Section 2.2, the label domain is fixed to {1, 2, . . . , UB }, where UB is a precomputed upper bound on the span; for each ordered pair ( u, v ) with u < v the required separation is ∆uv = k + 1 − d(u, v ); and, as in constraint (2), every vertex receives exactly one label. 
+
+4.1 Direct Encoding 
+
+The direct encoding uses exactly the assignment variables of the ILP model, for every vertex v ∈ V and label l ∈ { 1, . . . , UB },
+
+xv,l = 1 ⇐⇒ f (v) = l, 
+
+giving n UB Boolean variables, the Boolean counterpart of the ILP variables in (5). The radio condition is imposed purely through clausal constraints, organized into two groups. The clausal form of the assignment constraint (2) consists of two parts. The at-least-one clause, a single disjunction which guarantees v is assigned some label, and a family of binary clauses for every pair 1 ≤ a < b ≤ UB, which forbids v from receiving 8two labels simultaneously, 
+
+> UB
+
+_
+
+> l=1
+
+xv,l , ¬xv,a ∨ ¬ xv,b . (6) Together these two conditions enforce that each vertex receives exactly one label. The naive pairwise form in (6) alone contributes n UB 2
+
+ = O(n UB 2) clauses. Mirroring the ILP conflict inequalities (4), the condition |f (u) − f (v)| ≥ ∆uv is enforced by forbidding, for each pair ( u, v ) with u < v and ∆ uv > 0, every violating label combination: for all a, b ∈ { 1, . . . , UB } with |a − b| < ∆uv ,
+
+¬xu,a ∨ ¬ xv,b . (7) Each pair ( u, v ) contributes 
+
+{(a, b ) : |a − b| < ∆uv } = UB + 2  
+
+> ∆uv −1
+
+X
+
+> t=1
+
+(UB − t) = O(UB ∆ uv ),
+
+and since ∆ uv ≤ k + 1, the radio constraints (7) contribute O(n2 UB k) clauses in the worst case. The direct encoding needs no auxiliary direction variables the disjunctive case 
+
+f (u) > f (v) or f (v) > f (u) is absorbed into (7), but it has two structural drawbacks. First, f (v) ≥ c is not a single literal but the disjunction W 
+
+> l≥c
+
+xv,l , so the radio condition must enumerate forbidden pairs individually, an extra factor of O(k) relative to the order encoding below. Second, propagation under unit resolution is weak, fixing xu,a =1 excludes each conflicting label of v only through a separate binary clause. These two structural drawbacks motivate the order encoding below. 
+
+4.2 Order Encoding 
+
+The order encoding represents each label f (v) by a monotone chain of threshold vari-ables together with the same mask variables xv,l used by the direct encoding and the ILP. For every vertex v ∈ V and every label l ∈ { 1, . . . , UB } we define the order 
+
+variables and the mask variables 
+
+gv,l = 1 ⇐⇒ f (v) ≥ l, xv,l = 1 ⇐⇒ f (v) = l. 
+
+The mask variables xv,l coincide exactly with the ILP assignment variables (5), so any satisfying assignment of the SAT model induces a feasible ILP solution and vice versa. The advantage of the threshold variables is twofold: (i) an inequality of the form f (v) ≥ c becomes the single literal gv,c , and (ii) the encoding admits compact propagation of the arithmetic radio condition |f (u) − f (v)| ≥ ∆uv .The constraints are organized into three groups in conjunctive normal form. The first group (O1) enforces domain consistency for the threshold encoding. Since f (v) ≥
+
+l + 1 implies f (v) ≥ l, the threshold variables are monotonically non-increasing in l,9and in addition every vertex receives a label of at least 1, so for every v ∈ V and every 
+
+l ∈ { 1, . . . , UB − 1},(¬gv,l +1 ∨ gv,l ), gv, 1. (8) Together the clauses in (8) guarantee that each vertex is assigned exactly one label, the clausal counterpart of the assignment constraint (2). Besides, they enforce the at-most-one condition implicitly through monotonicity rather than through an explicit summation or the O(n UB 2) at-most-one clauses in (6) of the direct encoding. The second group (O2) links the threshold and mask variables. The variable xv,l 
+
+holds if and only if f (v) ≥ l and f (v)̸ ≥ l + 1, so for every v ∈ V and every l ∈{1, . . . , UB − 1} this equivalence is captured by the three clauses 
+
+xv,l → gv,l , xv,l → ¬ gv,l +1 , (gv,l ∧ ¬ gv,l +1 ) → xv,l . (9) For the boundary case l = UB, since gv, UB+1 does not exist, the equivalence reduces to xv, UB ↔ gv, UB , encoded by 
+
+¬xv, UB ∨ gv, UB , ¬gv, UB ∨ xv, UB . (10) The third group (O3) is the radio distance constraint, the clausal counterpart of (4). For each pair ( u, v ) with u < v and ∆ uv > 0, whenever xu,a = 1 (i.e., f (u) = a)the label of v must lie outside the forbidden interval ( a − ∆uv , a + ∆ uv ), 
+
+xu,a =⇒  f (v) ≤ a − ∆uv 
+
+ ∨  f (v) ≥ a + ∆ uv 
+
+.
+
+Using the threshold variables, the two disjuncts translate to single literals 
+
+f (v) ≤ a − ∆uv ⇔ ¬ gv, a −∆uv +1 , f (v) ≥ a + ∆ uv ⇔ gv, a +∆ uv .
+
+Combined with the antecedent ¬xu,a , this yields a single clause per triple ( u, v, a ) in contrast to the O(UB ∆ uv ) binary clauses (7) the direct encoding needs for the same pair. The indices a − ∆uv + 1 and a + ∆ uv may fall outside [1 , UB], in which case the corresponding literal is dropped, giving three cases: in Case 1 both disjuncts are feasible ( a > ∆uv − 1 and a + ∆ uv ≤ UB); in Case 2 only the lower disjunct is feasible (a + ∆ uv > UB), so f (v) is pushed below a; and in Case 3 only the upper disjunct is feasible ( a ≤ ∆uv − 1), so f (v) is pushed above a,
+
+¬xu,a ∨ ¬ gv,a −∆uv +1 ∨ gv, a +∆ uv 
+
+| {z }
+
+> Case 1
+
+, ¬xu,a ∨ ¬ gv,a −∆uv +1 
+
+| {z }
+
+> Case 2
+
+, ¬xu,a ∨ gv, a +∆ uv 
+
+| {z }
+
+> Case 3
+
+. (11) The order encoding is correct in the sense that the satisfying assignments of the CNF formula Φ formed by the clause groups (O1)–(O3) are in one-to-one corre-spondence with the radio labelings of G over the domain [1 , UB]. Fix any satisfying assignment. By the unit clause gv, 1 in (8) we have gv, 1 = 1, and by the monotonic-ity clauses in (8) the truth values gv, 1 ≥ gv, 2 ≥ · · · ≥ gv, UB form a non-increasing 0/1 chain, so there is a unique index f (v) = max {l : gv,l = 1 } ∈ [1 , UB]; the linking 10 clauses (9)–(10) then force xv,l = 1 exactly for l = f (v), so each vertex receives exactly one label, which is the clausal counterpart of the assignment constraint (2). For any pair u < v with ∆ uv > 0, writing a = f (u), the clause of group (O3) in (11) for the triple ( u, v, a ) forces f (v) ≤ a − ∆uv or f (v) ≥ a + ∆ uv through the threshold literals 
+
+¬gv, a −∆uv +1 and gv, a +∆ uv (literals outside [1 , UB] are dropped precisely because the corresponding labels are infeasible), so |f (u) − f (v)| ≥ ∆uv = k + 1 − d(u, v ) and f
+
+is a valid radio labeling of span at most UB. Conversely, given any radio labeling f
+
+of span at most UB, setting gv,l = 1 iff f (v) ≥ l and xv,l = 1 iff f (v) = l satisfies (O1) and (O2) by construction and (O3) because the radio condition places f (v) out-side the forbidden interval ( a − ∆uv , a + ∆ uv ) whenever f (u) = a. The two maps are mutually inverse, establishing the claimed correspondence. 
+
+4.3 Comparison of the Two Encodings 
+
+Both SAT encodings represent the same feasibility problem as the ILP model of Section 2.2 over the identical label domain [1 , UB] and share the mask variables xv,l ,so the three formulations are logically equivalent in the labelings they admit. They dif-fer only in size and propagation behavior, summarized in Table 2. The order encoding doubles the variable count (adding the ordered variables gv,l ) but reduces the label-assignment clauses from O(n UB 2) in (6) to O(n UB) in (8), and the radio clauses from O(n2 UB k) in (7) to O(n2 UB) in (11), eliminating the dependence on k.
+
+Table 2 : Size of the two SAT encodings.                
+
+> Component Direct SAT Order SAT
+> Boolean / binary vars nUB 2nUB Assignment clauses O(nUB 2)O(nUB) Radio constraints O(n2UB k)O(n2UB)
+
+4.4 Incremental SAT Solving Framework 
+
+The incremental optimization framework is independent of the underlying feasibil-ity encoding and applies identically to both the direct and the order encodings of Sections 4.1 and 4.2. It follows an incremental SAT paradigm that a single solver instance is built once and progressively strengthened across iterations, in three phases. In phase 1 (preprocessing), we compute the all-pairs shortest-path matrix and set 
+
+k = diam( G). An initial upper bound UB comes from a graph-specific heuristic, and the lower bound is set to 1. The chosen encoding is invoked with parameter m = UB in phase 2, producing a CNF formula and initializing an incremental SAT solver instance. The label domain is fixed for the entire run, no variables are added afterward. The value UB = n(k + 1) − k
+
+is a valid domain bound. Ordering the vertices arbitrarily as v1, . . . , v n and assigning 11 f (vi) = 1 + ( i − 1)( k + 1) spaces labels by k + 1, so for every i < j ,
+
+|f (vi) − f (vj )| = ( j − i)( k + 1) ≥ k + 1 > k ≥ k + 1 − d(vi, v j ),
+
+since d(vi, v j ) ≥ 1. This assignment is therefore always feasible, with maximum label 
+
+f (vn) = n(k + 1) − k, so rn (G) ≤ n(k + 1) − k and the domain [1 , UB] is guaranteed to contain an optimal assignment. In phase 3, the algorithm repeatedly re-solves the incrementally strengthened for-mula. Each Sat result tightens the span and the search continues with a stricter bound by ForbidSpansAtOrAbove (β, solver ). The loop terminates either when the solver returns Unsat for the current bound, certifying that the span is optimal, or when the time limit is reached, in which case the span is returned as a feasible but uncertified bound. 
+
+Algorithm 1 Incremental SAT for Radio k-Labeling 
+
+Require: Graph G = ( V, E ), |V | = n; initial upper bound ub ; time limit T
+
+Ensure: Best span β found within T ; certified optimal if terminated via Unsat 
+
+Phase 1: Preprocessing  
+
+> 1:
+
+dist ← all-pairs distances via BFS  
+
+> 2:
+
+k ← diam( G)
+
+Phase 2: Build SAT model once  
+
+> 3:
+
+solver ← BuildSAT (n, ub , dist , k ) ▷ domain [1 , ub ], fixed  
+
+> 4:
+
+β ← ub ▷ feasible by construction, Section 4.4 
+
+Phase 3: Incrementally tighten the span  
+
+> 5:
+
+while time remains do  
+
+> 6:
+
+(status , model ) ← Solve (solver , T remain ) 
+
+> 7:
+
+if status = Timeout then  
+
+> 8:
+
+return β ▷ Time-Out: last confirmed feasible span  
+
+> 9:
+
+else if status = Sat then  
+
+> 10:
+
+β ← ExtractSpan (model ) ▷ max v f (v) 
+
+> 11:
+
+ForbidSpansAtOrAbove (β, solver ) ▷ next Solve tests span ≤ β − 1 
+
+> 12:
+
+else  
+
+> 13:
+
+return β ▷ Unsat : no span < β exists, so β is optimal  
+
+> 14:
+
+end if  
+
+> 15:
+
+end while  
+
+> 16:
+
+return β
+
+All conflict clauses learned by SAT solver in earlier iterations remain valid and con-tinue pruning the search in later ones, the central source of savings over independent SAT calls. Rather than decreasing admissible span bound by one unit per iteration, we use the actual span β extracted from the satisfying model, which is often much smaller than the naively decremented bound. This lets the search skip trivially feasible values and reduces the number of solver calls. 12 4.5 Symmetry Breaking 
+
+For cycle graphs Cn, the graph structure exhibits rotational symmetry. If a label-ing is feasible, then rotating the labels around the cycle produces another equivalent feasible solution. Consequently, the SAT solver may spend considerable time explor-ing many rotationally equivalent assignments. To eliminate this symmetry, one vertex is fixed to a predefined label. Without loss of generality, the first vertex is assigned the smallest label f (0) = 1. This constraint removes equivalent rotational solutions and significantly reduces the number of symmetric assignments explored during SAT solving. Fixing f (0) = 1 never discards an optimal solution, that is, Cn admits a radio labeling of span s if and only if it admits one of span s with f (0) = 1. To see this, let f be any radio labeling of span s. Subtracting min v f (v) − 1 from every label is a translation that leaves all differences |f (u) − f (v)|, hence all radio constraints, unchanged and keeps the span equal to s, so we may assume the smallest label equals 1. Let w be a vertex with f (w) = 1. Since Cn is vertex-transitive, its rotational automorphism group acts transitively on V , so there is a rotation ρ with ρ(0) = w; as 
+
+ρ preserves all pairwise distances, f ◦ ρ is again a radio labeling of span s and satisfies (f ◦ ρ)(0) = f (w) = 1. Hence an optimal labeling with f (0) = 1 always exists, and the constraint removes only redundant rotated copies. 
+
+## 5 Experiments and Results 
+
+5.1 Experimental Setup 
+
+All experiments were conducted on a personal computer equipped with an Intel(R) Core(TM) i7-10870H CPU running at 2.20 GHz and 24 GB of RAM. The Direct Encoding (Direct-SAT) and Order Encoding (Order-SAT) were solved using the CaDiCaL 1.9.5 SAT solver. For Direct-SAT, we evaluated three encodings for the exactly-one assignment constraints in (6): the pairwise encoding, and two cardinal-ity encodings provided by PySAT [35], namely Sequential Counter (seqcounter) and Cardinality Network (cardnetwrk). This comparison allows us to assess the impact of different encodings for exactly-one constraints on the performance of the SAT solver. The ILP model (P) was solved using two commercial optimization solvers, IBM ILOG CPLEX (Version 22.2.0) and Gurobi (Version 13.0.0), denoted ILP CPLEX and ILP Gurobi, respectively. All methods were evaluated under the same time limit of 1,200 seconds. The experimental evaluation was conducted on the benchmark dataset used in Ub3 [6]. The benchmark instances were generated with increasing numbers of vertices in order to evaluate scalability and optimization capability under different graph sizes. The benchmark comprises 146 instances from nine graph families: paths Pn (n = 1– 25), cycles Cn (n = 3–25), triangular snakes ∆ k (k = 1–15), kC 4-snakes ( k = 1–15), 
+
+kC 6-snakes ( k = 1–15), ladder graphs Lk (k = 1–15), book graphs Bk (k = 1–15), friendship graphs Fk (k = 1–15), and binomial trees BT k (k = 0–7). The overall performance of each method is summarized using five metrics. # Best 
+
+denotes the number of instances on which a method achieves the best bound among all 13 compared methods. # Opt is the number of instances for which optimality is certified. #Solved reports the number of instances solved within the time limit by finding a feasible solution. # N ew counts the instances for which a method improves upon the previously best-known upper bound. Avg. Rank is the average rank obtained from the Friedman test, with lower values indicating better overall performance. Per-instance relative-gap plots, defined as 100 · (s − rn ∗)/rn ∗ for a returned span 
+
+s against the best-known span rn ∗, with 0% marking the best result, are presented alongside their respective discussions, Figure 1 in Section 5.2 for paths and cycles, and Figures 3 and 2 in Section 5.3 for the remaining families. 
+
+5.2 Computational results for cycle and path graphs 
+
+For paths and cycles, the exact radio number Ub 0 has been established in closed form by Liu and Zhu [3]. This optimal value serves as the reference for evaluating the upper bounds Ub 1 [5], Ub 3 [6], as well as the SAT and ILP methods (Table 3). The Ub 0 values were recomputed directly from the closed-form formulas given in the original paper, since this produces more accurate results than those reported in Ub 3 [6]. In contrast, the Ub 1 and Ub 3 upper bounds were generated by our own implementations of the constructive algorithms described in their respective original publications, rather than by reproducing the reported results. 5 10 15 20 25  
+
+> n
+> 0.0
+> 2.5
+> 5.0
+> 7.5
+> 10.0
+> 12.5
+> 15.0
+> 17.5
+> 20.0
+> Relative gap (\%)
+> Paths Pn
+> Order-SAT
+> Direct-SAT
+> ILP (CPLEX)
+> ILP (Gurobi)
+> Ub 1
+> Ub 3
+
+(a) Paths Pn5 10 15 20 25   
+
+> n
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> Relative gap (\%)
+> Cycles Cn
+> Order-SAT
+> Direct-SAT
+> ILP (CPLEX)
+> ILP (Gurobi)
+> Ub 1
+> Ub 3
+
+(b) Cycles Cn
+
+Fig. 1 : Relative gaps on the path and cycle graph families. Figure 1 illustrates the relative gap of all methods on the path and cycle benchmark instances, measured with respect to the exact radio number Ub 0. Since Ub 0 represents the proven optimum for these graph families, the relative gap directly reflects the quality of the best values produced by each method. Lower relative gaps indicate solutions closer to the optimum, enabling a clear visual comparison of the optimization performance of the heuristic, SAT-based, and ILP-based approaches. On path graphs, Order-SAT substantially improves upon the latest published heuristic Ub 3, obtaining tighter upper bounds on 19 of the 25 benchmark instances. 14 Table 3 : Performance summary of the compared methods on path and cycle graphs.                                                            
+
+> Family Metric Order-SAT Direct-SAT ILP ILP Ub 0Ub 1Ub 3
+> (seqcounter) CPLEX Gurobi [3] [5] [6]
+> Path Pn(25) #Best 24 15 21 20 25 36#Opt 15 11 19 20 25 00AVG. Rank 2.82 4.20 3.50 3.36 2.78 6.56 4.78 Cycle Cn(23) #Best 23 19 20 18 23 13 23
+> #Opt 17 14 17 15 23 00AVG. Rank 3.50 4.07 4.11 4.33 3.50 4.91 3.50
+
+Compared with the two commercial ILP optimizers, CPLEX and Gurobi, Order-SAT consistently returns tighter feasible solutions on the more challenging instances, although the ILP solvers certify optimality for a larger number of cases. Moreover, Order-SAT clearly outperforms Direct-SAT, demonstrating the effectiveness of the proposed order encoding over the direct encoding formulation. Order-SAT achieves the best mean rank among all practical methods (2.82), second only to the exact reference Ub 0 (2.78), and ranks ahead of Gurobi, CPLEX, Direct-SAT, Ub 1, and Ub 3.On cycle graphs, Order-SAT matches the exact radio number Ub 0 on every instance for which optimality is certified, proving optimality for 17 of the 25 benchmark instances. This represents the highest number of optimality certificates among the exact methods evaluated on this graph family. The effectiveness of Order-SAT is fur-ther enhanced by the proposed symmetry-breaking constraints, which substantially improve the solver’s ability to certify optimality while preserving solution quality. Detailed results are reported in Tables A1 and A2. Table 4 evaluates the proposed symmetry-breaking strategy, which fixes one vertex label ( f (0) = 1) to eliminate the rotational symmetry of cycle graphs (Section 4.5). Implemented as a unit clause on g0,1, this constraint enables preprocessing to simplify the SAT instance, reducing the number of clauses by an average of 12 .8% (7 .4–21 .8%). It also consistently accelerates solving, yielding speedups from 1 .47 × (n=7) to 24 .35 ×
+
+(n=16) on all jointly certified instances and enabling four additional optimality certifi-cates ( C19 , C20 , C22 , and C25 ). Only C24 exhibits a slightly weaker upper bound (90 vs. 89), while C23 and C24 remain unsolved under both configurations. Overall, sym-metry breaking simultaneously reduces the encoding size and search space, making it the preferred configuration for cycle graphs. 
+
+5.3 Computational results for other graph families 
+
+The five remaining families span a spectrum of diameter behaviour, which the experi-ments identify as the single most predictive factor for the relative performance of the two exact methods. A kC m-snake chains k copies of the cycle Cm at shared cut ver-tices, so its diameter grows as ⌊m/ 2⌋ · k; the ladder Ln = P2□Pn has 2 n vertices and diameter n; the book Bn = K1,n □K2 has 2 n+2 vertices but constant diameter 3; the 
+
+friendship graph Fn joins n triangles at a common vertex and has constant diameter 15 Table 4 : Fix-one-vertex symmetry breaking on cycles Cn.
+
+n Order-SAT (without SB) Order-SAT (with SB) 
+
+#Vars #Clauses rn (Cn ) Status Time (s) #Vars #Clauses rn (Cn ) Status Time (s) 3 30 39 2 OPT 0.16 30 31 2 OPT 0.09 
+
+4 80 124 4 OPT 0.16 80 97 4 OPT 0.06 
+
+5 130 240 4 OPT 0.16 130 192 4 OPT 0.09 
+
+6 252 525 7 OPT 0.21 252 425 7 OPT 0.13 
+
+7 350 812 9 OPT 0.25 350 668 9 OPT 0.17 
+
+8 576 1 480 13 OPT 0.38 576 1 235 13 OPT 0.23 
+
+9 738 2 106 12 OPT 0.48 738 1 759 12 OPT 0.25 
+
+10 1 100 3 405 17 OPT 0.66 1 100 2 919 17 OPT 0.39 
+
+11 1 342 4 477 20 OPT 1.01 1 342 3 866 20 OPT 0.51 
+
+12 1 872 6 708 26 OPT 1.58 1 872 5 861 26 OPT 0.70 
+
+13 2 210 8 528 24 OPT 1.29 2 210 7 507 24 OPT 0.72 
+
+14 2 940 12 061 31 OPT 2.30 2 940 10 695 31 OPT 1.21 
+
+15 3 390 14 730 35 OPT 49.05 3 390 13 162 35 OPT 3.49 
+
+16 4 352 19 984 43 OPT 115.68 4 352 17 943 43 OPT 4.75 
+
+17 4 930 23 970 40 OPT 8.37 4 930 21 513 40 OPT 2.23 
+
+18 6 156 31 437 49 OPT 35.04 6 156 28 511 49 OPT 6.90 
+
+19 6 878 36 803 54 TO 1200.12 6 878 33 373 54 OPT 183.77 
+
+20 8 400 47 020 64 TO 1200.13 8 400 42 829 64 OPT 298.08 
+
+21 9 282 54 432 60 OPT 201.90 9 282 49 738 60 OPT 11.00 
+
+22 11 132 68 013 71 TO 1200.12 11 132 62 435 71 OPT 188.79 
+
+23 12 190 77 464 77 TO 1200.09 12 190 71 242 77 TO 1217.37 24 14 400 95 064 89 TO 1200.12 14 400 87 755 90 TO 1207.48 25 15 650 107 450 84 TO 1200.03 15 650 99 487 84 OPT 870.49 
+
+2; and the binomial tree BT k has 2 k vertices and diameter k. The full per-instance numbers are reported in Appendix A; the discussion below is organized by the two regimes that emerge, namely families whose diameter grows with size and families whose diameter remains bounded. 2 4 6 8 10 12 14  
+
+> n
+> 0
+> 50
+> 100
+> 150
+> 200
+> 250
+> Relative gap (\%)
+> Book graphs Bn
+> Order-SAT
+> Direct-SAT
+> ILP (CPLEX)
+> ILP (Gurobi)
+> Ub 1
+> Ub 3
+
+(a) Book graphs Bn2 4 6 8 10 12 14   
+
+> n
+> 0
+> 20
+> 40
+> 60
+> 80
+> 100
+> Relative gap (\%)
+> Friendship graphs Fn
+> Order-SAT
+> Direct-SAT
+> ILP (CPLEX)
+> ILP (Gurobi)
+> Ub 1
+> Ub 3
+
+(b) Friendship graphs Fn
+
+Fig. 2 : Relative gap, bounded-diameter families. In the bounded-diameter regime (book and friendship), the ordering reverses. With diameter fixed at 3 and 2 respectively, the radio constraint spans only a few sep-aration values, keeping the ILP conflict matrix sparse; ILP CPLEX solves all 30 instances to certified optimality in seconds (under 14 s even on the largest friendship graph). Order-SAT, dominated by a vertex-label variable count that grows linearly 16 Table 5 : Results by graph family.                                                                                                                                                                                                                                     
+
+> Dataset Metric Order-SAT Direct-SAT ILP CPLEX ILP Gurobi Ub 1 [5] Ub 3 [6] Tri. snake ∆ k(15 inst.) #Solved 15 15 15 15 15 15
+> #Best 15 813 14 28#Opt 7613 14 00#New 7466––AVG. Rank 2.50 3.90 3.00 2.63 5.33 3.63
+> kC snakes (30 inst.) #Solved 30 16 16 19 30 30
+> #Best 18 710 11 219
+> #Opt 7510 10 00#New 11 456––AVG. Rank 2.25 4.93 4.73 4.10 3.90 2.28 Ladder Ln (15 inst.) #Solved 15 15 15 15 15 15
+> #Best 14 69813#Opt 758800#New 12 6710 ––AVG. Rank 1.93 3.63 3.53 2.63 5.50 3.77 Book Bn (15 inst.) #Solved 15 15 15 15 15 15
+> #Best 15 15 15 15 67#Opt 13 815 15 00#New 8888––AVG. Rank 2.93 2.93 2.93 2.93 4.87 4.40 Friend. Fn (15 inst.) #Solved 15 15 15 15 15 15
+> #Best 15 15 15 15 715
+> #Opt 8715 15 00#New 0000––AVG. Rank 3.23 3.23 3.23 3.23 4.83 3.23
+> Bin. tree BT k(8 inst.) #Solved 866788
+> #Best 656668
+> #Opt 336600#New 0000––AVG. Rank 3.31 4.44 4.06 3.81 3.06 2.81 All (98 inst.) #Solved 98 82 82 86 98 98
+> #Best 83 56 68 69 24 60 #Opt 45 34 67 68 00#New 38 22 26 30 ––AVG. Rank 2.58 3.97 3.72 3.31 4.59 3.23
+
+#Opt is 0 for Ub 1 [5] and Ub 3 [6], as neither heuristic carries an optimality certificate. #New is defined relative to min(Ub 1, Ub 3). 
+
+with the span, times out on B14 –B15 (encodings exceed 16 million clauses) and on 
+
+F9 onward. Where both terminate, they agree exactly, confirming rn (Bn) = 2 n + cn
+
+with cn ∈ { 2, 3, 4, 5} for 1 ≤ n ≤ 15. Against the heuristics, Order-SAT improves Ub 3 on 8 /15 book instances (ties the rest) and matches it on all friendship instances, while improving Ub 1 on 9 book and 8 friendship instances. The direct-encoding vari-ant behaves similarly on both bounded-diameter families when solving all 15 /15 book and 15 /15 friendship instances and ties Order-SAT and ILP CPLEX on #Best (15/15 on both families), but certifies fewer optima than Order-SAT (8 vs. 13 on book, 7 vs. 8 on friendship) because its larger clause count slows down the final UNSAT proof even when the optimal incumbent is already found. In the growing-diameter regime (snakes, ladders, binomial trees), the proposed Order-SAT method is consistently the strongest. On the triangular snake ∆ k it certifies 7/15 optima (up to ∆ 7 in 75 .23 s), and beyond that its incumbent already matches the value later certified by ILP CPLEX (e.g. rn (∆ 12 ) = 145, rn (∆ 13 ) = 170), only the proof is missing. It beats Ub 3 on the seven odd-index instances and Ub 1 on 13 /15. 17 2 4 6 8 10 12 14 
+
+k
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+> Relative gap (\%)
+
+Triangular snakes Δ k
+
+Order-SAT 
+
+Direct-SAT 
+
+ILP (CPLEX) 
+
+ILP (Gurobi) 
+
+Ub 1
+
+Ub 3(a) Triangular snakes ∆ k2 4 6 8 10 12 14 
+
+k
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+14 
+
+> Relative gap (\%)
+
+kC 4-snakes 
+
+Order-SAT 
+
+Direct-SAT 
+
+ILP (CPLEX) 
+
+ILP (Gurobi) 
+
+Ub 1
+
+Ub 3 (b) kC 4-snakes 2 4 6 8 10 12 14 
+
+k
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10 
+
+12 
+
+14 
+
+16 
+
+> Relative gap (\%)
+
+kC 6-snakes 
+
+Order-SAT 
+
+Direct-SAT 
+
+ILP (CPLEX) 
+
+ILP (Gurobi) 
+
+Ub 1
+
+Ub 3
+
+(c) kC 6-snakes 2 4 6 8 10 12 14 
+
+n
+
+0
+
+5
+
+10 
+
+15 
+
+20 
+
+25 
+
+30 
+
+> Relative gap (\%)
+
+Ladder graphs Ln
+
+Order-SAT 
+
+Direct-SAT 
+
+ILP (CPLEX) 
+
+ILP (Gurobi) 
+
+Ub 1
+
+Ub 3 (d) Ladder graphs Ln1 2 3 4 5 6 7
+
+k
+
+0
+
+10 
+
+20 
+
+30 
+
+40 
+
+50 
+
+60 
+
+70 
+
+> Relative gap (\%)
+
+Binomial trees BT k
+
+Order-SAT 
+
+Direct-SAT 
+
+ILP (CPLEX) 
+
+ILP (Gurobi) 
+
+Ub 1
+
+Ub 3
+
+(e) Binomial trees BT k
+
+Fig. 3 : Relative gap, growing-diameter families. The kC 4 and kC 6 subfamilies scale with cycle length m: fewer instances are certified as m grows (4 /15 and 3 /15), yet Order-SAT still meets or beats Ub 3 on 12 /15 kC 4
+
+18 instances, falling behind the family-specific heuristic of [6] only on the largest kC 6
+
+cases ( k ≥ 10). The direct-encoding variant is less scalable, on the kC 4/kC 6 snakes it solves only 16 /30 instances combined (running out of memory for kC 4-snakes with 
+
+k ≥ 11 and kC 6-snakes with k ≥ 7, the same thresholds at which ILP CPLEX also exhausts memory), whereas on the triangular snake it solves all 15 /15 instances but certifies only 6 /15 optima against Order-SAT’s 7 /15. Across the regime, ILP CPLEX’s time-limit incumbents are often far looser than Order-SAT’s (e.g. 327 vs. 251 on L15 ) and it exhausts memory on the larger kC 4/kC 6 snakes and on BT 6–BT 7, while Order-SAT keeps producing feasible labellings throughout. The proposed Order-SAT method is thus the method of choice whenever the graph diameter grows with instance size, both certifying more optima and keeping feasi-ble incumbents tight when proofs are out of reach, while the binary ILP baseline (CPLEX or Gurobi) is preferable for bounded-diameter families where its compact constraint matrix is decisive. The two approaches are therefore complementary, and their combination certifies optimality on 109 of the 146 benchmark instances. 
+
+5.4 Summary 
+
+Across all 146 benchmark instances, Order-SAT returns the tightest span on 130 instances and certifies exact optimality on 81, the best figures among the six compared methods. Combined with the ILP baselines, the framework certifies optimality on 109 instances overall. The Friedman test over all six methods, pooled across all 146 instances, assigns mean ranks of 2 .61 (Order-SAT), 3 .81 (Direct-SAT), 3 .56 (ILP CPLEX), 3 .28 (ILP Gurobi), 4 .70 (Ub 1), and 3 .31 (Ub 3), with test statistic χ2 
+
+> F
+
+= 181 .02 and p <
+
+10 −36 , confirming that Order-SAT achieves the best overall ranking, ahead of ILP Gurobi, Ub 3, ILP CPLEX, and Direct-SAT, and that the differences are statistically significant. Relative to the state of the art prior to this work, the proposed framework estab-lishes 38 new best-known radio numbers. Every instance where the ILP baselines alone find an improvement over Ub 1/Ub 3 is also matched or improved by Order-SAT (Section 5.3), while on the 48 path and cycle instances with a known closed-form opti-mum, Order-SAT independently recovers the proven value on 46 of 48 cases. Taken together, these results position incremental order-encoding SAT as a practical com-plement to, rather than a replacement for, commercial ILP solvers that decisive on growing-diameter families where ILP’s conflict matrix explodes, and a fast independent certifier wherever ILP already succeeds. 
+
+## 6 Conclusions 
+
+This paper presented an exact incremental SAT framework for the radio k-labeling problem that combines a compact order encoding with an incremental optimization strategy. By progressively tightening the admissible labeling span while reusing learned clauses across successive SAT calls, the proposed framework avoids rebuilding the SAT model and significantly improves optimization efficiency. 19 The experimental evaluation demonstrates that the proposed framework substan-tially advances the state of the art by establishing 38 new best-known radio numbers among the 146 benchmark instances from nine graph families, and, on the path and cycle families whose radio number is already known in closed form, independently recovering the proven-optimal value on 46 of 48 instances. Overall, the best-known radio number is achieved on 84 of the 146 benchmark instances. Furthermore, when combined with ILP baselines solved by CPLEX and Gurobi, the proposed approach certifies optimal solutions for 109 of the 146 benchmark instances, substantially expanding the collection of benchmark instances with proven optimality. Compared with existing heuristic methods, a direct-encoding SAT formulation, and ILP models solved by commercial optimizers, the proposed framework consistently achieves tighter feasible bounds and superior scalability on graph families whose diameter grows with graph size. In contrast, ILP models remains more effective on bounded-diameter graph families, indicating that SAT and ILP provide complementary strengths for exact radio 
+
+k-labeling optimization. The proposed symmetry breaking constraints for cycle graphs further enhance the efficiency of the SAT framework by reducing the search space and simplifying the SAT encoding, resulting in substantial reductions in solving time on several bench-mark instances. These results demonstrate that exploiting graph symmetries can significantly improve the practical performance of SAT-based exact optimization. Future work will focus on developing symmetry breaking techniques for additional graph families and extending the proposed incremental SAT framework to other graph labeling problems where exact optimization remains computationally challenging. Overall, this work demonstrates that incremental SAT solving provides a practi-cal and highly competitive exact optimization framework for radio k-labeling, while highlighting its broader potential for graph labeling and combinatorial optimization problems. 
+
+## Declarations 
+
+Funding 
+
+This work has been supported by VNU University of Engineering and Technology under project number CN26.01. 
+
+Competing interests 
+
+The authors declare that they have no competing interests. 
+
+Availability of data and materials 
+
+The source code and experimental data supporting the findings of this research are openly available on GitHub at: https://github.com/LO2D168/Radio K Labeling. 20 Appendix A Detailed Per-Instance Results 
+
+This appendix reports the full per-instance comparison underlying the family-level summary of Table 5, extended with the two families (paths and cycles) already sum-marized in Table 3. For each of the nine graph families, a single table lists the radio number rn , solver status ( OPT or TO ), and running time obtained by the proposed order-encoding SAT method, by each of the three direct-encoding at-most-one vari-ants (pairwise, sequential, cardinality-network), and by the ILP model solved with CPLEX and with Gurobi, alongside the heuristic upper bounds Ub 1 [5] and Ub 3 [6]. The sequential variant is the best-performing of the three direct-encoding variants and is the one reported as “Direct-SAT” in Table 5. 21 Table A1 : Experimental results for paths  Pn.
+
+> n |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk))  ILP CPLEX  ILP Gurobi  Ub 0 [3]  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 1 0 OPT  0.49  0 TO  0.02  0 TO  0.03  0 TO  0.02  0 OPT  0.03  0 OPT  0.02  0 0 02 2 1 OPT  0.12  2 TO  1200.00  1 OPT  0.02  1 OPT  0.04  1 OPT  0.20  1 OPT  0.12  1 1 13 3 3 OPT  0.10  5 TO  1200.01  3 OPT  0.03  3 OPT  0.03  3 OPT  0.11  3 OPT  0.03  3 3 34 4 5 OPT  0.16  7 TO  1200.00  5 OPT  0.02  5 OPT  0.03  5 OPT  0.08  5 OPT  0.03  5 6 55 5 10  OPT  0.19  13  TO  1200.00  10  OPT  0.05  10  OPT  0.05  10  OPT  0.24  10  OPT  0.07  10  11  10 6 6 13  OPT  0.27  16  TO  1200.00  13  OPT  0.08  13  OPT  0.09  13  OPT  0.24  13  OPT  0.10  13  15  14 7 7 20  OPT  0.28  25  TO  1200.00  20  OPT  0.33  20  OPT  0.35  20  OPT  0.51  20  OPT  0.41  20  22  20 8 8 25  OPT  0.38  29  TO  1200.01  25  OPT  1.25  25  OPT  1.12  25  OPT  0.94  25  OPT  0.40  25  28  26 9 9 34  OPT  0.64  41  TO  1200.00  34  OPT  4.30  34  OPT  4.90  34  OPT  2.49  34  OPT  2.19  34  37  35 10  10  41  OPT  1.24  46  TO  1200.01  41  OPT  34.69  41  OPT  15.93  41  OPT  3.20  41  OPT  1.82  41  45  42 11  11  52  OPT  2.84  61  TO  1200.01  52  OPT  211.27  52  OPT  234.16  52  OPT  7.90  52  OPT  7.42  52  56  53 12  12  61  OPT  4.28  67  TO  1200.01  61  OPT  1077.67  61  TO  1220.95  61  OPT  8.63  61  OPT  7.42  61  66  62 13  13  74  OPT  22.66  85  TO  1200.42  74  TO  1200.36  74  TO  1223.02  74  OPT  21.20  74  OPT  33.07  74  80  75 14  14  85  OPT  67.52  92  TO  1200.00  85  TO  1200.25  85  TO  1200.06  85  OPT  19.02  85  OPT  35.06  85  91  86 15  15  100  OPT  597.51  113  TO  1200.01  101  TO  1200.89  101  TO  1217.10  100  OPT  80.50  100  OPT  118.31  100  107  101 16  16  113  TO  1213.36  121  TO  1200.03  113  TO  1200.69  115  TO  1208.47  113  OPT  49.93  113  OPT  49.10  113  120  114 17  17  130  TO  1200.02  145  TO  1200.04  133  TO  1200.89  131  TO  1209.69  130  OPT  433.15  130  OPT  367.89  130  138  132 18  18  145  TO  1200.11  154  TO  1200.01  146  TO  1201.48  148  TO  1219.49  145  OPT  408.27  145  OPT  269.02  145  153  146 19  19  164  TO  1200.13  181  TO  1200.03  167  TO  1200.19  169  TO  1209.86  164  TO  1270.57  164  OPT  578.88  164  173  166 20  20  181  TO  1200.12  191  TO  1200.06  183  TO  1200.26  188  TO  1221.55  181  OPT  421.89  181  OPT  573.47  181  190  182 21  21  202  TO  1200.11  221  TO  1200.11  208  TO  1200.18  211  TO  1220.57  202  TO  1306.78  203  TO  1234.00  202  213  204 22  22  221  TO  1200.10  232  TO  1200.07  227  TO  1200.30  226  TO  1207.55  227  TO  1339.84  229  TO  1236.59  221  231  222 23  23  244  TO  1200.05  265  TO  1200.12  253  TO  1200.35  507  TO  1200.79  254  TO  1383.31  250  TO  1246.00  244  256  246 24  24  265  TO  1200.51  277  TO  1200.33  276  TO  1200.48  – – – 276  TO  1419.71  273  TO  1259.60  265  276  266 25  25  291  TO  1200.06  – – – 300  TO  1200.65  – – – 312  TO  1480.06  295  TO  1275.62  290  303  293
+
+22 Table A2 : Experimental results for cycles  Cn.
+
+> n |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk))  ILP CPLEX  ILP Gurobi  Ub 0 [3]  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 3 3 2 OPT  0.12  2 OPT  0.09  2 OPT  0.04  2 OPT  3.45  2 OPT  0.04  2 OPT  0.06  2 OPT  0.01  2 2 24 4 4 OPT  0.07  4 OPT  0.06  4 OPT  0.04  4 OPT  0.33  4 OPT  0.03  4 OPT  0.05  4 OPT  0.03  4 4 45 5 4 OPT  0.14  4 OPT  0.09  4 OPT  0.03  4 OPT  0.20  4 OPT  0.02  4 OPT  0.06  4 OPT  0.02  4 4 46 6 7 OPT  0.21  7 OPT  0.13  7 OPT  0.04  7 OPT  0.30  7 OPT  0.04  7 OPT  0.14  7 OPT  0.04  7 7 77 7 9 OPT  0.20  9 OPT  0.17  9 OPT  0.05  9 OPT  0.35  9 OPT  0.07  9 OPT  0.29  9 OPT  0.17  9 10  98 8 13  OPT  0.28  13  OPT  0.23  13  OPT  0.11  13  OPT  0.36  13  OPT  0.15  13  OPT  0.70  13  OPT  0.50  13  13  13 9 9 12  OPT  0.37  12  OPT  0.25  12  OPT  0.11  12  OPT  0.38  12  OPT  0.18  12  OPT  0.50  12  OPT  0.40  12  13  12 10  10  17  OPT  0.56  17  OPT  0.39  17  OPT  0.32  17  OPT  1.06  17  OPT  0.57  17  OPT  1.85  17  OPT  1.25  17  17  17 11  11  20  OPT  1.00  20  OPT  0.51  20  OPT  2.55  20  OPT  4.48  20  OPT  3.46  20  OPT  7.32  20  OPT  7.64  20  21  20 12  12  26  OPT  2.02  26  OPT  0.70  26  OPT  5.69  26  OPT  9.79  26  OPT  9.34  26  OPT  12.60  26  OPT  21.96  26  26  26 13  13  24  OPT  1.32  24  OPT  0.72  24  OPT  2.25  24  OPT  4.73  24  OPT  5.05  24  OPT  7.60  24  OPT  9.98  24  25  24 14  14  31  OPT  2.26  31  OPT  1.21  31  OPT  8.34  31  OPT  16.40  31  OPT  21.35  31  OPT  15.11  31  OPT  49.47  31  31  31 15  15  35  OPT  44.31  35  OPT  3.49  35  OPT  1049.48  35  OPT  925.44  35  OPT  1155.01  35  OPT  612.25  35  OPT  750.52  35  36  35 16  16  43  OPT  95.06  43  OPT  4.75  43  TO  1200.20  43  TO  1200.17  43  TO  1200.16  43  OPT  1028.00  43  TO  1201.67  43  43  43 17  17  40  OPT  7.56  40  OPT  2.23  40  OPT  237.17  40  OPT  165.32  40  OPT  218.92  40  OPT  47.55  40  OPT  245.95  40  44  40 18  18  49  OPT  34.00  49  OPT  6.90  49  OPT  1018.65  49  TO  1200.18  49  TO  1200.11  49  OPT  126.21  49  OPT  716.23  49  49  49 19  19  54  TO  1201.95  54  OPT  183.77  54  TO  1200.16  54  TO  1200.17  54  TO  1201.14  54  TO  1222.86  54  TO  1203.69  54  55  54 20  20  64  TO  1200.60  64  OPT  298.08  64  TO  1200.13  64  TO  1200.18  64  TO  1200.26  64  TO  1220.97  65  TO  1205.49  64  64  64 21  21  60  OPT  203.95  60  OPT  11.00  60  TO  1200.59  60  TO  1200.19  60  TO  1204.32  60  OPT  426.67  60  TO  1206.38  60  64  60 22  22  71  TO  1209.23  71  OPT  188.79  71  TO  1200.16  74  TO  1200.20  77  TO  1206.81  71  TO  1233.56  75  TO  1208.45  71  71  71 23  23  77  TO  1215.97  77  TO  1217.37  77  TO  1200.16  79  TO  1200.20  81  TO  1205.83  80  TO  1241.36  78  TO  1210.30  77  78  77 24  24  89  TO  1203.63  90  TO  1207.48  93  TO  1200.22  96  TO  1200.20  99  TO  1202.00  114  TO  1251.98  99  TO  1213.66  89  89  89 25  25  84  TO  1216.02  84  OPT  870.49  85  TO  1204.13  92  TO  1200.28  97  TO  1207.72  93  TO  1254.75  95  TO  1215.06  84  89  84
+
+23 Table A3 : Experimental results for triangular snakes ∆ k.
+
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 3 2 OPT  0.07  2 OPT  0.54  2 OPT  0.65  2 OPT  0.87  2 OPT  0.04  2 OPT  0.02  2 22 5 5 OPT  0.08  5 OPT  0.14  5 OPT  0.20  5 OPT  0.13  5 OPT  0.06  5 OPT  0.02  5 53 7 10  OPT  0.14  10  OPT  0.18  10  OPT  0.26  10  OPT  0.19  10  OPT  0.16  10  OPT  0.07  11  11 4 9 17  OPT  0.25  17  OPT  0.34  17  OPT  0.60  17  OPT  0.55  17  OPT  0.46  17  OPT  0.35  18  17 5 11  26  OPT  0.69  26  OPT  3.81  26  OPT  7.06  26  OPT  8.56  26  OPT  4.37  26  OPT  1.11  28  28 6 13  37  OPT  5.71  37  OPT  227.07  37  OPT  323.53  37  OPT  363.80  37  OPT  4.55  37  OPT  3.05  39  37 7 15  50  OPT  75.23  50  TO  1219.95  50  TO  1200.16  50  TO  1223.71  50  OPT  8.28  50  OPT  7.66  53  52 8 17  65  TO  1223.44  65  TO  1221.34  65  TO  1200.17  65  TO  1222.79  65  OPT  17.70  65  OPT  22.81  68  65 9 19  82  TO  2638.93  82  TO  1220.87  83  TO  1200.11  83  TO  1217.70  82  OPT  42.09  82  OPT  41.20  86  85 10  21  101  TO  1219.28  102  TO  1215.94  102  TO  1200.19  103  TO  1219.90  101  OPT  99.47  101  OPT  67.47  105  101 11  23  122  TO  1222.68  122  TO  1205.92  125  TO  1200.22  126  TO  1208.91  122  OPT  153.07  122  OPT  217.11  127  125 12  25  145  TO  1223.69  147  TO  1218.43  149  TO  1200.26  149  TO  1200.32  145  OPT  830.68  145  OPT  164.36  150  145 13  27  170  TO  1216.62  174  TO  1200.94  175  TO  1200.26  179  TO  1200.48  170  OPT  479.21  170  OPT  744.05  176  174 14  29  197  TO  1211.06  201  TO  1205.54  206  TO  1200.33  206  TO  1206.73  205  TO  1344.57  197  OPT  492.24  203  197 15  31  226  TO  1202.15  235  TO  1211.30  238  TO  1200.53  – – – 238  TO  1405.20  232  TO  1258.84  233  230
+> Table A4 : Experimental results for  kC 4-snakes.
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 4 4 OPT  0.08  4 OPT  3.41  4 OPT  2.82  4 OPT  0.06  4 OPT  0.04  4 OPT  0.02  4 42 7 15  OPT  0.15  15  OPT  0.51  15  OPT  0.37  15  OPT  0.21  15  OPT  0.25  15  OPT  0.13  17  15 3 10  31  OPT  0.56  31  OPT  6.35  31  OPT  13.84  31  OPT  18.04  31  OPT  2.66  31  OPT  2.66  33  31 4 13  53  OPT  12.53  53  TO  1207.42  53  TO  1200.16  53  TO  1244.45  53  OPT  6.50  53  OPT  10.95  59  55 5 16  81  TO  1216.80  82  TO  1200.21  82  TO  1200.23  82  TO  1239.81  81  OPT  68.14  81  OPT  173.20  86  83 6 19  115  TO  1203.07  116  TO  1200.30  118  TO  1200.22  118  TO  1225.73  115  OPT  145.40  115  OPT  111.43  124  117 7 22  155  TO  1200.11  158  TO  1200.36  162  TO  1200.27  160  TO  1204.44  158  TO  1261.54  155  TO  1217.90  163  157 8 25  202  TO  1200.10  207  TO  1200.42  211  TO  1200.40  211  TO  1204.60  208  TO  1325.68  205  TO  1233.14  214  205 9 28  254  TO  1200.10  – – – 271  TO  1200.56  – – – 265  TO  1431.95  259  TO  1268.18  264  257 10  31  313  TO  1200.10  – – – 333  TO  1204.02  – – – 352  TO  1579.22  340  TO  1307.11  327  316 11  34  379  TO  1200.04  – – – – – – – – – – – – 413  TO  1368.99  389  379 12  37  451  TO  1200.13  – – – – – – – – – – – – 495  TO  1454.13  465  451 13  40  531  TO  1200.16  – – – – – – – – – – – – – – – 538  527 14  43  616  TO  1200.18  – – – – – – – – – – – – – – – 626  609 15  46  711  TO  1200.15  – – – – – – – – – – – – – – – 711  697
+
+24 Table A5 : Experimental results for  kC 6-snakes. 
+
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 6 7 OPT  0.34  7 OPT  0.06  7 OPT  0.07  7 OPT  0.08  7 OPT  0.28  7 OPT  0.96  7 72 11  35  OPT  2.20  35  OPT  118.28  35  OPT  197.50  35  OPT  168.50  35  OPT  1.78  35  OPT  1.89  38  35 3 16  71  OPT  497.99  72  TO  1200.06  71  TO  1200.10  72  TO  1217.86  71  OPT  46.74  71  OPT  80.41  77  73 4 21  129  TO  1200.10  131  TO  1200.18  132  TO  1200.16  133  TO  1220.52  129  OPT  413.07  129  OPT  269.64  139  135 5 26  196  TO  1200.10  203  TO  1200.33  205  TO  1200.31  206  TO  1223.17  225  TO  1321.92  202  TO  1233.32  204  197 6 31  284  TO  1200.10  – – – 298  TO  1200.67  – – – 328  TO  1496.47  289  TO  1288.47  297  286 7 36  383  TO  1201.52  – – – – – – – – – – – – 408  TO  1397.11  391  381 8 41  508  TO  1201.07  – – – – – – – – – – – – – – – 519  507 9 46  638  TO  1201.72  – – – – – – – – – – – – – – – 638  625 10  51  801  TO  1201.12  – – – – – – – – – – – – – – – 795  779 11  56  955  TO  1201.41  – – – – – – – – – – – – – – – 945  929 12  61  1156  TO  1202.71  – – – – – – – – – – – – – – – 1136  1118 13  66  1331  TO  1208.20  – – – – – – – – – – – – – – – 1312  1293 14  71  1562  TO  1200.65  – – – – – – – – – – – – – – – 1534  1509 15  76  1766  TO  1203.11  – – – – – – – – – – – – – – – 1739  1717
+> Table A6 : Experimental results for ladder graphs  Ln.
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 4 4 OPT  1.77  4 OPT  0.06  4 OPT  0.05  4 OPT  0.06  4 OPT  1.32  4 OPT  0.71  4 42 6 8 OPT  0.84  8 OPT  0.03  8 OPT  0.03  8 OPT  0.04  8 OPT  0.17  8 OPT  0.04  9 83 8 15  OPT  1.36  15  OPT  0.11  15  OPT  0.14  15  OPT  0.23  15  OPT  0.75  15  OPT  0.43  18  15 4 10  23  OPT  2.29  23  OPT  0.79  23  OPT  1.36  23  OPT  1.65  23  OPT  3.51  23  OPT  1.76  27  24 5 12  34  OPT  4.55  34  OPT  29.32  34  OPT  68.50  34  OPT  88.75  34  OPT  18.52  34  OPT  17.77  40  36 6 14  45  OPT  14.42  45  TO  1200.02  45  TO  1200.11  45  TO  1200.13  45  OPT  18.95  45  OPT  48.51  50  47 7 16  60  OPT  421.85  61  TO  1200.12  61  TO  1200.02  61  TO  1200.14  60  OPT  115.45  60  OPT  381.60  70  64 8 18  75  TO  1215.65  76  TO  1200.12  76  TO  1200.13  77  TO  1200.18  75  OPT  364.33  75  OPT  733.91  85  79 9 20  95  TO  1487.88  96  TO  1200.14  98  TO  1200.04  99  TO  1200.18  96  TO  1223.95  98  TO  1205.92  108  100 10  22  114  TO  1200.15  116  TO  1200.17  118  TO  1200.17  117  TO  1200.29  113  TO  1239.92  116  TO  1210.87  124  117 11  24  139  TO  1355.84  143  TO  1200.29  145  TO  1200.19  145  TO  1200.42  149  TO  1264.13  140  TO  1216.64  154  144 12  26  161  TO  1200.05  168  TO  1200.27  168  TO  1200.18  172  TO  1201.01  176  TO  1295.62  165  TO  1222.93  175  167 13  28  190  TO  1200.18  198  TO  1201.09  202  TO  1200.32  205  TO  1200.55  216  TO  1332.20  198  TO  1234.58  208  197 14  30  217  TO  1200.08  226  TO  1208.89  229  TO  1200.35  236  TO  1203.32  278  TO  1382.71  228  TO  1252.90  230  223 15  32  251  TO  1200.16  – – – 275  TO  1200.54  – – – 327  TO  1473.68  256  TO  1271.70  270  257
+
+25 Table A7 : Experimental results for book graphs  Bn.
+
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 4 4 OPT  0.30  4 OPT  0.06  4 OPT  3.02  4 OPT  0.07  4 OPT  0.07  4 OPT  0.03  14  42 6 8 OPT  0.50  8 OPT  0.04  8 OPT  0.35  8 OPT  0.06  8 OPT  0.13  8 OPT  0.05  8 83 8 9 OPT  0.73  9 OPT  0.04  9 OPT  0.29  9 OPT  0.07  9 OPT  0.22  9 OPT  0.08  9 94 10  11  OPT  0.91  11  OPT  0.08  11  OPT  0.44  11  OPT  0.20  11  OPT  0.46  11  OPT  0.16  13  12 5 12  13  OPT  1.17  13  OPT  0.21  13  OPT  0.59  13  OPT  0.44  13  OPT  0.67  13  OPT  0.24  14  14 6 14  15  OPT  1.48  15  OPT  0.75  15  OPT  1.50  15  OPT  1.41  15  OPT  0.93  15  OPT  0.30  15  15 7 16  17  OPT  1.88  17  OPT  6.32  17  OPT  8.25  17  OPT  7.67  17  OPT  1.48  17  OPT  0.67  19  18 8 18  19  OPT  2.61  19  OPT  85.48  19  OPT  40.94  19  OPT  59.25  19  OPT  1.96  19  OPT  0.73  20  20 9 20  21  OPT  5.28  21  OPT  847.34  21  TO  1200.10  21  OPT  1199.43  21  OPT  3.15  21  OPT  0.93  21  21 10  22  23  OPT  11.01  23  TO  1232.70  23  TO  1200.24  23  TO  1234.33  23  OPT  3.70  23  OPT  1.13  25  24 11  24  25  OPT  39.22  25  TO  1232.74  25  TO  1200.24  25  TO  1232.50  25  OPT  4.31  25  OPT  1.52  26  26 12  26  27  OPT  86.19  27  TO  1229.06  27  TO  1200.23  27  TO  1233.59  27  OPT  5.84  27  OPT  1.52  27  27 13  28  29  OPT  624.32  29  TO  1223.99  29  TO  1200.15  29  TO  1232.92  29  OPT  6.29  29  OPT  2.84  31  30 14  30  31  TO  1207.39  31  TO  1216.58  31  TO  1200.19  31  TO  1239.35  31  OPT  9.55  31  OPT  3.34  32  32 15  32  33  TO  1208.13  33  TO  1200.14  33  TO  1200.19  33  TO  1240.96  33  OPT  11.08  33  OPT  4.11  33  33
+> Table A8 : Experimental results for friendship graphs  Fn.
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 1 3 2 OPT  0.06  2 OPT  0.15  2 OPT  0.22  2 OPT  0.18  2 OPT  0.05  2 OPT  0.01  4 22 5 5 OPT  0.07  5 OPT  0.06  5 OPT  0.14  5 OPT  0.03  5 OPT  0.09  5 OPT  0.02  5 53 7 7 OPT  0.13  7 OPT  0.10  7 OPT  0.23  7 OPT  0.06  7 OPT  0.17  7 OPT  0.02  8 74 9 9 OPT  0.18  9 OPT  0.15  9 OPT  0.27  9 OPT  0.17  9 OPT  0.29  9 OPT  0.05  9 95 11  11  OPT  0.73  11  OPT  9.81  11  OPT  7.14  11  OPT  2.09  11  OPT  0.27  11  OPT  0.10  12  11 6 13  13  OPT  4.25  13  TO  1200.10  13  OPT  28.83  13  OPT  21.74  13  OPT  0.34  13  OPT  0.16  13  13 7 15  15  OPT  48.32  15  TO  1200.12  15  OPT  668.08  15  TO  1242.65  15  OPT  0.45  15  OPT  0.14  16  15 8 17  17  OPT  826.06  17  TO  1200.12  17  TO  1200.23  17  TO  1242.78  17  OPT  0.65  17  OPT  0.29  17  17 9 19  19  TO  1216.20  19  TO  1200.14  19  TO  1200.28  19  TO  1241.28  19  OPT  0.84  19  OPT  0.32  20  19 10  21  21  TO  1216.69  21  TO  1200.10  21  TO  1200.17  21  TO  1235.24  21  OPT  1.08  21  OPT  0.42  21  21 11  23  23  TO  1220.76  23  TO  1200.02  23  TO  1200.21  23  TO  1228.60  23  OPT  1.33  23  OPT  0.50  24  23 12  25  25  TO  1216.52  25  TO  1200.11  25  TO  1200.16  25  TO  1221.51  25  OPT  1.66  25  OPT  0.65  25  25 13  27  27  TO  1487.93  27  TO  1200.12  27  TO  1200.23  27  TO  1209.60  27  OPT  2.44  27  OPT  0.83  28  27 14  29  29  TO  1200.02  29  TO  1200.10  29  TO  1200.06  29  TO  1200.12  29  OPT  13.70  29  OPT  1.09  29  29 15  31  31  TO  1355.90  31  TO  1200.59  31  TO  1203.31  31  TO  1200.14  31  OPT  3.62  31  OPT  1.22  32  31
+
+26 Table A9 : Experimental results on binomial trees  BT k.
+
+> k |V | Order-SAT  Direct-SAT (pairwise)  Direct-SAT (seqcounter)  Direct-SAT (cardnetwrk)  ILP CPLEX  ILP Gurobi  Ub 1 [5]  Ub 3 [6]
+> rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s)  rn  St.  Time (s) 0 1 0 TO  0.03  0 TO  0.03  0 TO  0.02  0 TO  0.03  0 OPT  0.01  0 OPT  0.01  0 01 2 1 OPT  0.05  1 OPT  0.03  1 OPT  0.02  1 OPT  0.04  1 OPT  0.02  1 OPT  0.01  1 12 4 5 OPT  0.09  5 OPT  0.04  5 OPT  0.02  5 OPT  0.04  5 OPT  0.04  5 OPT  0.02  5 53 8 19  OPT  0.43  19  OPT  0.26  19  OPT  0.37  19  OPT  0.57  19  OPT  0.47  19  OPT  0.16  19  19 4 16  57  TO  1200.14  57  TO  1200.58  57  TO  1200.64  57  TO  1200.13  57  OPT  8.87  57  OPT  3.16  57  57 5 32  151  TO  1200.12  156  TO  1200.12  157  TO  1200.29  – – – 151  OPT  229.35  151  OPT  133.96  151  151 6 64  382  TO  1200.25  – – – – – – – – – – – – 395  TO  1526.81  375  373 7 128  1542  TO  1200.15  – – – – – – – – – – – – – – – 887  883
+
+27 References 
+
+[1] Hale, W.K.: Frequency assignment: Theory and applications. Proceedings of the IEEE 68 (12), 1497–1514 (1980) https://doi.org/10.1109/PROC.1980.11899 [2] Griggs, J.R., Yeh, R.K.: Labeling graphs with a condition at distance 2. SIAM Journal on Discrete Mathematics 5(4), 586–595 (1992) https://doi.org/10.1137/ 0405048 [3] Liu, D.D.-F., Zhu, X.: Multilevel distance labelings for paths and cycles. SIAM Journal on Discrete Mathematics 19 (3), 610–621 (2005) https://doi.org/10.1137/ S0895480102417768 [4] Liu, D.D.-F.: Radio number for trees. Discrete Mathematics 308 (7), 1153–1164 (2008) https://doi.org/10.1016/j.disc.2007.03.066 [5] Saha, L., Panigrahi, P.: A graph radio k-coloring algorithm. In: International Workshop on Combinatorial Algorithms, pp. 125–129 (2012). Springer [6] Badr, E.M., Moussa, M.I.: An upper bound of radio k-coloring problem and its integer linear programming model. Wireless Networks 26 (7), 4955–4964 (2020) [7] Kola, S.R., Panigrahi, P.: A lower bound for radio k-chromatic number of an arbitrary graph. Contributions to Discrete Mathematics 10 (2), 45–56 (2015) [8] Das, S., Ghosh, S.C., Nandi, S., Sen, S.: A lower bound technique for radio k-coloring. Discrete Mathematics 340 (5), 855–861 (2017) https://doi.org/10.1016/ j.disc.2016.12.021 [9] Biere, A., Maaren, H., Walsh, T.: Handbook of Satisfiability. SAGE Publications Limited, ??? (2009) [10] Marques-Silva, J.P., Sakallah, K.A.: Grasp: A search algorithm for propositional satisfiability. IEEE Transactions on computers 48 (5), 506–521 (1999) [11] Moskewicz, M.W., Madigan, C.F., Zhao, Y., Zhang, L., Malik, S.: Chaff: Engineer-ing an efficient sat solver. In: Proceedings of the 38th Annual Design Automation Conference, pp. 530–535 (2001) [12] Queue, S.D.: Cadical at the sat race 2019. SAT RACE 2019 , 8 (2019) [13] Chartrand, G., Erwin, D., Harary, F., Zhang, P.: Radio labelings of graphs. Bulletin of the Institute of Combinatorics and its Applications 33 , 77–85 (2001) [14] Liu, D.D.-F., Xie, M.: Radio number for square of cycles. Congressus Numeran-tium 169 , 105–125 (2004) [15] Liu, D.D.-F., Xie, M.: Radio number for square of paths. Ars Combinatoria 90 ,28 307–319 (2009) [16] Li, X., Mak, V., Zhou, S.: Optimal radio labellings of complete m-ary trees. Discrete Applied Mathematics 158 (5), 507–515 (2010) https://doi.org/10.1016/ j.dam.2009.11.014 [17] Ortiz, J.P., Martinz, P., Tomova, M., Wyels, C.: Radio number of some generalized prism graphs. Discussiones Mathematicae Graph Theory 31 (1), 45–62 (2011) https://doi.org/10.7151/dmgt.1530 [18] Kola, S.R., Panigrahi, P.: Nearly antipodal chromatic number ac ′(pn) of a path pn.Mathematica Bohemica 134 (1), 77–86 (2009) [19] Juan, J.-S.T., Liu, D.D.-F.: Antipodal labelings for cycles. Ars Combinatoria 103 ,81–96 (2012) [20] Kim, B.M., Song, B.C., Hwang, W.: Radio number for the product of a path and a complete graph. Journal of Combinatorial Optimization 30 (1), 139–149 (2015) https://doi.org/10.1007/s10878-013-9639-3 [21] Bantva, D., Liu, D.D.-F.: Optimal radio labellings of block graphs and line graphs of trees. Theoretical Computer Science 891 , 90–104 (2021) https://doi.org/10. 1016/j.tcs.2021.09.022 [22] Saha, L., Basunia, A.R., Das, S., et al. : Radio k-chromatic number of full m-ary trees. Theory of Computing Systems 66 , 114–142 (2022) https://doi.org/10. 1007/s00224-021-10056-7 [23] Vasoya, P., Bantva, D.: Optimal radio labelings of the Cartesian product of the generalized Petersen graph and tree. Discrete Mathematics, Algorithms and Applications 16 , 1–15 (2024) https://doi.org/10.1142/S1793830923500258 [24] Vasoya, P.: Radio number of the cartesian product of a tree and a complete graph. Congressus Numerantium 235 , 47–64 (2025) https://doi.org/10.61091/cn235-05 [25] Chakraborty, D., Nandi, S., Sen, S., Supraja, D.K.: A linear algorithm for radio 
+
+k-coloring of powers of paths having small diameters. Journal of Computer and System Sciences 146 , 103577 (2024) https://doi.org/10.1016/j.jcss.2024.103577 [26] Kchikech, M., Khennoufa, R., Togni, O.: Linear and cyclic radio k-labelings of trees. Discussiones Mathematicae Graph Theory 27 (1), 105–123 (2007) https: //doi.org/10.7151/dmgt.1348 [27] VenkataSubbaReddy, P., ViswanathanIyer, K.: Upper bounds on the radio num-ber of some trees. International Journal of Pure and Applied Mathematics 71 (2), 207–215 (2011) [28] Khennoufa, R., Togni, O.: A note on radio antipodal colorings of paths. 29 Mathematica Bohemica 130 (3), 277–282 (2005) [29] Khennoufa, R., Togni, O.: The radio antipodal and radio numbers of the hypercube. Ars Combinatoria 102 , 447–461 (2011) [30] Bantva, D.: A lower bound for the radio number of graphs. In: Pal, S.P., Vijayakumar, A. (eds.) Algorithms and Discrete Applied Mathematics (CAL-DAM 2019). Lecture Notes in Computer Science, pp. 161–173. Springer, Cham (2019). https://doi.org/10.1007/978-3-030-11509-8 14 [31] Sarkar, U., Adhikari, A.: On characterizing radio k-coloring problem by path covering problem. Discrete Mathematics 338 (4), 615–620 (2015) https://doi.org/ 10.1016/j.disc.2014.10.013 [32] Saha, L., Panigrahi, P.: A lower bound for radio k-chromatic number. Discrete Applied Mathematics 192 , 87–100 (2015) https://doi.org/10.1016/j.dam.2014.05. 037 [33] ELrokh, A., Badr, E.M., Al-Shamiri, M.M.A., Ramadhan, S.: Upper bounds of radio number for triangular snake and double triangular snake graphs. Journal of Mathematics 2022 , 3635499 (2022) https://doi.org/10.1155/2022/3635499 [34] Alkasasbeh, A.H., Badr, E.M., Attiya, H., et al. : Radio number for friendship communication networks. Mathematics 11 (1), 1–14 (2023) https://doi.org/10. 3390/math11010001 [35] Ignatiev, A., Morgado, A., Marques-Silva, J.: Pysat: A python toolkit for proto-typing with sat oracles. In: International Conference on Theory and Applications of Satisfiability Testing, pp. 428–437 (2018). Springer 30
