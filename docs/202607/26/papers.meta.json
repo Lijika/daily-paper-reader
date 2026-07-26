@@ -1,0 +1,24 @@
+{
+  "label": "2026-07-26",
+  "date": "2026-07-26",
+  "generated_at": "2026-07-26T20:39:56",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202607/26/2607.20254v1-aspic-proof-of-concept-asp-to-picat-transpiler",
+      "section": "deep",
+      "title_en": "ASPIC: Proof-of-Concept ASP to Picat Transpiler",
+      "authors": "Cristian Grozea, Marius Popescu",
+      "date": "2026-07-22",
+      "pdf": "https://arxiv.org/pdf/2607.20254v1",
+      "score": "8.0",
+      "evidence": "ASP到Picat的转换器，利用SAT求解器",
+      "tldr": "ASP求解器与约束求解器的集成存在灵活性不足、非线性约束支持欠缺等问题。提出ASPIC概念验证库，将扩展语法ASP-Core-2程序转译为Picat谓词，实现ASP和Picat双向集成（ASP in Picat与Picat in ASP）。在无正循环且不使用特殊Picat特性时，与clingo兼容良好；借助Picat能高效建模有限域变量，并支持非线性约束，扩展了clingcon的应用范围。ASPIC不仅增强了ASP的表达能力，还为混合约束求解提供了新途径。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "This article presents ASPIC, a new proof-of-concept library that converts extended syntax ASP-Core-2 programs to Picat predicates  that can be solved right away with the integrated Picat SAT solver, or embedded in larger Picat programs (\"ASP in Picat\"), and that can in turn make use of various Picat predicates and functions (\"Picat in ASP\"). The first tests prove good compatibility with clingo, on programs lacking positive loops and when the special Picat features are not used. With the embedded Picat, it touches the application field of clingcon as well, by being able to efficiently model with both ASP atoms and with finite domain variables, but goes beyond that by being able to model also non-linear constraints.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

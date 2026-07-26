@@ -1,0 +1,260 @@
+Title: ASPIC: Proof-of-Concept ASP to Picat Transpiler
+
+URL Source: https://arxiv.org/pdf/2607.20254v1
+
+Published Time: Thu, 23 Jul 2026 01:04:02 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+> W. Faber, L. Giordano, R. Rocha, V. Santos Costa (Eds.): 42nd International Conference on Logic Programming (ICLP 2026) EPTCS 450, 2026, pp. 270–280, doi:10.4204/EPTCS.450.21 © C. Grozea, M. Popescu This work is licensed under the Creative Commons Attribution-Noncommercial License.
+
+# ASPIC: Proof-of-Concept ASP to Picat Transpiler 
+
+## Cristian Grozea 
+
+> Fraunhofer FOKUS Berlin, Germany
+> cristian.grozea@fokus.fraunhofer.de
+
+## Marius Popescu 
+
+> University of Bucharest Bucharest, Romania
+> popescunmarius@gmail.com
+
+This article presents ASPIC, a new proof-of-concept library that converts extended syntax ASP– Core–2 programs to Picat predicates that can be solved right away with the integrated Picat SAT solver, or embedded in larger Picat programs (“ASP in Picat”), and that can in turn make use of var-ious Picat predicates and functions (“Picat in ASP”). The first tests show compatibility with clingo, on programs lacking positive loops and when the special Picat features are not used. With the em-bedded Picat, it touches the application field of clingcon as well, by being able to efficiently model with both ASP atoms and with finite-domain variables, but goes beyond that by being able to model also non-linear constraints. 
+
+# 1 Introduction 
+
+Picat [14], is a modern multi-paradigm programming language. It supports logic programming (largely Prolog-compatible), imperative programming (e.g. if then else, foreach loops), functions (including user-defined ones) and functional programming elements (e.g. map), constraint satisfaction and optimisation capabilities (with integrated CP solver, integrated SAT solver, possibility to call external MIP solvers). It offers convenient tabling, turning many exponential-time recursive predicate definitions into polynomial-time dynamic programming ones with a single annotation. One notable paradigm that Picat has not supported so far is Answer Set Programming. This article explores ways to directly and automatically translate Answer Set Programming (ASP) code to Picat. The outcome of this exploration is a Picat library named ASPIC, available online at https://github.com/ picat-lang/lib_ext/tree/main/aspic .ASP is a declarative paradigm characterised by a very compact standardised syntax described in [4] and sound definition of semantics, based on non-monotonic logic – see [10]. The solutions to the ASP programs (when they exist) are named stable models, or answer sets. Although the ASP programs can contain variables, usually a first phase in finding a stable model is to “ground” the program, that is to substitute every variable in every rule and constraint with every possible value and consider the now variable-free rules resulting. This grounding can lead to a high memory usage and can take a fairly long time, issues that together bear the name “the grounding bottleneck”. Several efficient ASP solvers exist, such as clingo [8], which combines a grounder named gringo with a solver for grounded problems named clasp. Clingo is very efficient, being for example able to solve within minutes the N-Queens problem for 5000 queens. A new solver for ASP is thus not necessarily needed. What the ASP solvers seem to lack (although present in some ASP environments such as ASPchef [1]) is a way to cover other tasks such as data preprocessing or postprocessing steps without resorting to completely different programming languages, such as Python and Lua (in the case of the clingo integrations). Therefore, in contrast with those purely procedural languages we think that a tight integration be-tween ASP and a language with a solid logic programming foundation, such as Picat, raises interesting possibilities, beyond simply introducing a new SAT-based ASP solver. C. Grozea, M. Popescu 271 Listing 1: Minimal ASP program 
+
+edge (a ,b ). edge (b ,c ). edge (b ,d ). edge (c ,e ). edge (d ,a ). path (X ,Y) : - edge (X ,Y ). path (X ,Y) : - edge (X ,Z ) , path (Z ,Y ). 
+
+An additional aspect where ASPIC improves over the state of the art is by being able to include nonlinear CP constraints into the ASP model, which is more than clingcon and clingo-dl described in [9], which support (pseudo-)linear constraints over finite-domain integers, and difference logic over in-tegers/reals, respectively. 
+
+Related work: We focus here on other transpilers from ASP to logic or constraint solving languages, and on libraries adding ASP capabilities to those targets, and not on stand-alone ASP solvers, some of which, like the two systems mentioned above, clingcon and clingo-dl also have the possibility to embed finite-domain constraints into ASP programs. The system s(CASP) was written for Ciao Prolog and ported later to SWI-Prolog [13], although with its goal-oriented approach, s(CASP) is closer to Prolog than the regular ASP. There are two systems most closely related to our work: ASP2AR [15] where ASP is translated into what basically amounts to a solver based on Action Rules (AR) that implement the event-based propagation of the constraints; and ASP-PROLOG [7] where an ASP solver is integrated inside Prolog, allowing thus both preprocessing of the input and postprocessing (e.g. for filtering) using Prolog code. Another system that converts ASP programs to constraint programming models is ASP-FZN [6], where the ASP programs are converted to FlatZinc, a strict subset of the constraint modelling language MiniZinc, opening thus the possibility to leverage several SAT and MIP solvers to solve ASP problems. Concerning the richness of the constraint programming possible in ASPIC due to the integration with Picat, only the inductive predicates for MiniZinc described in [3] would be as rich, with the caveat that this experimental extension of MiniZinc seems to be unavailable in the current MiniZinc. We could also not detect any replacement or evolution of it in the MiniZinc documentation. 
+
+# 2 Approach 
+
+The approach proposed here is to use natural mappings between the ASP objects and native Picat con-structs. The transformation will be illustrated on the minimal ASP program from https://personal. utdallas.edu/~gupta/nfm-ex/scasp-manual.pdf given in Listing 1. The ASP atoms (variable-free after grounding) correspond naturally to binary variables, as they can either belong or not to a stable model. Picat has efficient associative data structures named maps (similar to the dictionaries in Python and to hash maps in C++), that can accept arbitrary grounded ASP atoms as keys and can be used to store the binary constraint programming (CP) variables associated to the atoms. The path definition program in Listing 1 has U = {a, b, c, d, e} as the set of values occurring in atoms as arguments for the functors edge and path . This means that the total number of atoms implied by 272 
+
+ASPIC: ASP to Picat Transpiler 
+
+Listing 2: Simple ASP Rule 
+
+path (X ,Y) : - edge (X ,Y ). 
+
+Listing 3: Simple ASP Rule, Grounded 
+
+path (a ,a) : - edge (a ,a ). path (a ,b) : - edge (a ,b ). path (a ,c) : - edge (a ,c ). ... path (e ,e) : - edge (e ,e ). 
+
+the rules with variables is 50: 25 atoms of the form path(X,Y) with arbitrary X and Y in U , and further 25 atoms of the form edge(X,Y) . When grounding the rule in Listing 2 ASPIC produces 25 rules of similar form, one for every combination of X and Y, as shown in Listing 3. Please note that this is a very straight-forward approach used in ASPIC, and that a more advanced grounder like gringo (integrated in clingo) does that in a more efficient fashion, by only using the 5 combinations that actually appear for the functor edge/2 .The ASP rules, of the form head :- body. correspond after grounding to implication constraints in the CP sense, by stating that whenever the body holds the head of the rule must hold as well, that is 
+
+body → head .
+
+The ASP constraints, of the form :- body. with the meaning that the conjunction of predicates in the body should not hold under the assignments, can as well be seen as simple constraints in the CP sense, namely not(body) .With such direct mapping of the ASP rules and constraints to Picat constraints, the code produced by the transpiler is not only human readable but it corresponds in a very obvious way to the original ASP code. This means that this transformation can, for example, be used as a starting point, by further editing the result in postprocessing if so desired. Whereas the transformation as described so far produces assignments that are solutions in the Boolean sense, they are not necessarily stable models, as they can lack the requirement of supportedness, that is any atom can be in the stable model only if it’s supported by a rule in the ASP program, that is it becomes true only by being implied by elements already in the stable model through a rule. Towards supportedness, ASPIC uses the Clark completion [5], which requires turning around all implications and adding the result as new rules. Intuitively, if head ← body 1 and head ← body 2 are the only two rules that can produce head then the completion adds a rule of the form head → (body 1; body 2).This is being generalised to more than 2 rules for the same head in the expected way. Note that Clark completion does not guarantee obtaining stable models, as supporting loops can exist for atoms that cannot be derived starting with facts and applying repeatedly rules only on atoms previously proven. The simplest example of such a loop is this: 
+
+p: -p. 
+
+The only stable model of this minimal program is the empty set, but p ↔ p (which is the outcome of Clark completion here) admits the solution {p} as well, which is not a stable model. Stable models are stricter, they require truth to be founded on facts, not circular reasoning. Although everything is easier to explain and implement on grounded rules and constraints, grounding C. Grozea, M. Popescu 273 Listing 4: Non-linear CP Example    
+
+> i s s q u a r e ( E ) : − E = 0 . . 1 0 2 4 , &cond ( S= f d ( x , 6 ) , S*S#=E , 0 ) & .
+
+may be a bottleneck, thus some ASP systems try to use partial grounding or even no grounding at all. ASPIC uses grounding on-the-fly, in order to avoid the program size explosion after conversion – note that this does not solve the combinatorial explosion of the runtime due to unfiltered exhaustive grounding. Mathematically, the meaning of the rule given in Listing 2 is this 
+
+∀X ∈ U, ∀Y ∈ U, edge (X ,Y ) → path (X ,Y ).
+
+where the universal quantification can be expressed in Picat using the foreach construction: 
+
+foreach (X in U , Y in U) edge (X , Y) #= > path (X ,Y ) end 
+
+where #=> is the Picat CP operator for implication and U is supposed to contain the “universe”, the set of all values over which the iteration should go (in this case of size 5). For this translation to function properly in Picat despite being so close to the original ASP, one needs that the Picat construct edge(X,Y) ,with instantiated (grounded) X and Y evaluates to the binary CP variable associated with the ASP atom 
+
+edge(X,Y) . Here the availability of user defined functions in Picat is helpful, as one can obtain this effect by defining these functions: 
+
+path (X1 , X2 )= aspic_var( $path ( X1 , X2 )). edge (X1 , X2 )= aspic_var( $edge ( X1 , X2 )). 
+
+where the Picat terms with a $ in front of the functor are plain terms and no function calls, as per Picat syntax, and aspic_var is the function that maps a term to its associated CP variable. The last rule in Listing 1 is similarly translated to: 
+
+foreach (X in U , Y in U ,Z in U) edge (X ,Z) #/\ path (Z ,Y) #= > path (X , Y) end 
+
+where #/\ is the constraint conjunction operator and #=> is the constraint implication operator in Picat. The universe U is derived automatically; for this the ASPIC transpiler makes two passes on the ASP source. The first one gathers and converts all facts and rules, producing the set of terms to be iterated upon, and then the second pass converts the constraints to Picat. Heuristics are used in an attempt to reduce the domain of the variables whenever possible, resulting in tighter foreach loops as seen in Listing 7. 
+
+## 2.1 Extending the Syntax and FD Variables 
+
+Finite-domain variables: In order to facilitate the interaction between the ASP part and the CP part of an ASPIC program, the finite-domain variables are implemented as linear combinations of the binary variables corresponding to ASP predicates with the indicated functor, and with the desired number of bits. The function 
+
+f d ( f , n) = 
+
+> n−1
+
+# ∑
+
+> i=0
+
+2i ∗ aspic var ( f (i)) 
+
+makes this link between a functor (here f ) and the finite-domain (FD) variable of n bits. 274 
+
+ASPIC: ASP to Picat Transpiler 
+
+Listing 5: Mixing Picat global constraints and ASP 1 {e (X ,Y ): X =1..5 , Y =1..5 , X != Y }. 
+
+23 & cond (( 
+
+4 N =5 , 
+
+5 V =[{ I ,1}: I_in_1 .. N] , % vertices 
+
+6 E =[{ I ,J ,e(I ,J )}: I_in_1 ..N , J_in_1 .. N ] , % edges 
+
+7 tree (V ,E )) ,1 ,0)&. 
+
+Extended syntax: To embed Picat code into ASP, we used the “&” delimiter for parts that are to be included verbatim into the generated code. Those parts should evaluate to Picat expressions that are either constraint values with the domain 0..1 or one of the constants 0 or 1. Thus they can replace an ASP predicate in the generated SAT or CP problem. This embedding gives access to the full power of the CP modelling in Picat, which allows for polynomial constraints as well, surpassing thus the limitation existent in clingcon to only linear constraints. In Listing 4 we define a predicate is_square that uses a FD variable S of 6 bits to constrain E to be the square of S by using the Picat CP constraint E#=S*S . The function cond(Predicate,YesEx,NoEx) 
+
+is a Picat function that implements the so-called computed-if (or conditional expression). It is supported in Picat constraints expressions as well. Here it is used to embed Picat code (the code for defining the variable S) into the expression. The predicate can be a conjunction as well, thus more code can be embedded there at once. 
+
+Using Picat global constraints in ASP programs: Picat has a large collection of very efficient global constraints. The Listing 5 shows how to apply those on lists of ASP atoms. The embedded Picat block (lines 3 to 7), used as a fact, applies the global constraint tree to the adjacency matrix defined by the ASP predicate e, defined on line 1 of the listing and converted in line 6 to the form Picat expects. Please note the underscores replacing spaces in the embedded Picat, this is now needed as the tokenizer is quite simple and removes all white spaces. This hack will be eliminated in the future. Thanks to the functions defined by the transpiler for each suitable ASP atom (see line 3 of Listing 7 for an example), one can refer the ASP atoms inside the embedded Picat code exactly the same way one would do in ASP. 
+
+# 3 Examples 
+
+## 3.1 N-Queens 
+
+N-Queens is a classical combinatorial puzzle, requiring the placement of N queens on an NxN chess-like table such that no two queens are on the same row, column, or diagonal. The ASP program in Listing 6 is one of the examples offered for trying out clingo online at https:// potassco.org/clingo/run/?example . Please note that it is not the same program on which clingo achieves the amazing performance of solving the problem for 5000 queens within minutes. This is how the automatically generated Picat Listing 7 corresponds to the original in Listing 6: The function definition on line 3 prepares the context such that referring to the binary CP variables associated to the q(X,Y) atoms is done directly with the same syntax as in the ASP original code; lines 7-9 correspond to the rule on the second line, lines 10-12 to the rule on line 3. The lines 14 to 17 add C. Grozea, M. Popescu 275 Listing 6: N-Queens 1 # const n = 4. 
+
+2 { q(I ,1.. n ) } == 1 : - I = 1.. n. 
+
+3 { q (1..n ,J ) } == 1 : - J = 1.. n. 
+
+4 : - { q (D -J ,J) } >= 2 , D = 2..2* n . 
+
+5 : - { q (D+J ,J) } >= 2 , D = 1 -n ..n -1. 
+
+the constraints from line 4 in the source, whereas the lines 18 to 21 add the one from line 5. The Clark completion occupies the lines 23 to 32, and it’s done with the same code for all grounded atoms collected during the direct rules; the reverse implication states that each of those atoms implies the disjunction of the matching rules. Some iterations are eliminated under the assumption that variable matching with the clauses’ heads will lead to assignments of the variables used in those. 
+
+## 3.2 SEND+MORE=MONEY 
+
+This is a classical puzzle (first published by Dudeney in 1924) that requires finding distinct digit values for the 8 letters S,E,N,D,M,O,R,Y, with S and M non zero, such that the addition SEND+MORE=MONEY holds when substituting the letters with the values found and interpreting the sequences of digits as num-bers in base 10. We give two program versions, a pure ASP one in Listing 8 and one using embedded Picat and FD variables in Listing 9 - this one is hand-written and has not been generated automatically from the first listing. 
+
+FD variables version: The wrapper on lines 2 and 17 turns Picat code into an expression that can be used as a CP value in the generated program. Please note that the FD variables S,E,N,D,M,O,R,Y are defined on 4 bits each and restricted further to their domains (digits, S and M non-zero). In contrast to clingcon, the predicate all_different is not dedicated to this extension towards CP of ASP but is instead one of the many global constraints available in Picat. Other such global constraints model efficiently circuits, acyclic graphs, Hamiltonian cycles, strongly connected components, non-overlapping rectangles, non-overlapping sets of tasks, a graph being a tree, etc. 
+
+# 4 Benchmarks 
+
+Methodology: The benchmarking has been performed on the same ASP file when possible. It con-sisted in repeatedly running the solver under the control of the software “hyperfine” 1 for at least 10 iterations. The mean running time is reported here. The machine used for benchmarking has two AMD EPYC 9654 96-Core processors and 1.5TB RAM. We chose a powerful machine in order to avoid the performance being limited by the RAM or by the multithreading limitations. Picat uses a single core and therefore also the code converted with ASPIC is executed on a single core, whereas clingo is multithreaded. The software releases used for clingo and picat were the newest available at the time. The operating system was Ubuntu 24.04. 
+
+> 1https://github.com/sharkdp/hyperfine
+
+276 
+
+ASPIC: ASP to Picat Transpiler 
+
+Listing 7: N-Queens transformed through ASPIC 
+
+1 impo rt s a t . 2 impo rt a s p i c r u n t i m e d e b u g . 3 q ( X1 , X2)= a s p i c v a r ( $q ( X1 , X2 ) ) . 4 main =>main ( [ ” s a t ” ] ) . 5 main ( [ ASPIC SEARCH])= >ASPIC SEARCH : = ASPIC SEARCH . t o a t o m ( ) , 6 a s p i c s t a r t l e a r n i n g ( ) , 7 f o r e a c h ( I i n 1 . . 4 ) 8 a s p i c h o l d s ( a s p i c c a r d ( [ q ( I , ARANGE1 ) : ARANGE1 i n 1 . . 4 ] , 1 , 1 ) ) , 9 end ,10 f o r e a c h ( J i n 1 . . 4 ) 11 a s p i c h o l d s ( a s p i c c a r d ( [ q (ARANGE3, J ) : ARANGE3 i n 1 . . 4 ] , 1 , 1 ) ) , 12 end ,13 a s p i c s t o p l e a r n i n g ( ) , 14 f o r e a c h (D i n 2 . . a s p i c m u l ( 2 , 4 ) ) 15 a s p i c h o l d s ( a s p i c n o t ( a s p i c c o n j ( 16 [ a s p i c c a r d ( [ q ( a s p i c d i f f (D, J ) , J ) : J i n 1 . . 4 ] , 2 , [ ] ) , 1 ] ) ) ) , 17 end ,18 f o r e a c h (D i n a s p i c d i f f ( 1 , 4 ) . . a s p i c d i f f ( 4 , 1 ) ) 19 a s p i c h o l d s ( a s p i c n o t ( a s p i c c o n j ( 20 [ a s p i c c a r d ( [ q ( a s p i c s u m (D, J ) , J ) : J i n 1 . . 4 ] , 2 , [ ] ) , 1 ] ) ) ) , 21 end ,22 a s p i c s t o p l e a r n i n g ( ) , 23 H= g e t h e a p m a p ( a s p i c a t o m s ) , 24 f o r e a c h ( ASPIC ATOM i n H . k e y s ( ) ) 25 i f ( n o t a s p i c i s f d v a r i a b l e ( ASPIC ATOM ) ) 26 L = [ ] 27 + + [ 1 : i n 1 . . 1 , ASPIC ATOM=$q ( I , ARANGE1 ) , I i n 1 . . 4 , ARANGE1 i n 1 . . 4 ] 28 + + [ 1 : i n 1 . . 1 , ASPIC ATOM=$q (ARANGE3, J ) ,ARANGE3 i n 1 . . 4 , J i n 1 . . 4 ] 29 , L2= a s p i c d i s j ( L ) 30 , i f ( n o t ( L2 = = 1 ) ) then 
+
+31 a s p i c h o l d s ( a s p i c i m p l (H . g e t ( ASPIC ATOM ) , a s p i c d i s j ( L ) ) ) , 32 end end end , t r u e .
+
+## 4.1 N-Queens 
+
+The results in Table 1, as well as in Figure 1 are obtained using the ASP program in Listing 6. The speeds of ASPIC and clingo on this program are quite close for an extended range of problem sizes, but the gap increases when the number of CP variables generated by ASPIC exceeds one million. Clingo has been run single-threaded, as the multithreaded call (using “-t 64” that instructs clingo to use 64 threads, the maximum it can use) led to about 10% longer runtimes. 
+
+## 4.2 Towers of Hanoi 
+
+The pure ASP implementation of the ”Towers of Hanoi” planning puzzle shown in Listing 10 defines the problem as a constraints one: there are three rods, and k disks (line 2) of sizes 1.. k (line 5) are placed on the first rod (line 6). They are placed in such a way that never a larger disc is placed over a smaller one. In the end, at step n, they should all be placed on the rod 3 (line 7). At every time point each of the C. Grozea, M. Popescu 277 Listing 8: Money puzzle            
+
+> 1n ( 0 . . 9 ) . 2s o l ( S , E , N, D,M, O, R , Y) : − n ( S ) , n ( E ) , n (N) , n (D) , n (M) , n (O) , n (R ) , n (Y) , 3S ! = 0 ,M! = 0 , 4S*1000+E*100+N*10+D+M*1000+O*100+R*10+E=M*10000+O*1000+N*100+E*10+Y, 5S !=E , S !=N, S !=D, S !=M, S !=O, S !=R , S !=Y, 6E!=N, E!=D, E!=M, E!=O, E!=R , E!=Y, 7N!=D, N!=M, N!=O, N!=R , N!=Y, 8D!=M, D!=O, D!=R , D!=Y, 9M!=O,M!=R ,M!=Y, 10 O!=R , O!=Y, 11 R!=Y .
+
+Listing 9: Money puzzle – FD variant                                                 
+
+> 1main : − 2&cond ( ( 3S= f d ( s , 4 ) , 4E= f d ( e , 4 ) , 5N= f d ( n , 4 ) , 6D= f d ( d , 4 ) , 7M= f d (m, 4 ) , 8O= f d ( o , 4 ) , 9R= f d ( r , 4 ) , 10 Y= f d ( y , 4 ) , 11 [ E , N, D, O, R , Y ] : : 0 . . 9 , 12 [ S ,M] : : 1 . . 9 , 13 ( 1 0 0 0 *S+100 *E+10 * N + D) +14 ( 1 0 0 0 * M + 100 * O + 10 *R + E ) #= 15 ( 1 0 0 0 0 * M + 1000 * O + 100 * N + 10 *E+ Y) , 16 a l l d i f f e r e n t ( [ S , E , N, D,M, O, R , Y ] ) 17 ) , 1 , 1 ) & .
+
+discs is on a single rod (line 8). At every time step a single disc is moved to another rod (line 9). A disc gets to be at a time step on a rod if either has been moved there at the previous step (line 10) or was there already and has not been moved (line 11).Three projections of the atom move are defined on lines 12 to 14, used to define the constraints: one cannot place a disc in a tower containing a smaller one (line 16) and one can only move the smallest one from a certain rod (line 18). For this benchmarking we used in addition to the plain clingo invocation also the parameter “-t 64” that instructs clingo to use 64 threads, as this led to improvements on this problem. The results are shown in Table 2. Once the numbers went past the time ASPIC needs to ground this problem (seconds), it dominated both clingo and multithreaded clingo, being up to almost twice as fast for large instances. 
+
+## 4.3 SEND+MORE=MONEY 
+
+The grounding bottleneck for the classical SEND+MORE=MONEY puzzle arises from (at least in a naive direct approach like the current one of ASPIC) having to iterate over all possible values and get 278 
+
+ASPIC: ASP to Picat Transpiler 
+
+# 1 
+
+#     
+
+# 1 
+
+# 1 1
+
+# 1 
+
+# 1 
+
+# 1 
+
+>   
+
+#  
+
+#  
+
+Figure 1: Graphical comparison of the execution times of ASPIC and clingo on the N-Queens problem. Note the increased gap starting with 1024. Table 1: Comparative Running Times on N-Queens 
+
+Solver N=128 N=256 N=512 N=768 N=1024 N=2048 
+
+ASPIC (over Picat 3.9#4) 0.85 s 3.2 s 26.2 s 89.3 s 944.6 s 9178.9 s clingo 5.8.0 0.41 s 2.8 s 21.1 s 69.1 s 182.8 s 1418.3 s 
+
+10 8 versions of the rule starting at line 2 in Listing 8. While clingo’s grounder does not literally generate all those 10 8 versions of the rule, the huge search space still contributes to its runtime: clingo needs 0.756 seconds to solve it on our test machine, whereas ASPIC with its explicit unfiltered grounding on-the-fly is hopelessly slow thus, within reasonable time, it does not finish grounding it to start solving. ASPIC solves the FD variant of the problem within 108 ms, compared to clingo’s 756 ms for the pure ASP version, which proves once again the advantage of being able to mix ASP programs with CP constraints rather than being a like-for-like comparison. 
+
+# 5 Current limitations 
+
+At present the proof-of-concept ASPIC implementation uses only Clark completion and therefore, in general, computes models of the completion rather than full stable models. For tight programs (without positive cycles) this coincides with stable models; for non-tight programs, ASPIC may admit additional supported models that are not answer sets. Integrating loop formula generation as in ASSAT of [11] is left as future work. ASPIC has currently other limitations as well: support for explicit aggregating operators (#min, #max, #count, #sum) only in constraints, not yet in rules; experimental syntax for finite-domain C. Grozea, M. Popescu 279 Listing 10: Towers of Hanoi in pure ASP                                              
+
+> 1# c o n s t n = 1 0 2 4 . 2# c o n s t k = 1 0 . 34p ( 1 . . 3 ) . %t o w e r s 5x ( 1 . . k ) . %d i s c s 6a t ( 1 , 1 , 1 . . k ) . % i n i t i a l 7: − n o t a t ( n , 3 , 1 . . k ) . %f i n a l 8{a t ( T , P , X ) : p ( P ) }= 1 : −T = 1 . . n , x (X ) . 9{move ( T , P1 , P2 , X ) : p ( P1 ) , p ( P2 ) , a t ( T , P1 , X) , P1 != P2 }=1: −T = 1 . . n − 1 . 10 a t ( T , P2 , X) : − T = 2 . . n , p ( P2 ) , p ( P ) , move ( T−1 , P , P2 , X ) . 11 a t ( T , P , X) : − T = 2 . . n , p ( P ) , a t ( T−1 , P , X) , n o t move ( T−1 ,X ) . 12 move ( T , X) : − x (X) , p ( P1 ) , p ( P2 ) , move ( T , P1 , P2 , X ) . %p r o j e c t i o n 13 movefrom ( T , P , X) : − p ( P ) , p (Q) , x (X) , move ( T , P , Q, X ) . %p r o j e c t i o n 14 moveto ( T , Q, X) : − p ( P ) , p (Q) , x (X) , move ( T , P , Q, X ) . %p r o j e c t i o n 15 %c a n n o t p l a c e o v e r as m a l l e r one 16 : − p ( P2 ) , moveto ( T , P2 , X) , a t ( T , P2 , Y) , Y <X . 17 % c a n o n l y move t h e s m a l l e s t one 18 : − p ( P ) , x (X) , movefrom ( T , P , X) , a t ( T , P , Y) , Y <X . 19 20 # show move / 4 .
+
+Table 2: Comparative Running Times on Towers of Hanoi 
+
+Solver k=7 k=8 k=9 k=10 
+
+clingo 6.5 s 44.3 s 221.6 s 1746.4 s clingo -t 64 2.0 s 24.7 s 157.0 s 1328.9 s ASPIC 3.6 s 17.5 s 119.0 s 713.2 s 
+
+variables (thus the syntax is subject to change). We would argue that these limitations are only temporary: the technique of [11] can be used to break the circular reasoning, the syntax for finite-domain variables will eventually mature, when we and the users of ASPIC reach the best ways to benefit from combining ASP and Picat (including leveraging its support for constraint programming with finite-domain variables). 
+
+# 6 Conclusion 
+
+ASPIC, as a proof-of-concept transpiler, demonstrates that automatic conversion of ASP to Picat is pos-sible and practical. The possibility of embedding Picat “islands” of code into ASP programs is barely explored, but we have used it already to add support for FD variables and to access Picat global con-straints. ASPIC has shown promising results and has a modelling expressiveness advantage over pure clingo in certain scenarios, by tapping into Picat’s CP and SAT solving strengths. It is also interesting that the SAT solver embedded into Picat can outperform even the multi-threaded clingo on some of our benchmarks (e.g. for the Towers of Hanoi encoding). 280 
+
+ASPIC: ASP to Picat Transpiler 
+
+# 7 Acknowledgments 
+
+This research is partly supported by the project “Romanian Hub for Artificial Intelligence - HRIA”, Smart Growth, Digitization and Financial Instruments Program, 2021-2027, MySMIS no. 351416 
+
+# References 
+
+[1] Mario Alviano, Davide Cirimele & Luis Angel Rodriguez Reiners (2023): Introducing ASP recipes and ASP Chef. In: 
+
+ICLP Workshops , 3437. [2] Mario Alviano & Luis Angel Rodriguez Reiners (2024): Integrating MiniZinc with ASP Chef: Browser-Based Constraint Programming for Education and Prototyping . In: 
+
+International Conference on Logic Pro-gramming and Nonmonotonic Reasoning , Springer, pp. 174–186, doi: 10.1007/978-3-031-74209-5_14 .[3] Rehan Abdul Aziz, Peter J Stuckey & Zoltan Somogyi (2013): Inductive definitions in constraint program-ming . In: 
+
+Proceedings of the Thirty-Sixth Australasian Computer Science Conference-Volume 135 , pp. 41–50. [4] Francesco Calimeri, Wolfgang Faber, Martin Gebser, Giovambattista Ianni, Roland Kaminski, Thomas Krennwallner, Nicola Leone, Marco Maratea, Francesco Ricca & Torsten Schaub (2020): ASP-Core-2 input language format .
+
+Theory and Practice of Logic Programming 20(2), pp. 294–309, doi: 10.1017/ S1471068419000450 .[5] Keith L Clark (1977): Negation as failure . In: 
+
+Logic and data bases , Springer, pp. 293–322, doi: 10.1017/ CBO9780511984747.008 .[6] Thomas Eiter, Tobias Geibinger, Nysret Musliu, Johannes Oetsch & Tobias Kaminski (2025): ASP-FZN: A Translation-Based Constraint Answer Set Solver .
+
+Theory and Practice of Logic Programming 25(4), pp. 649–667, doi: 10.1017/S1471068425100264 .[7] Omar Elkhatib, Enrico Pontelli & Tran Cao Son (2005): Integrating an Answer Set Solver into Prolog: ASP-Prolog . In: 
+
+International Conference on Logic Programming and Nonmonotonic Reasoning , Springer, pp. 399–404, doi: 10.1007/11546207_35 .[8] Martin Gebser, Benjamin Kaufmann, Roland Kaminski, Max Ostrowski, Torsten Schaub & Marius Schneider (2011): Potassco: The Potsdam answer set solving collection .
+
+AI Communications 24(2), pp. 107–124, doi: 10.3233/AIC-2011-0491 .[9] Tomi Janhunen, Roland Kaminski, Max Ostrowski, Sebastian Schellhorn, Philipp Wanko & Torsten Schaub (2017): Clingo goes linear constraints over reals and integers .
+
+Theory and Practice of Logic Programming 
+
+17(5-6), pp. 872–888, doi: 10.1017/S1471068417000242 .[10] Vladimir Lifschitz (2010): Thirteen Definitions of a Stable Model. 
+
+Fields of logic and computation 6300, pp. 488–503, doi: 10.1007/978-3-642-15025-8_24 .[11] Fangzhen Lin & Yuting Zhao (2004): ASSAT: Computing answer sets of a logic program by SAT solvers .
+
+Artificial Intelligence 157(1-2), pp. 115–137, doi: 10.1016/j.artint.2004.04.004 .[12] picat-lang.org (2025): Picat Programming Language Website . Available at https://picat-lang.org/ .Accessed: 2026-02-06. [13] Jan Wielemaker, Joaqu´ ın Arias & Gopal Gupta (2021): s(CASP) for SWI-Prolog. In: 
+
+ICLP Workshops , 2970, p. 4. [14] Neng-Fa Zhou & Jonathan Fruhman (2013): A user’s guide to Picat .[15] Neng-Fa Zhou, Yi-Dong Shen & Jia-Huai You (2011): Compiling answer set programs into event-driven action rules . In: 
+
+Proceedings of the 11th International Conference on Logic Programming and Nonmonotonic Reasoning , LPNMR’11, Springer-Verlag, Berlin, Heidelberg, p. 376–381, doi: 10.1007/ 978-3-642-20895-9_44 .

@@ -18,23 +18,21 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-25
-- 运行时间：2026-07-25 20:02:27 UTC
+- 最新运行日期：2026-07-26
+- 运行时间：2026-07-26 20:39:50 UTC
 - 运行状态：成功
 - 本次总论文数：1
 - 精读区：1
 - 速读区：0
 
 ### 今日简报（AI）
-1) 今日精读一篇9分论文，用SAT求解器精确解决无线电k-标记问题，直击图论与组合优化前沿。  
-2) 最值得关注：基于布尔可满足性的精确算法在难解图标记问题中的高效表现。  
-3) 建议：若你学习算法或SAT应用，可深入此方法的编码技巧与实验对比。
-- 详情：[/202607/25/README](/202607/25/README)
+今日精读1篇高评分论文，聚焦ASP到Picat语言转换器的概念验证。该工具展示了逻辑编程语言间互转的可行性，关注代码生成与推理结合方向。下一步可深入测试转换器性能与适用范围，或尝试在项目中使用。
+- 详情：[/202607/26/README](/202607/26/README)
 
 ### 精读区论文标签
-1. [A SAT-Based Exact Approach for Radio k-Labeling](/202607/25/2607.19997v1-a-sat-based-exact-approach-for-radio-k-labeling)  
-   标签：评分：9.0/10、query:sat-bva-cnf
-   evidence：基于SAT的精确方法，采用增量SAT求解用于无线电k标号问题
+1. [ASPIC: Proof-of-Concept ASP to Picat Transpiler](/202607/26/2607.20254v1-aspic-proof-of-concept-asp-to-picat-transpiler)  
+   标签：评分：8.0/10、query:sat-bva-cnf
+   evidence：ASP到Picat的转换器，利用SAT求解器
 
 ### 速读区论文标签
 - 本次无速读推荐。
