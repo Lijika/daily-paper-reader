@@ -1,0 +1,24 @@
+{
+  "label": "2026-07-31",
+  "date": "2026-07-31",
+  "generated_at": "2026-07-31T21:39:09",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202607/31/2607.25793v1-verification-of-provers-and-solvers",
+      "section": "quick",
+      "title_en": "Verification of Provers and Solvers",
+      "authors": "René Thiemann",
+      "date": "2026-07-28",
+      "pdf": "https://arxiv.org/pdf/2607.25793v1",
+      "score": "6.0",
+      "evidence": "综述SAT/SMT求解器的验证与认证方法，为可靠的SAT求解提供支撑",
+      "tldr": "自动推理工具（如自动定理证明器、SAT/SMT求解器、终止性分析器）与证明助手的集成是形式化验证的关键环节。本章系统梳理了认证（certification）与验证（verification）两种主要连接范式，对比了各自的适用场景与优缺点，并列举了多个成功的应用实例，为选择集成策略提供了实践参考。",
+      "tags": "query:sat-bva-cnf",
+      "abstract_en": "Automatic deduction tools such as automatic theorem provers, SAT (satisfiability) solvers, SMT (satisfiability modulo theories) solvers, and termination analyzers can be connected to proof assistants using various approaches, notably by certification and verification. This chapter reviews and compares the approaches available, and mentions several successful applications.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

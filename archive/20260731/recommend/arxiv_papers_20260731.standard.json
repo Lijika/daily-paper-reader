@@ -1,0 +1,53 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-31T21:38:31.858728+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2607.25793v1",
+      "source": "arxiv",
+      "title": "Verification of Provers and Solvers",
+      "abstract": "Automatic deduction tools such as automatic theorem provers, SAT (satisfiability) solvers, SMT (satisfiability modulo theories) solvers, and termination analyzers can be connected to proof assistants using various approaches, notably by certification and verification. This chapter reviews and compares the approaches available, and mentions several successful applications.",
+      "authors": [
+        "René Thiemann"
+      ],
+      "primary_category": "cs.LO",
+      "categories": [
+        "cs.LO",
+        "cs.SC"
+      ],
+      "published": "2026-07-28T14:43:55+00:00",
+      "link": "https://arxiv.org/pdf/2607.25793v1",
+      "tags": [
+        "keyword:sat-bva-cnf",
+        "query:sat-bva-cnf"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Verification and certification of SAT/SMT solvers, enabling methods for solver correctness",
+      "llm_evidence_cn": "综述SAT/SMT求解器的验证与认证方法，为可靠的SAT求解提供支撑",
+      "llm_evidence": "综述SAT/SMT求解器的验证与认证方法，为可靠的SAT求解提供支撑",
+      "canonical_evidence": "综述SAT/SMT求解器的验证与认证方法，为可靠的SAT求解提供支撑",
+      "llm_tldr_en": "Reviews certification and verification approaches for connecting SAT, SMT, and other automatic reasoning tools to proof assistants, comparing their strengths and successful applications.",
+      "llm_tldr_cn": "本文综述了将自动推理工具（包括SAT求解器、SMT求解器和终止分析器）与证明助手连接的方法，主要分为认证与验证两类，并比较了各方案的适用范围。文章列举了多个成功的应用实例，说明这些方法如何提高求解器的可信度。对于开发可验证的SAT求解器及其预处理技术，本文提供了系统性的方法论参考，有助于确保新技术的正确性。",
+      "llm_tldr": "本文综述了将自动推理工具（包括SAT求解器、SMT求解器和终止分析器）与证明助手连接的方法，主要分为认证与验证两类，并比较了各方案的适用范围。文章列举了多个成功的应用实例，说明这些方法如何提高求解器的可信度。对于开发可验证的SAT求解器及其预处理技术，本文提供了系统性的方法论参考，有助于确保新技术的正确性。",
+      "llm_tags": [
+        "query:sat-bva-cnf"
+      ],
+      "matched_query_tag": "query:sat-bva-cnf",
+      "matched_query_text": "SAT solving techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
