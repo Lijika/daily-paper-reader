@@ -394,6 +394,52 @@ subscriptions:
           source: manual
           note: ''
       updated_at: '2026-08-02T14:41:16.372Z'
+    - tag: SAT-formal
+      description: 请帮我查找SAT solver在形式化验证中的最新研究，包括model checking、hardware verification、software verification中的SAT应用
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: SAT solver
+          keyword_cn: SAT求解器
+          query: SAT solver technology for formal verification
+        - keyword: formal verification
+          keyword_cn: 形式化验证
+          query: formal verification methods using SAT solvers
+        - keyword: model checking
+          keyword_cn: 模型检测
+          query: model checking with SAT solvers for system verification
+        - keyword: hardware verification
+          keyword_cn: 硬件验证
+          query: hardware verification using SAT-based techniques
+        - keyword: software verification
+          keyword_cn: 软件验证
+          query: software verification through SAT solving
+        - keyword: bounded model checking
+          keyword_cn: 有界模型检测
+          query: bounded model checking using SAT solvers
+      intent_queries:
+        - query: Recent advances in SAT based model checking
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: recent research on SAT solver applications in formal verification
+          query_cn: SAT求解器在形式化验证中应用的最新研究
+          enabled: true
+          source: manual
+          note: ''
+        - query: SAT based model checking and hardware verification advances
+          query_cn: 基于SAT的模型检测与硬件验证进展
+          enabled: true
+          source: manual
+          note: ''
+        - query: software verification with SAT solvers
+          query_cn: 使用SAT求解器的软件验证
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:42:35.001Z'
 source_backends:
   arxiv:
     papers_table: arxiv_papers
