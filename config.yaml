@@ -486,6 +486,52 @@ subscriptions:
           source: manual
           note: ''
       updated_at: '2026-08-02T14:45:38.751Z'
+    - tag: sat-proof
+      description: 请帮我查找proof producing SAT solver论文
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: formal proof SAT
+          keyword_cn: ''
+          query: formal proof SAT
+        - keyword: SAT proof checking
+          keyword_cn: ''
+          query: SAT proof checking
+        - keyword: LRAT proof
+          keyword_cn: ''
+          query: LRAT proof
+        - keyword: DRAT proof
+          keyword_cn: ''
+          query: DRAT proof
+        - keyword: proof producing SAT solver
+          keyword_cn: ''
+          query: proof producing SAT solver
+        - keyword: certificate checking
+          keyword_cn: 证书检查
+          query: certificate checking for SAT solver
+      intent_queries:
+        - query: SAT solving with formally verified proofs
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: DRAT and LRAT proof checking techniques
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: papers on SAT solvers that emit machine checkable proofs
+          query_cn: 关于SAT求解器输出机器可检查证明的论文
+          enabled: true
+          source: manual
+          note: ''
+        - query: how to produce and check unsatisfiability certificates in SAT solving
+          query_cn: 如何在SAT求解中生成并检查不可满足性证书
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:48:16.490Z'
 source_backends:
   arxiv:
     papers_table: arxiv_papers
