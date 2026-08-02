@@ -25,7 +25,53 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
-  intent_profiles: []
+  intent_profiles:
+    - tag: cdcl-sat
+      description: 请帮我查找近几年CDCL SAT solver核心技术改进论文
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: CDCL SAT solver
+          keyword_cn: ''
+          query: CDCL SAT solver
+        - keyword: conflict-driven clause learning
+          keyword_cn: 冲突驱动子句学习
+          query: conflict-driven clause learning algorithm for SAT solving
+        - keyword: SAT solver
+          keyword_cn: SAT求解器
+          query: Boolean satisfiability solver implementation
+        - keyword: branching heuristic
+          keyword_cn: 分支启发式
+          query: variable selection heuristic for CDCL SAT solvers
+        - keyword: restart policy
+          keyword_cn: 重启策略
+          query: restart strategies in CDCL SAT solving
+        - keyword: clause deletion
+          keyword_cn: 子句删除
+          query: learned clause deletion policy for CDCL solvers
+      intent_queries:
+        - query: Modern optimization techniques for CDCL SAT solvers
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: How have branching heuristics evolved for CDCL SAT solvers?
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: What are the major improvements to conflict driven clause learning in modern SAT solvers?
+          query_cn: 现代SAT求解器中冲突驱动子句学习的主要改进有哪些？
+          enabled: true
+          source: manual
+          note: ''
+        - query: What advances in restart policies and clause deletion strategies improve SAT solving efficiency?
+          query_cn: 重启策略和子句删除策略的哪些进展提高了SAT求解效率？
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:17:50.104Z'
 source_backends:
   arxiv:
     papers_table: arxiv_papers
