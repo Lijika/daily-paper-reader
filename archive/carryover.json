@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-02T14:23:09.875356+00:00",
+  "generated_at": "2026-08-02T14:28:54.589782+00:00",
   "updated_date": "20260724-20260802",
   "carryover_days": 9,
   "tag_states": {
@@ -9,6 +9,11 @@
       "items": []
     },
     "cdcl-sat": {
+      "updated_date": "20260724-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "sat-config": {
       "updated_date": "20260724-20260802",
       "carryover_days": 9,
       "items": []

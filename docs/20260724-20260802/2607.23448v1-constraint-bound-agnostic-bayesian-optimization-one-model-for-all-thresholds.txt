@@ -1,0 +1,1235 @@
+Title: Constraint-Bound Agnostic Bayesian Optimization: One Model for All Thresholds
+
+URL Source: https://arxiv.org/pdf/2607.23448v1
+
+Published Time: Tue, 28 Jul 2026 00:53:16 GMT
+
+Number of Pages: 21
+
+Markdown Content:
+# Constraint-Bound Agnostic Bayesian Optimization: One Model for All Thresholds 
+
+## Jin Wang 1, Xi Lin 2, Handing Wang 1∗
+
+> 1
+
+School of Artificial Intelligence, Xidian University, China 
+
+> 2
+
+School of Mathematics and Statistics, Xi’an Jiaotong University, China jinwang_2002@163.com, xi.lin@xjtu.edu.cn, hdwang@xidian.edu.cn 
+
+Abstract 
+
+Expensive constrained optimization problems in real-world industry design often involve constraint thresholds that are difficult to determine in advance. Engineers may need to adjust constraint thresholds to explore different feasibil-ity–performance trade-offs, requiring solutions under a wide range of threshold settings. However, existing constrained Bayesian optimization methods treat each threshold config-uration independently, leading to repeated optimization and failing to exploit the shared relationship among continuously varying thresholds. To address this challenge, we propose constraint-bound agnostic Bayesian optimization (CBA-BO), a learning-based framework that learns a parametric con-straint model mapping thresholds to optimal solutions. Once learned, CBA-BO directly predicts solutions for arbitrary un-seen threshold configurations without additional optimiza-tion, with a one-step Bayesian optimization refinement fur-ther improving solution quality. Experiments on benchmark and engineering problems demonstrate that CBA-BO learns a transferable threshold-solution mapping, enabling efficient prediction and optimization for arbitrary threshold queries. An intent-guided constraint-bound recommendation mecha-nism is further developed to improve objective performance while satisfying user-specified constraint preferences. 
+
+## Introduction 
+
+Many real-world engineering designs rely on computation-ally intensive simulations for optimization under practical constraints, leading to expensive constrained optimization problems (ECOPs) in which both the objective and constraint functions are black-box and expensive to evaluate (Song, Wang, and Jin 2023; Wang et al. 2026). Bayesian optimization (BO) has emerged as an effective framework for solving such problems due to its strong sam-ple efficiency in global optimization of expensive black-box functions (Shahriari et al. 2016; Frazier 2018). BO typically constructs surrogate models, such as Gaussian processes (GP), to approximate the expensive objective and constraint functions and iteratively selects promising evaluation points through an acquisition function that balances exploration and exploitation. To handle expensive constraints, a vari-ety of constrained BO methods have been developed (Amini, Vannieuwenhuyse, and Morales-Hernández 2025), includ-ing Expected Improvement (EI) with constraints (Gardner 
+
+> ∗
+
+Corresponding author. ... BO   
+
+> GP model Acquisition
+> Training neural network with GP
+
+... ... 
+
+> Share surrogate model
+> Joint Acquisition
+> GP model
+> BO
+> GP model
+
+...       
+
+> BO
+> GP model Acquisition Acquisition
+> learn correlations across task
+> (share kernel/latent space)
+> Optimal solution
+> Adjust
+> Threshold Engineer sets threshold
+> (a) Repeated constrained BO (b) Multi-task / transfer BO (c) Proposed paradigm
+> Threshold Threshold Low efficiency and long cycles. One model answer arbitrary threshold queries. Pre-defined finite thresholds Cannot handle new threshold beyond pre-defined set. Threshold
+
+...      
+
+> Arbitrary Predicted
+> optimal solution
+> Threshold Space Design Space
+
+Figure 1: Architecture comparison of three paradigms for ECOPs with varying constraint-bound thresholds et al. 2014), constrained BO using noisy EI (Letham et al. 2019), and the trust-region-based SCBO method (Eriksson and Poloczek 2021). These approaches model the objective and constraints using separate GPs and design acquisition functions that balance objective improvement and feasibil-ity, achieving strong performance on ECOPs. However, constraint-bounds in practice are hard to be determined a priori. Appropriate feasibility thresholds are usually unknown in advance, and engineers often need to repeatedly adjust and test different threshold settings dur-ing the design process (Gelbart, Snoek, and Adams 2014; Amini, Vannieuwenhuyse, and Morales-Hernández 2025). Each new threshold configuration effectively defines a new ECOP. Current constrained BO methods treat each thresh-old configuration independently, requiring optimization to restart whenever the constraint thresholds change. Since different threshold settings correspond to highly re-arXiv:2607.23448v1 [cs.NE] 26 Jul 2026 lated optimization problems sharing the same underlying objective and constraint functions, it is natural to consider whether knowledge can be transferred across different thresh-old configurations. Several studies in multi-task and transfer BO (Swersky, Snoek, and Adams 2013; Poloczek, Wang, and Frazier 2017) aim to improve the optimization efficiency by sharing information across related tasks. However, these methods are mainly designed for a small finite set of pre-defined tasks, where the tasks need to be specified before optimization. They transfer information among given tasks with different optimization landscapes, and are not directly applicable to scenarios where constraint thresholds continu-ously vary or new requirements emerge dynamically. Instead of transferring information across tasks, another line of research, parametric optimization, studies how op-timal solutions vary with problem parameters. Recently, learning-based parametric optimization trains neural net-works to map problem parameters to solutions. Examples include unsupervised learning for parametric optimization (Nikbakht, Jonsson, and Lozano 2020), which uses the La-grangian as a training loss, and OptINNs (Hoffmann, Oth-mane, and Flaßkamp 2025), which embeds KKT conditions into network training. While these methods achieve strong results on parametric optimization problems, they rely on the ability to freely evaluate objective and constraint func-tions during training. However, this assumption does not hold in the scenario, where the objective and constraint functions are computationally expensive black-box functions. Recently, a few learning-based methods for expensive optimization problems have been proposed. In multi-objective optimiza-tion, Pareto set learning (PSL) methods (Lin et al. 2022; Cheng et al. 2025; Cheng, Xue, and Zhang 2026) combine neural networks with GP models to learn the structure of Pareto-optimal solution manifolds within a unified model, thereby reducing the number of expensive evaluations re-quired to obtain diverse optimal solutions. These studies in-dicate that learning a shared representation of optimal solu-tions may provide a promising direction for handling varying constraint-bound requirements in ECOPs. Therefore, we propose to learn a parametric mapping from constraint thresholds to optimal decisions concurrently with the BO process. Our main contributions include: 
+
+• A parametric constraint model (PCM) that learns the map-ping from constraint thresholds to optimal solutions, en-abling direct prediction for arbitrary unseen thresholds without restarting the optimization process. 
+
+• A constraint-bound agnostic Bayesian optimization (CBA-BO) framework that integrates PCM-based solu-tion prediction with GP-guided Bayesian optimization re-finement to efficiently exploit learned threshold-solution relationships. 
+
+• Extensive experiments on benchmark and engineering design problems demonstrate the effectiveness and gen-eralization ability of CBA-BO across diverse threshold configurations, with an additional application to intent-guided constraint-bound recommendation. 
+
+## Preliminaries 
+
+Expensive Constraint Optimization Problems 
+
+A constrained optimization problem with inequality con-straints can be formulated as 
+
+min f (x), x = [ x1, x 2, . . . , x D ]
+
+s.t. cj (x) ≤ θj , j = 1 , 2, . . . , m (1) where xi ∈ [li, u i], D is the number of decision variables, and m is the number of inequality constraints. In ECOPs, both objective and constraint functions are expensive black-box functions, where only function values can be obtained through evaluations. For a fixed ECOP, constraint thresholds θj are usually incorporated into the standard form gj (x) ≤ 0, where 
+
+gj (x) = cj (x) − θj . However, in practical engineering de-sign, these thresholds are often difficult to determine and may require repeated adjustment. 
+
+Bayesian Optimization 
+
+BO is a sample-efficient framework for optimizing expen-sive black-box functions under limited evaluation budgets. BO iteratively constructs surrogate models from previously evaluated samples and selects new evaluation points through acquisition strategies that balance exploration and exploita-tion(Frazier 2018; Shahriari et al. 2016). 
+
+Gaussian Process Model GPs are widely used in BO as probabilistic surrogate models for expensive black-box func-tions. A GP defines a prior distribution over the function space as 
+
+f (x) ∼ GP (μ(x), k (x, x′)) , (2) where μ(x) and k(x, x′) denote the mean and covariance functions, respectively. Given n evaluated samples Dn = {(x(i), y (i))}ni=1 , the posterior predictive distribution for a new solution x follows 
+
+f (x) | D n ∼ N  ˆμ(x), ˆσ2(x) , where the predictive mean and variance are 
+
+ˆμ(x) = μ(x) + k⊤K−1y, (3) 
+
+ˆσ2(x) = k(x, x) − k⊤K−1k, (4) with k = k(x, X ) and K = k(X, X ). The GP hyperparam-eters are estimated by maximizing the marginal likelihood. 
+
+Log Constrained Expected Improvement Expected im-provement (EI) is a widely used acquisition strategy in BO. For constrained optimization, constrained expected improve-ment (cEI) incorporates feasibility by weighting EI with the probability of satisfying the constraints (Gardner et al. 2014). However, cEI may suffer from numerical instability when feasibility probabilities become extremely small. To address this issue, log-constrained expected improvement (logcEI) reformulates the acquisition function in logarithmic space, improving numerical stability and optimization performance in constrained BO (Ament et al. 2023). logcEI can be ex-pressed as 
+
+LogcEI (x) = log ( EI (x)) + 
+
+> m
+
+X
+
+> j=1
+
+log P (cj (x) ≤ θj ) , (5) where EI( x) denotes the expected improvement and 
+
+P (cj (x) ≤ θj ) is the feasibility probability of the j-th con-straint. 
+
+## Proposed Method 
+
+For a threshold vector θ = [ θ1, . . . , θ m]⊤, Equation (1) defines an ECOP. Varying θ within a threshold domain 
+
+Θ = [ θL, θU ] defines a family of related ECOPs sharing the same objective and constraint functions, where θL and 
+
+θU denote the lower and upper bounds, respectively. For each 
+
+θ ∈ Θ, the corresponding optimal solution is 
+
+x∗(θ) = arg min  
+
+> x
+
+f (x) s.t. cj (x) ≤ θj , j = 1 , . . . , m. 
+
+(6) Conventional constrained BO typically treats each constraint-threshold configuration as an independent opti-mization problem. When feasibility requirements vary con-tinuously, repeatedly solving individual ECOP instances be-comes increasingly inefficient and limits knowledge sharing across related problems. To address this issue, we propose 
+
+Constraint-Bound Agnostic Bayesian Optimization (CBA-BO), a framework that learns a shared parametric constraint model (PCM) across varying threshold settings. Instead of independently optimizing each ECOP instance, CBA-BO directly models the relationship between threshold vectors and their corresponding optimal solutions, thereby enabling transferable optimization over a family of related ECOPs. Algorithm 1: Constraint-Bound Agnostic Bayesian Opti-mization (CBA-BO)  
+
+> 1:
+
+Initialize database D0 using LHS  
+
+> 2:
+
+Initialize parametric constraint model hϕ 
+
+> 3:
+
+for t = 1 to T do  
+
+> 4:
+
+Fit GP surrogate models using Dt−1 
+
+> 5:
+
+for s = 1 to S do  
+
+> 6:
+
+Sample threshold vectors θ ∼ Θ 
+
+> 7:
+
+Update hϕ using GP-guided gradient learning  
+
+> 8:
+
+end for  
+
+> 9:
+
+Generate candidate set Xt = {hϕ(θ) | θ ∼ Θ} 
+
+> 10:
+
+Select batch Bt using sampling strategy  
+
+> 11:
+
+Evaluate Bt and update Dt ← D t−1 ∪ B t 
+
+> 12:
+
+end for  
+
+> 13:
+
+return hϕ and DT
+
+Algorithm 1 summarizes the workflow of CBA-BO. The framework integrates a parametric constraint model (PCM), GP-based surrogate guidance, and online data acquisition into a unified optimization process. Specifically, the PCM 
+
+hϕ is trained to learn the relationship between constraint thresholds and optimal solutions. GPs are constructed from evaluated samples to estimate objective values and constraint satisfaction, providing uncertainty-aware guidance for updat-ing the PCM through gradient-based optimization. To im-prove sample efficiency, threshold candidates generated by the PCM are evaluated by the surrogate models, and a diverse batch is selected for expensive evaluations. Through iterative updates of both surrogate models and the parametric gen-erator, CBA-BO learns a reusable solution model that can generalize to arbitrary unseen threshold settings. 
+
+Parametric Constraint Model 
+
+To model the dependence of optimal solutions on threshold settings, we construct a PCM 
+
+x = hϕ(θ), (7) where θ ∈ Θ is the threshold vector, x ∈ Ω is the gen-erated optimal solution, and hϕ is a neural network model parameterized by ϕ.The PCM aims to approximate the relationship between threshold vectors and their corresponding optimal solutions. For numerical stability and consistent model training, both 
+
+θ and x are normalized into the unit hypercube [0 , 1] m and 
+
+[0 , 1] D , respectively. In this work, the PCM hϕ(θ) is imple-mented as an MLP neural network, which is good at captur-ing complicated problem structures (Sener and Koltun 2020). The input and output dimensions correspond to the number of constraints m and decision variables D, respectively. The model details can be found in Appendix. 
+
+GP-Guided Parametric Constraint Learning 
+
+Given the PCM hϕ(θ), our goal is to learn the model parameter ϕ such that the generated solution x approximates the optimal solution corresponding to arbitrary threshold settings within Θ. Denote the generated solution set as 
+
+Xh = {hϕ(θ) | θ ∈ Θ}.
+
+Ideally, the learned model should satisfy 
+
+hϕ∗ (θ) = x∗(θ), ∀θ ∈ Θ, (8) where x∗(θ) denotes the optimal solution under threshold vector θ. However, since the true optimal mapping is un-known and expensive to obtain, we instead learn the model using GP surrogate guidance. For a threshold vector θ, the generated solution x = hϕ(θ) should simultaneously satisfy feasibility requirements and achieve good objective quality. To this end, we construct a feasibility-aware surrogate objec-tive. For minimization problems, the objective surrogate is de-fined using the lower confidence bound (LCB) (Srinivas et al. 2009), 
+
+ˆf (x) = LCB f (x) = ˆ μf (x) − β ˆσf (x), (9) where ˆμf and ˆσf are the GP posterior mean and standard deviation, respectively. Constraint violation under threshold θ is estimated con-servatively using upper confidence bounds (UCB) (Srinivas et al. 2009), 
+
+ˆvj (x) = max  0, UCB cj (x) − θj
+
+ , (10) where UCB cj (x) = ˆ μcj (x) + β ˆσcj (x).
+
+A generated solution is regarded as feasible if vj (x) = 0 
+
+for all constraints. Accordingly, we define the feasibility-aware surrogate objective as 
+
+ˆz(x|θ) = 
+
+( ˆf (x), if feasible ,
+
+Pmj=1 ˆvj (x), otherwise . (11) The PCM is learned by minimizing the expected surrogate objective over the threshold domain, 
+
+ϕ∗ = arg min  
+
+> ϕ
+
+Eθ∼Θ [ˆ z (hϕ(θ)|θ)] . (12) The expectation over continuously varying threshold vec-tors is generally intractable. Therefore, we employ threshold batch sampling and gradient descent for model learning, 
+
+ϕs+1 = ϕs − η 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+∇ϕ ˆz (hϕ(θk)|θk) , (13) where {θk}Kk=1 ∼ Θ are generated by a structured mixture sampling strategy over Θ, consisting of diagonal uniform interpolation, diagonal stochastic sampling, and Sobol quasi-random global sampling, and η is the learning rate. The model update follows the chain rule ∇ϕ ˆz = ∂ ˆz∂x 
+
+> ∂x
+> ∂ϕ
+
+,
+
+where ∂ ˆz/∂ x is obtained from GP surrogate gradients and 
+
+∂x/∂ϕ is computed through automatic differentiation of the neural network hϕ. For feasible solutions, ∂ ˆz/∂ x corre-sponds to the gradient of LCB f , whereas infeasible solutions are guided toward feasibility using gradients of violated con-straints. 
+
+Monotonic Regularization. Relaxing feasibility thresh-olds generally enlarges the feasible region of a minimization problem. Therefore, the optimal objective value should not increase when constraint thresholds become relaxed, since previously feasible solutions remain feasible. This mono-tonic relationship provides useful prior knowledge for learn-ing the threshold solution mapping. However, due to lim-ited expensive evaluations and surrogate approximation er-rors, the learned parametric model may produce inconsis-tent responses for different threshold settings. To enforce such threshold response consistency, we introduce mono-tonic guidance into the surrogate objective in the second half of the training process. Using the chain rule positive sensitivity of objective qual-ity to threshold relaxation is penalized through 
+
+rmono = E
+
+"
+
+max 0, ∂ ˆf∂x
+
+∂x
+
+∂θ
+
+!# 
+
+. (14) Accordingly, the surrogate objective is augmented as 
+
+ˆzaug (x|θ) = ˆ z(x|θ) + αr mono , (15) where α controls the influence of monotonic guidance. The PCM is therefore learned by minimizing the expected aug-mented surrogate objective. 
+
+Sampling Strategy 
+
+After training the parametric model, a set of threshold vec-tors is sampled from the threshold space and mapped to corresponding candidate solutions, 
+
+Xt = {hϕ(θ) | θ ∼ Θ}. (16) The generated candidates are evaluated using the Gaussian process surrogate, and a batch Bt of five candidates is se-lected considering predicted performance and solution diver-sity. The selected batch includes two boundary cases with the lower and upper threshold limits and three randomly sampled intermediate configurations. The selected solutions are then evaluated using the expensive objective and constraint func-tions. For each evaluated sample, the threshold vector and its corresponding solution are added to the training database Dt
+
+to update the parametric constraint model. The model details can be found in Appendix. 
+
+Local Refinement 
+
+Although hϕ generates high-quality solutions rapidly, predic-tion errors may still arise due to limited surrogate accuracy and imperfect model generalization across the threshold do-main. To further improve solution reliability, we introduce a one-step local refinement stage. Given the predicted solution ˆx∗ = hϕ(θ) for any queried threshold vector θ, we construct a local design region cen-tered at ˆx∗, Ωlocal = [ˆ x∗ − r, ˆx∗ + r], where r is a fixed fraction of the global search domain width. Within Ωlocal , the collected database DT is reused to refit GP surrogate models, avoiding additional expensive evaluations for initialization. To balance objective improvement and feasibility, LogcEI is employed as the acquisition function. The local refinement performs Tlocal = 1 sequential evaluations, 
+
+xt+1 = arg max 
+
+> x∈Ωlocal
+
+αLogcEI (x), (17) and the candidate with the highest αLogcEI value among all evaluated points is returned as the refined solution for θ.
+
+Constraint-Bound Recommendation 
+
+Once hϕ is learned, it provides a reusable mapping from constraint thresholds to corresponding solutions, allowing engineers to efficiently explore a large number of possi-ble constraint configurations without repeatedly solving new ECOP instances. In practical engineering design, constraint thresholds are often adjusted iteratively through trial and error to balance feasibility and performance, which can be time-consuming and highly dependent on expert expe-rience. By leveraging the learned PCM, constraint-bound recommendation aims to accelerate this exploration pro-cess by identifying promising threshold configurations ac-cording to engineers’ preferences. Given a baseline thresh-old θbase and user-specified adjustment intentions {aj }mj=1 
+
+where aj ∈ {− 1, 0, 1} denotes tighten, lock, loosen respec-tively, the mechanism identifies a new threshold vector θrec 
+
+that improves objective performance while respecting the engineer’s intentions on each constraint bound. A local threshold set Θlocal is generated around θbase in the normalized threshold space [0 , 1] m. To balance intent fol-lowing and local exploration, the candidate set is composed of an intent-guided subset and an intent-independent explo-ration subset Θlocal = Θ intent ∪ Θexplore . For the intent-guided subset, each dimension j is perturbed independently as θ(i) 
+
+> j
+
+= θbase j + δ(i) 
+
+> j
+
+, where the perturbation δ(i) 
+
+> j
+
+is sampled according to the intent level: 
+
+δ(i) 
+
+> j
+
+∼
+
+
+
+−|N (0 , 0.5rj )| aj = −1 (tighten) ,
+
+U(−0.025 rj , 0.025 rj ) aj = 0 (lock) ,
+
+|N (0 , 0.5rj )| aj = 1 (loosen) .
+
+(18) For the intent-independent exploration subset, unbiased Gaussian perturbations are sampled around the baseline threshold to preserve local exploration. All sampled thresh-old vectors are clamped to [0 , 1] m.For each θ(i) ∈ Θlocal , the learned model generates 
+
+ˆx∗(i) = hϕ(θ(i)), which is retained only if GP mean pre-dictions confirm feasibility, ˆμcj (ˆ x∗(i)) ≤ θ(i) 
+
+> j
+
+, ∀j. Feasible candidates are ranked by a utility score balancing objective improvement and adjustment cost, 
+
+S(θ(i)) = wf ∆f + R(θ(i)) − P (θ(i)), (19) where ∆f = ˆ μf (ˆ x∗base ) − ˆμf (ˆ x∗(i)) is the predicted objec-tive improvement over the baseline, 
+
+R(θ(i)) = λr
+
+X  
+
+> j:aj=−1
+
+max(0 , −δ(i) 
+
+> j
+
+) (20) rewards tightening adjustments proportional to their magni-tude, and 
+
+P (θ(i)) = 
+
+> m
+
+X
+
+> j=1
+
+(
+
+λh max(0 , δ (i) 
+
+> j
+
+) aj ∈ {− 1, 0},λr max(0 , δ (i) 
+
+> j
+
+− ϵj )2 aj = 1 ,
+
+(21) penalizes relaxation beyond the baseline, where for aj ∈{− 1, 0} any positive δ(i) 
+
+> j
+
+is heavily penalized to enforce a hard barrier against intent-violating relaxation, and for aj =1 only relaxation exceeding the allowance ϵj is penalized. The recommended configuration is selected as 
+
+θrec = arg max 
+
+> θ(i)∈Θlocal
+
+S(θ(i)). (22) 
+
+## Experiments 
+
+Baseline Algorithms. To the best of our knowledge, there are currently no constrained optimization methods specifi-cally developed for simultaneously solving multiple ECOPs induced by continuously varying constraint-threshold set-tings. Therefore, we compare the proposed CBA-BO with several representative constrained optimization methods, in-cluding CMA-ES (Hansen 2006; Arnold and Hansen 2012), cEI (Gardner et al. 2014), ALBO (Gramacy et al. 2016), SCBO (Eriksson and Poloczek 2021), and LogcEI (Ament et al. 2023). These methods cover both evolutionary opti-mization and state-of-the-art constrained Bayesian optimiza-tion approaches. Since all baseline methods are designed for a single threshold configuration, each threshold setting is treated as an independent ECOP and optimized separately in the experiments. The BO-based baselines are implemented using BoTorch (Balandat et al. 2020), with their parameter settings following the corresponding original papers when-ever applicable. 
+
+Benchmarks and Real-World Problems Experiments are conducted on sixteen constrained optimization problems, in-cluding eleven synthetic benchmarks and five engineering design problems. The synthetic benchmarks include prob-lems from CEC 2006 and CEC 2010 (Liang et al. 2006; Mallipeddi and Suganthan 2010), Ackley functions (Eriksson and Poloczek 2021), and constrained BO benchmarks such as GKXWC1, GKXWC2 (Gardner et al. 2014), and Keane Bump (Keane 1994). The engineering problems include pres-sure vessel design (Gandomi, Yang, and Alavi 2011), speed reducer design, reinforced concrete beam design, three-bar truss design (Yang and Hossein Gandomi 2012), and car side impact design (Gu et al. 2001; Yu, Picard, and Ahmed 2025). Detailed problem descriptions and threshold domains are provided in the Appendix. 
+
+Experimental Settings For all problems, 30 LHS initial sample setting are shared by all algorithms. The implemen-tation details and parameter settings of the CBA-BO are provided in the Appendix. Since existing constrained BO baselines are designed for a single threshold vector, we introduce different numbers of queried threshold configurations N only as a unified evalua-tion protocol. The value of N does not limit CBA-BO, which can generate solutions for arbitrary threshold queries after training. For each N , the same threshold group is used by all algorithms. Since the baselines are designed for a single threshold configuration, each threshold vector is optimized independently. After sharing the 30 initial samples, the re-maining 170 evaluations are evenly distributed among the 
+
+N ECOP instances, and two additional evaluations are as-signed to each threshold configuration for fair comparison with CBA-BO refinement. For CBA-BO, we report two settings. In Direct Prediction ,the learned model predicts one solution for each threshold vector, which is then evaluated once by the true black-box functions. In Refinement , one additional local BO evaluation is performed after evaluating the predicted solution. All al-gorithms are run independently 10 times. For each run and each N , a new threshold group is randomly generated and shared by all algorithms. Win rate is computed under the same threshold vector: feasible solutions are preferred; if both are feasible, objective values are compared; otherwise, total constraint violations are compared. Metrics are aver-aged over all thresholds and 10 runs. The runtime analysis is provided in the Appendix. To further examine scalability, we additionally consider a setting with N = 1000 queried threshold configurations. Since CBA-BO generates solutions through a shared para-metric model, increasing the number of threshold configu-rations does not require retraining or repeated optimization. Conventional optimization algorithms are excluded from this setting because solving 1,000 ECOPs independently would be computationally prohibitive. 
+
+Experimental Results and Analysis 
+
+Figure 2 reports the average win rate of CBA-BO with one-step refinement against five baselines under different num-bers of threshold configurations. A higher win rate means 1 5 10 20 50                                                                                                                                                                                                                                                                                                                                                      
+
+> GKXWC1
+> GKXWC2
+> KeaneBump
+> CEC2006-g01
+> CEC2006-g04
+> CEC2006-g07
+> CEC2006-g10
+> CEC2010-c13
+> Ackley-2D
+> Ackley-6D
+> Ackley-10D
+> PressureVessel
+> RCBeam
+> ThreeTruss
+> SpeedReducer
+> Car
+> 088 90 90 90
+> 30 86 90 96 93
+> 50 64 57 64 64
+> 80 98 99 100 98
+> 100 100 100 100 100
+> 100 100 100 100 100
+> 100 100 100 100 100
+> 100 100 100 99 99
+> 10 90 93 95 97
+> 70 100 100 100 100
+> 60 100 100 100 100
+> 90 96 98 98 98
+> 100 100 100 100 100
+> 80 68 75 74 76
+> 100 100 94 96 96
+> 100 94 97 96 96
+> CMAES
+> 1510 20 50
+> 10 42 60 76 87
+> 50 60 74 77 80
+> 036 48 56 67
+> 50 88 88 88 90
+> 80 100 99 100 99
+> 100 100 100 100 100
+> 100 100 100 100 100
+> 80 80 91 98 100
+> 90 90 89 92 91
+> 90 100 99 100 100
+> 60 94 97 100 100
+> 30 54 64 78 93
+> 100 100 100 98 100
+> 50 50 72 73 76
+> 80 80 73 78 80
+> 100 94 94 94 94
+> CEI
+> 1510 20 50
+> N
+> 050 69 82 88
+> 50 78 76 80 86
+> 20 38 43 48 58
+> 40 66 75 80 85
+> 90 100 100 100 100
+> 100 100 100 100 100
+> 100 100 100 100 100
+> 100 98 99 98 100
+> 90 90 90 90 91
+> 100 100 100 100 100
+> 100 98 100 100 100
+> 60 70 84 93 97
+> 100 98 100 97 99
+> 60 60 76 75 76
+> 100 98 92 93 94
+> 80 66 84 86 87
+> ALBO
+> 1510 20 50
+> 018 62 86 90
+> 60 72 84 90 90
+> 10 64 71 71 76
+> 60 92 96 97 95
+> 90 100 99 100 99
+> 0100 100 100 100
+> 100 100 100 100 100
+> 070 94 98 99
+> 076 85 89 90
+> 084 100 100 100
+> 10 92 100 100 100
+> 20 82 91 95 98
+> 70 80 97 98 100
+> 0853 70 75
+> 90 100 94 96 96
+> 100 94 97 96 96
+> SCBO
+> 1510 20 50
+> 0819 53 86
+> 30 34 35 44 59
+> 038 44 54 63
+> 00612 46
+> 80 100 97 98 99
+> 10 64 92 100 100
+> 100 100 100 100 100
+> 50 70 94 98 100
+> 90 90 89 94 100
+> 100 96 100 100 100
+> 80 78 98 100 100
+> 030 49 77 93
+> 50 66 56 71 83
+> 50 54 72 73 76
+> 80 70 70 72 75
+> 50 28 59 73 83
+> LogCEI
+> 020 40 60 80 100
+> Win Rate (%)
+
+Prediction + Refinement vs Baseline Methods Figure 2: Win rate (%) of CBA-BO with one-step refinement against baseline methods under different numbers of threshold configurations. Rows denote benchmark problems and columns denote the number of threshold configurations. Table 1: Feasibility ratio (%) of direct prediction and one-step refinement over different test problems ( N = 1000 ). 
+
+Problem Prediction Refinement CEC2006-g01 39 .5 ± 1.1 99 .5 ± 0.2
+
+CEC2006-g04 97 .6 ± 0.4 98 .7 ± 1.1
+
+CEC2006-g07 69 .2 ± 5.5 100 .0 ± 0.1
+
+CEC2006-g10 99 .1 ± 0.8 100 .0 ± 0.1
+
+CEC2010-c13 79 .1 ± 13 .8 99 .7 ± 0.2
+
+Ackley-2D 100 .0 ± 0.2 100 .0 ± 0.0
+
+Ackley-6D 99 .9 ± 0.2 100 .0 ± 0.0
+
+Ackley-10D 99 .8 ± 0.2 100 .0 ± 0.0
+
+GKXWC1 100 .0 ± 0.0 100 .0 ± 0.0
+
+GKXWC2 90 .5 ± 0.5 99 .8 ± 0.3
+
+KeaneBump 92 .5 ± 15 .8 92 .5 ± 15 .8
+
+PressureVessel 87 .7 ± 3.0 100 .0 ± 0.0
+
+RCBeam 81 .9 ± 1.3 100 .0 ± 0.1
+
+ThreeTruss 68 .2 ± 6.7 91 .4 ± 4.0
+
+SpeedReducer 91 .7 ± 0.1 96 .8 ± 0.1
+
+Car 72 .1 ± 0.9 98 .3 ± 0.3
+
+that CBA-BO obtains better solutions on a larger proportion of threshold settings. Overall, CBA-BO achieves competitive performance on both benchmark and engineering problems. It consistently outperforms CMA-ES, cEI and ALBO on most problems, showing that the learned threshold-solution map-ping uses expensive evaluations more effectively than inde-pendent evolutionary search or augmented-Lagrangian BO. Compared with SCBO and LogcEI, CBA-BO also achieves favorable results on many problems, especially when multi-ple threshold configurations are considered. The most important trend in Figure 2 is that the advan-tage of CBA-BO becomes more pronounced as the number of threshold configurations increases. When N = 1 , dedi-cated BO methods such as SCBO and LogcEI can be highly competitive because the entire evaluation budget is devoted to a single ECOP. In particular, LogcEI performs sequen-tial, threshold-specific acquisition optimization, which can be very effective on problems where a single constrained optimum can be located with sufficient evaluations. There-fore, CBA-BO does not always dominate LogcEI on some problems with relatively regular feasible regions or strong local acquisition guidance. However, as N increases, the per-threshold budget of all baseline methods decreases be-cause they solve each threshold configuration independently. In contrast, CBA-BO learns a shared parametric model over the threshold space and reuses information across related ECOPs. As a result, the cost of model learning is amortized over multiple threshold configurations, leading to increas-ingly higher win rates when N grows from 1 to 50 .This trend is clear on CEC2006-g01, CEC2010-c13, Pres-sure Vessel, Three-Truss, and Car, where the win rates against strong BO baselines increase substantially with more thresh-old configurations. These results support the motivation of CBA-BO: although dedicated constrained BO methods can be effective for individual ECOPs, they require repeatedly solving new optimization problems when constraint thresh-olds change. By learning a unified parametric mapping from constraint thresholds to solutions, CBA-BO can effi-ciently generalize to continuously arbitrary unseen threshold queries. The detailed objective values and the effects of PCM prediction and refinement are provided in the Appendix. To further demonstrate the query efficiency of the learned parametric mapping, we additionally evaluate CBA-BO on 1000 randomly sampled threshold queries. Table 1 further evaluates scalability under a setting with N = 1000 thresh-old configurations. Direct prediction already achieves high feasibility on several problems, indicating that the learned model captures useful global structure in the threshold-solution relationship. Nevertheless, prediction errors remain on problems with complex or narrow feasible regions. With only one additional expensive evaluation, the refinement step substantially improves feasibility. For example, the feasibil-ity ratio increases from 39 .53% to 99 .54% on CEC2006-g01, from 69 .16% to 99 .95% on CEC2006-g07, and from 72 .12% 
+
+to 98 .31% on the Car problem. This confirms that CBA-BO provides reliable initial solutions, while local BO refinement corrects remaining local prediction errors. Additional visual-izations in the Appendix show how constraint activity affects PCM prediction and how local refinement corrects errors. The contribution of PCM-based initialization to the refine-ment process is further analyzed in the Appendix. 
+
+Ablation Study 
+
+We validate the contribution of each component by com-paring the full CBA-BO with two variants: (1) All Rand –replacing the PCM-generated candidate solutions with ran-domly sampled candidates, thereby removing the guidance provided by the learned threshold–solution mapping and (2) 
+
+No Mono – removing the monotonic guidance during PCM training. The ablation study is conducted on five representa-tive problems. For each problem and each variant, we per-form five independent runs. In each run, 1000 test threshold configurations are sampled, and the direct prediction results of full CBA-BO and the corresponding variant are compared to compute the win rate. Table 2: Ablation study: win rate (%) of full CBA-BO against each variant.                   
+
+> Variant g7 g10 c13 PressV ThreeT Avg All Rand 50.0 99.3 97.1 94.3 76.8 83.5 No Mono 63.5 93.9 68.8 54.2 61.6 68.4
+
+The results in Table 2 demonstrate that PCM plays a critical role in CBA-BO by providing informative prior solutions for guiding the Bayesian optimization process. Removing PCM leads to clear performance degradation, indicating that the learned threshold–solution relationship helps generate high-quality initial candidates, improve surrogate modeling effi-ciency, and guide the search toward promising regions under varying constraint configurations.The removal of monotonic guidance results in relatively smaller changes, suggesting that its effect is not mainly reflected in average optimization per-formance. Instead, monotonic guidance provides additional structural regularization by encouraging more consistent re-sponses of the parametric model under different threshold settings. A extra analysis of this effect is provided in Ap-pendix. 
+
+Case Study: Intent-Guided Constraint-Bound Recommendation 
+
+We demonstrate the intent-guided constraint-bound recom-mendation mechanism on the Car problem, which contains 11 decision variables and 10 constraints. Starting from a moderate baseline setting θbase i = 3 .0 for all constraints, we Table 3: Recommended constraint thresholds under mixed intents.                                                        
+
+> Constraint Intent θbase θrec Real cc1tighten 3.0 0.51 −0.31
+> c2lock 3.0 2.99 −0.65
+> c3tighten 3.0 2.63 −0.67
+> c4lock 3.0 3.00 −0.19
+> c5loosen 3.0 3.44 −2.70
+> c6lock 3.0 2.98 −2.82
+> c7loosen 3.0 5.84 5.81
+> c8loosen 3.0 3.52 0.26
+> c9tighten 3.0 1.94 −0.70
+> c10 lock 3.0 2.97 −0.26
+> Objective f:17 .60 →15 .70 (−10 .7% )Feasibility: ci(xrec )≤θrec ifor all constraints
+
+specify tightening intents for c1, c3, and c9, loosening intents for c5, c7, and c8, and lock the remaining four constraints. As shown in Table 3, the recommended thresholds are consistent with the specified intents. The tightened thresh-olds are reduced by 12 –83% , the loosened thresholds are increased by 15 –95% , and the locked thresholds remain al-most unchanged. Although some raw constraint values are positive, the returned design is feasible under the recom-mended thresholds, i.e., ci(x) ≤ θrec i for all constraints. By relaxing non-critical constraints, the system identifies a de-sign with f = 15 .70 , corresponding to a 10 .7% improvement over the baseline objective value. This case study shows that the proposed recommendation mechanism enables users to explore the constraint–objective trade-off through intuitive high-level intents, without repeated manual tuning of a high-dimensional threshold vector. 
+
+## Conclusions 
+
+This paper proposed CBA-BO, a constraint-bound-agnostic Bayesian optimization framework for expensive constrained optimization with varying feasibility thresholds. By learning a shared parametric mapping from constraint thresholds to optimal solutions, CBA-BO can directly provide high-quality solutions for arbitrary unseen threshold configurations with-out restarting optimization. The PCM is trained through a GP-guided optimization process to capture the threshold-solution relationship, while one-step local refinement fur-ther improves solution quality when direct predictions are insufficient. Experiments on benchmark and engineering de-sign problems demonstrate the effectiveness of CBA-BO in achieving high-quality solutions while handling varying con-straint bounds. The learned parametric model also provides a practical basis for constraint-bound recommendation and feasibility–performance trade-off exploration. Several limitations remain. The quality of the learned threshold–solution mapping depends on the accuracy of GP surrogate modeling, which may degrade in high-dimensional problems or highly irregular feasible regions. Moreover, the current recommendation mechanism only supports simple high-level adjustment intents. Future work will investigate more expressive preference modeling and extend CBA-BO to more complex real-world constrained design scenarios. References 
+
+Ament, S.; Daulton, S.; Eriksson, D.; Balandat, M.; and Bak-shy, E. 2023. Unexpected improvements to expected im-provement for bayesian optimization. Advances in neural information processing systems , 36: 20577–20612. Amini, S.; Vannieuwenhuyse, I.; and Morales-Hernández, A. 2025. Constrained Bayesian Optimization: A Review. IEEE Access , 13: 1581–1593. Arnold, D. V.; and Hansen, N. 2012. A (1+ 1)-CMA-ES for constrained optimisation. In Proceedings of the 14th annual conference on Genetic and evolutionary computation , 297– 304. Balandat, M.; Karrer, B.; Jiang, D.; Daulton, S.; Letham, B.; Wilson, A. G.; and Bakshy, E. 2020. BoTorch: A framework for efficient Monte-Carlo Bayesian optimization. Advances in neural information processing systems , 33: 21524–21538. Cheng, J.; Lin, X.; Xue, B.; and Zhang, Q. 2025. Parametric Pareto Set Learning: Amortizing Multi-Objective Optimiza-tion With Parameters. IEEE Transactions on Evolutionary Computation .Cheng, J.; Xue, B.; and Zhang, Q. 2026. Parametric Pareto set learning for expensive multi-objective optimization. In Pro-ceedings of the AAAI Conference on Artificial Intelligence ,volume 40, 36829–36837. Eriksson, D.; and Poloczek, M. 2021. Scalable constrained Bayesian optimization. In International conference on arti-ficial intelligence and statistics , 730–738. PMLR. Frazier, P. I. 2018. Bayesian optimization. In Recent ad-vances in optimization and modeling of contemporary prob-lems , 255–278. Informs. Gandomi, A. H.; Yang, X.-S.; and Alavi, A. H. 2011. Mixed variable structural optimization using firefly algorithm. Com-puters & Structures , 89(23-24): 2325–2336. Gardner, J. R.; Kusner, M. J.; Xu, Z. E.; Weinberger, K. Q.; and Cunningham, J. P. 2014. Bayesian optimization with inequality constraints. In ICML , volume 2014, 937–945. Gelbart, M. A.; Snoek, J.; and Adams, R. P. 2014. Bayesian optimization with unknown constraints. arXiv preprint arXiv:1403.5607 .Gramacy, R. B.; Gray, G. A.; Le Digabel, S.; Lee, H. K.; Ranjan, P.; Wells, G.; and Wild, S. M. 2016. Modeling an augmented Lagrangian for blackbox constrained optimiza-tion. Technometrics , 58(1): 1–11. Gu, L.; Yang, R.; Tho, C.-H.; Makowskit, M.; Faruquet, O.; and Y. Li, Y. L. 2001. Optimisation and robustness for crashworthiness of side impact. International journal of vehicle design , 26(4): 348–360. Hansen, N. 2006. The CMA evolution strategy: a comparing review. Towards a new evolutionary computation: Advances in the estimation of distribution algorithms , 75–102. Hoffmann, M. K.; Othmane, A.; and Flaßkamp, K. 2025. Optimality-Informed Neural Networks for Solv-ing Parametric Optimization Problems. arXiv preprint arXiv:2512.20270 .Keane, A. 1994. Experiences with optimizers in structural design. In Proceedings of the conference on adaptive com-puting in engineering design and control , volume 94, 14–27. Letham, B.; Karrer, B.; Ottoni, G.; and Bakshy, E. 2019. Constrained Bayesian Optimization with Noisy Experiments. 
+
+Bayesian Analysis , 14(2): 495 – 519. Liang, J. J.; Runarsson, T. P.; Mezura-Montes, E.; Clerc, M.; Suganthan, P. N.; Coello, C. C.; and Deb, K. 2006. Problem definitions and evaluation criteria for the CEC 2006 special session on constrained real-parameter optimization. Journal of Applied Mechanics , 41(8): 8–31. Lin, X.; Yang, Z.; Zhang, X.; and Zhang, Q. 2022. Pareto set learning for expensive multi-objective optimization. Ad-vances in neural information processing systems , 35: 19231– 19247. Mallipeddi, R.; and Suganthan, P. N. 2010. Problem defini-tions and evaluation criteria for the CEC 2010 competition on constrained real-parameter optimization. Nanyang Tech-nological University, Singapore , 24: 910. Nikbakht, R.; Jonsson, A.; and Lozano, A. 2020. Unsuper-vised learning for parametric optimization. IEEE Communi-cations Letters , 25(3): 678–681. Poloczek, M.; Wang, J.; and Frazier, P. 2017. Multi-information source optimization. Advances in neural in-formation processing systems , 30. Sandgren, E. 1990. Nonlinear integer and discrete program-ming in mechanical design optimization. Journal of Me-chanical Design , 112(2): 223–229. Sener, O.; and Koltun, V. 2020. Learning to guide random search. arXiv preprint arXiv:2004.12214 .Shahriari, B.; Swersky, K.; Wang, Z.; Adams, R. P.; and de Freitas, N. 2016. Taking the Human Out of the Loop: A Review of Bayesian Optimization. Proceedings of the IEEE ,104(1): 148–175. Song, Z.; Wang, H.; and Jin, Y. 2023. A Surrogate-Assisted Evolutionary Framework With Regions of Interests-Based Data Selection for Expensive Constrained Optimization. 
+
+IEEE Transactions on Systems, Man, and Cybernetics: Sys-tems , 53(10): 6268–6280. Srinivas, N.; Krause, A.; Kakade, S. M.; and Seeger, M. 2009. Gaussian process optimization in the bandit setting: No regret and experimental design. arXiv preprint arXiv:0912.3995 .Swersky, K.; Snoek, J.; and Adams, R. P. 2013. Multi-task bayesian optimization. Advances in neural information pro-cessing systems , 26. Wang, J.; Wang, X.; Wang, H.; and Jin, Y. 2026. A Dis-tributed Surrogate-Assisted Evolutionary Algorithm for Het-erogeneously Expensive Constrained Optimization. IEEE Transactions on Evolutionary Computation , 1–1. Yang, X.-S.; and Hossein Gandomi, A. 2012. Bat algorithm: a novel approach for global engineering optimization. Engi-neering computations , 29(5): 464–483. Yu, R.; Picard, C.; and Ahmed, F. 2025. Fast and accurate Bayesian optimization with pre-trained transformers for con-strained engineering problems: R. Yu et al.. Structural and Multidisciplinary Optimization , 68(3): 66. Benchmark Problem Formulations 
+
+This section summarizes the benchmark problems used in the experiments. For all problems, the objective and constraint functions follow their standard formulations in the corre-sponding original references. The threshold domains used in our experiments are reported in Table 4. Since CBA-BO studies varying constraint thresholds, we keep the original objective and constraint functions unchanged and only vary the feasibility thresholds θ within the specified domains. 
+
+Engineering Design Problems 
+
+The engineering design problems used in the experiments are briefly described as follows. 
+
+• Three-Truss Design. This problem aims to minimize the structural volume of a three-bar truss. The design vari-ables describe the cross-sectional areas of the bars, and the constraints are imposed by stress limits on different truss members. The formulation follows the standard three-bar truss design problem used in structural optimization (Yang and Hossein Gandomi 2012). 
+
+• Reinforced Concrete Beam Design. This problem mini-mizes the construction cost of a reinforced concrete beam. The design involves both discrete and continuous vari-ables, including the reinforcing bar area, beam width, and beam depth. The constraints are related to load-bearing capacity and safety requirements. The formulation fol-lows the reinforced concrete beam design benchmark in (Yang and Hossein Gandomi 2012). 
+
+• Pressure Vessel Design. This problem seeks to mini-mize the manufacturing cost of a cylindrical pressure vessel. The decision variables include the shell thickness, head thickness, inner radius, and cylindrical length. The constraints are associated with pressure-vessel design re-quirements such as thickness, volume, and length limi-tations (Sandgren 1990). The formulation is taken from (Gandomi, Yang, and Alavi 2011). 
+
+• Speed Reducer Design. This problem minimizes the weight of a mechanical speed reducer. The decision vari-ables describe key gear and shaft dimensions, and the constraints involve gear geometry, shaft stresses, and me-chanical design restrictions. The formulation follows the commonly used speed reducer design benchmark in engi-neering optimization (Yang and Hossein Gandomi 2012). 
+
+• Car Side Impact Design. This problem aims to minimize vehicle weight while satisfying crashworthiness require-ments. The design variables describe structural compo-nents and reinforcement settings of the car body, and the constraints are related to impact safety and compatibility requirements. The formulation is taken from the car side impact design problem in (Gu et al. 2001; Yu, Picard, and Ahmed 2025). 
+
+## Additional Implementation Details and Parameter Settings 
+
+This section provides additional implementation details and parameter settings that are not fully specified in the main Table 4: Summary of the test problems and threshold do-mains used in the experiments. Here a×k denotes that value 
+
+a is repeated k times. Problem D m θL θU
+
+CEC2006-g01 13 9 [0 ×9] [210 ×3, 110 ×6]
+
+CEC2006-g04 5 6 [0 ×6] [500 ×3, 110 ×3]
+
+CEC2006-g07 10 8 [0 ×8] [300 ×6, 150 ×2]
+
+CEC2006-g10 8 6 [0 ×6] [5000 ×3, 150000 ×3]
+
+CEC2010-c13 10 3 [0 ×3] [200 ×3]
+
+Ackley-2D 2 2 [0 ×2] [200 , 50] 
+
+Ackley-6D 6 2 [0 ×2] [200 , 50] 
+
+Ackley-10D 10 2 [0 ×2] [200 , 50] 
+
+GKXWC1 2 1 [0] [2] 
+
+GKXWC2 2 1 [0] [5] 
+
+KeaneBump 18 2 [0 ×2] [2 , 100] 
+
+PressureVessel 4 4 [0 ×4] [10 , 10 , 1000 , 100] 
+
+RCBeam 3 2 [0 ×2] [10 , 500] 
+
+SpeedReducer 7 9 [0 ×9] [10 ×9]
+
+ThreeTruss 2 3 [0 ×3] [10 ×3]
+
+Car 11 10 [0 ×10 ] [10 ×10 ]
+
+paper. These settings are used for all experiments unless otherwise stated. 
+
+CBA-BO Implementation Details 
+
+All design variables and threshold vectors are normalized into the unit hypercube before model training and candidate generation. The proposed method is implemented in PyTorch and BoTorch using double precision. At each iteration, the objective and each constraint are modeled by independent Gaussian process surrogates. Specifically, we use a Model-ListGP, where each output is modeled by a SingleTaskGP. The input variables are normalized, and each output is stan-dardized before GP training. The GP hyperparameters are learned by maximizing the sum of marginal log likelihoods. The confidence-bound coefficient used in GP-guided learning is set to β = 0 .5. Therefore, the objective guidance uses LCB f (x) = μf (x) − 0.5σf (x), while constraint feasi-bility is estimated using UCB cj (x) = μcj (x) + 0 .5σcj (x).For feasible generated solutions, the PCM is updated ac-cording to the gradient of the objective LCB. For infeasible generated solutions, the update direction is computed from the gradients of the violated constraint UCBs. The resulting gradient is normalized before backpropagation. The PCM is optimized using Adam with an initial learning rate of 10 −3. A cosine annealing learning-rate scheduler is used during training, and the minimum learning rate is set to 10 −5. At each BO iteration, the PCM is updated for 50 gradient steps. The mini-batch size of threshold vectors for each PCM update is 64. The monotonic guidance term is activated in the second half of the training process, and its coefficient is set to 0.1. Parametric Constraint Model 
+
+Model Structure. The PCM hϕ(θ) is implemented as a multilayer perceptron (MLP). The input and output dimen-sions correspond to the number of constraints m and decision variables D, respectively. The network contains three hidden layers with 256 neurons and uses SiLU activation functions. The model architecture is 
+
+hϕ(θ) : θ → Linear (m, 256) → SiLU 
+
+→ Linear (256 , 256) → SiLU 
+
+→ Linear (256 , 256) → SiLU 
+
+→ Linear (256 , D ) → Sigmoid → x.
+
+(23) The sigmoid activation in the output layer constrains the predicted solutions within the normalized decision space 
+
+[0 , 1] D . The hidden layers are initialized using orthogonal initialization, while the output layer is initialized with small weights to stabilize early-stage optimization. 
+
+Threshold Batch Sampling 
+
+During PCM training, threshold vectors are sampled by a structured mixture strategy. For each mini-batch, one quar-ter of the thresholds are uniformly sampled along the main diagonal of the threshold space, one quarter are randomly sampled along the same diagonal, and the remaining half are generated by Sobol sampling over the full threshold domain. This sampling strategy provides both structured coverage of the main threshold relaxation path and global coverage of the whole threshold space. Let 
+
+Θ = [ θL, θU ] ⊂ Rm, (24) where θL and θU denote the lower and upper bounds of the threshold space. For a mini-batch with size B = 64 , the sampled threshold set is constructed as 
+
+Bθ = Bd ∪B r ∪B s, |B d| = B
+
+4 , |B r | = B
+
+4 , |B s| = B
+
+2 .
+
+(25) The uniformly sampled diagonal subset is 
+
+Bd =
+
+n
+
+θL + λi(θU − θL)
+
+oB/ 4
+
+> i=1
+
+, λi = i − 1
+
+B/ 4 − 1 . (26) The randomly sampled diagonal subset is 
+
+Br =
+
+n
+
+θL + λi(θU − θL)
+
+oB/ 4
+
+> i=1
+
+, λi ∼ U (0 , 1) . (27) The global Sobol subset is 
+
+Bs =
+
+n
+
+θL + ui ⊙ (θU − θL)
+
+oB/ 2
+
+> i=1
+
+, ui ∼ Sobol( m),
+
+(28) where ⊙ denotes element-wise multiplication. 
+
+Sampling Strategy 
+
+At each BO iteration, 1000 threshold vectors are sampled from the threshold domain using the same sampling strat-egy as that adopted for PCM training, and are subsequently mapped to candidate solutions using the PCM: 
+
+Xt = {hϕ(θ) | θ ∼ Θ}.
+
+To improve the coverage of different constraint require-ments, five candidates are selected from the candidate pool. A candidate is considered feasible under a threshold vec-tor θ if vj (x) = max(0 , U CB cj (x) − θj ) = 0 , j =1, . . . , m. Two candidates are selected according to the ex-treme threshold settings. For the strict threshold θL and the relaxed threshold θU , the feasible candidate with the lowest 
+
+LCB f (x) is selected. If no feasible candidate exists under the corresponding threshold setting, the candidate with the minimum total constraint violation is selected instead. The remaining three candidates are randomly selected from the intermediate threshold configurations to maintain exploration. A similarity threshold of 0.05 is imposed in the normalized design space to avoid redundant evaluations. The selected candidates are then evaluated using the expensive objective and constraint functions. 
+
+Local Refinement Settings 
+
+For the refinement setting, the predicted solution generated by the PCM is first evaluated using the true objective and constraint functions. Then, one additional expensive evalua-tion is selected by a local BO refinement procedure around the predicted solution. The local search region is constructed in the normalized design space, where all design variables lie in the unit hypercube [0 , 1] D . The local radius is set to 
+
+r = 0 .25 along each normalized dimension, and the result-ing region is clipped to the global design domain. The local refinement reuses the collected database to fit local GP sur-rogates and applies LogcEI as the acquisition function. No additional initialization evaluations are used in this stage. After the additional expensive evaluation, the final refined solution is selected from the predicted solution and the lo-cally evaluated candidate using the same feasibility rule as in the main experiments. 
+
+Constraint-Bound Recommendation Settings 
+
+For the intent-guided constraint-bound recommendation case study, local threshold candidates are sampled around the baseline threshold θbase in the normalized threshold space. For each recommendation query, 50000 local threshold candidates are generated. Among them, 80% are sampled according to the user-specified intents, and 20% are sampled using unbiased Gaussian perturbations for local exploration. For the intent-independent exploration subset, the standard deviation of the perturbation is set to 0.4rj for the j-th thresh-old dimension. For tightening intents, the perturbation δ(i)
+
+> j
+
+is sampled toward smaller thresholds using a half-normal distribution with scale 0.5rj ; for loosening intents, it is sam-pled toward larger thresholds with the same scale; and for locked constraints, only a very small neighborhood around the baseline is explored, with the perturbation range propor-tional to 0.05 rj . All sampled threshold vectors are clipped to the normalized threshold domain [0 , 1] m.Each sampled threshold vector θ(i) is mapped to a can-didate solution ˆx∗(i) by the learned PCM. The candidate is retained only if the GP mean prediction satisfies all recom-mended thresholds with a feasibility tolerance τ = 10 −4.The remaining feasible candidates are ranked by the utility score S(θ(i)) defined in the main text, which combines pre-dicted objective improvement, rewards for successful tight-ening, and penalties for intent-violating relaxation. For the utility score, the objective improvement weight is set to wf = 100 . For tightening and locked intents, re-laxation beyond the baseline threshold is penalized with a hard-barrier coefficient λh = 10000 . For tightening in-tents, successful tightening is rewarded with λr = 50 . For loosening intents, the relaxation allowance is defined as 
+
+ϵj = max(0 .05 |θbase j |, 1.0) , and only excessive relaxation beyond this allowance is penalized with a quadratic coeffi-cient of 50 .Table 5: Main parameter settings used in CBA-BO. Parameter Value Initial LHS samples 30 Total CBA-BO training evaluations 200 BO iterations 34 Batch size per BO iteration 5PCM training steps per iteration 50 Threshold mini-batch size 64 PCM optimizer Adam Initial learning rate 10 −3
+
+Minimum learning rate 10 −5
+
+Learning-rate scheduler Cosine annealing LCB/UCB coefficient β 0.5 Monotonic guidance coefficient α 0.1 PCM candidate threshold samples 1,000 Candidate similarity threshold δ 0.05 Local refinement radius r 0.25 Refinement evaluations per threshold 1Recommendation local samples 50,000 Recommendation intent-guided ratio 0.8 Recommendation exploration ratio 0.2 Recommendation objective weight wf 100 Hard-barrier penalty λh 10000 Tightening reward coefficient λr 50 
+
+## Additional Experimental Results 
+
+Detailed Results on the Full Benchmark Set 
+
+Tables 12 and 13 provide the complete win-rate results of CBA-BO under the Direct Prediction and Refinement set-tings, respectively. These tables report the win-rate results for all tested problems, all baseline algorithms, and all numbers of threshold configurations, complementing the summarized results in the main paper. As shown in Table 12, Direct Prediction alone does not al-ways achieve strong performance. Although the learned PCM can quickly generate a candidate solution for each queried threshold vector, its prediction may still deviate from the true optimum, especially on problems with active constraints, nar-row feasible regions, or complex threshold-dependent solu-tion manifolds. Therefore, direct PCM prediction should be viewed as a fast initial recommendation rather than a fully optimized solution. Table 13 shows that one-step refinement consistently im-proves the results on many problems. By performing one ad-ditional local LogcEI evaluation around the PCM prediction, CBA-BO can correct local prediction errors and substantially improve feasibility and solution quality. The improvement from Direct Prediction to Refinement also confirms the role of the proposed two-stage strategy: the PCM provides an efficient global threshold-to-solution prediction, while local refinement improves reliability when the direct prediction is not sufficiently accurate. To provide a more intuitive view of the optimization re-sults beyond the summarized win-rate statistics, Tables 14– 18 present representative objective values for different num-bers of threshold configurations. For each N , one threshold configuration is selected from the tested cases for presen-tation due to the large number of evaluated configurations. The tables compare the results obtained by CBA-BO (Direct Prediction and Refinement) with all baseline algorithms on the complete benchmark set. Red entries indicate infeasible solutions, while bold entries denote the best objective values among feasible solutions. The Win Count reports the num-ber of problems where each method achieves the best feasible objective among the selected cases. For PCM, the value in parentheses indicates the cases where the direct prediction already achieves the final best result without refinement. The detailed results provide additional evidence support-ing the win-rate analysis in the main paper. Direct PCM pre-diction can already obtain competitive solutions for many problems, demonstrating the effectiveness of the learned threshold-solution relationship. Meanwhile, Refinement fur-ther improves the predicted solutions in several cases by correcting local prediction errors. These representative re-sults are consistent with the overall win-rate comparison and further illustrate the effectiveness of the proposed two-stage optimization strategy. 
+
+Visualization of Threshold-to-Solution Prediction 
+
+These visualizations further reveal how the difficulty of threshold-to-solution prediction depends on whether the con-straints are active around the optimum. For GKXWC1, the constraint is mostly inactive under the tested threshold set-tings. Therefore, the optimum is mainly determined by the objective landscape rather than by the constraint boundary. As a result, the optimal solutions concentrate in a small re-gion, and the threshold-to-solution mapping is relatively sim-ple. This explains why the PCM predictions almost overlap with the ground-truth optima on GKXWC1. When constraints become active, the optimum is pushed onto or along the feasible boundary, and the solution dis-tribution becomes more dependent on the threshold values. GKXWC2 illustrates this case. As the threshold changes, the feasible boundary moves, and the optimal solutions form a narrow boundary-like distribution rather than a single com-pact cluster. Nevertheless, the mapping remains relatively smooth and mostly single-valued, so the PCM can still accu-rately track the movement of the optimum. Table 6: Win rates of PCM-guided refinement against random-initialization refinement over 1,000 threshold con-figurations. Problem Win Rate (%) CEC2006-g01 47.5 CEC2006-g06 98.4 CEC2006-g07 89.3 CEC2006-g10 99.9 CEC2010-c13 99.9 Ackley-10D 98.6 Ackley-2D 100.0 Ackley-6D 100.0 Car 92.6 GKXWC1 82.9 GKXWC2 45.5 KeaneBump 97.9 PressureVessel 97.6 ReinforcedConcreteBeam 99.1 SpeedReducer 59.1 ThreeTruss 100.0 The prediction becomes more difficult when the active constraint structure changes across thresholds. ThreeTruss shows this behavior: the ground-truth optima are more dispersed and form a curved, non-uniform solution mani-fold. Different threshold settings may activate different con-straints, causing the optimum to move between different boundary segments. In such cases, the threshold-to-solution mapping is less smooth and harder to approximate globally. The PCM can still capture the overall distribution trend, but local prediction errors are more likely to occur. Overall, direct PCM prediction is most reliable when the constraints are inactive or when the active constraints in-duce a smooth and continuous movement of the optimum. It becomes more challenging when the feasible region is nar-row, disconnected, or when small threshold changes lead to changes in the active constraint set. These observations ex-plain the role of the local LogcEI refinement: the PCM pro-vides fast global prediction over the threshold space, while refinement corrects difficult cases caused by active or chang-ing constraint boundaries. 
+
+Analysis of PCM-based Initialization for Refinement 
+
+To further analyze the contribution of the learned threshold-solution relationship, we compare the refinement results of CBA-BO with a random-initialization LogcEI baseline. The purpose of this experiment is to investigate whether the per-formance improvement mainly comes from the PCM-guided initialization rather than the LogcEI refinement itself. In CBA-BO, the refinement step is mainly used to correct the approximation errors of the PCM prediction, including de-viations from the optimal solution and possible infeasible fluctuations, thereby improving the quality of the predicted solutions. The CBA-BO results are directly obtained from the one-step refinement procedure described in the main paper. For comparison, we construct a baseline by randomly sampling 200 solutions from the design space and training the GP surrogate models using these samples. Given each target threshold configuration, the LogcEI acquisition function is optimized once to obtain the refined solution. The refinement procedure and acquisition function are identical to those used in CBA-BO, while the only difference is the source of the initial solution and surrogate training data. The comparison is performed over 1,000 randomly sam-pled threshold configurations for each problem. Table 6 re-ports the win rates of CBA-BO refinement against random-initialization LogcEI refinement. CBA-BO achieves a high win rate across all problems, with particularly strong per-formance on CEC2006-g10, CEC2010-c13, Ackley-2D, Ackley-6D, KeaneBump, PressureVessel, RCBeam, and ThreeTruss. These results demonstrate that the learned threshold-solution relationship provides valuable guidance for refinement, allowing CBA-BO to start from more in-formative solutions and effectively correct prediction errors during refinement. For several problems, such as CEC2006-g01 and GKXWC2, the random-initialization baseline remains com-petitive. This is mainly because these problems have rel-atively simple objective and constraint landscapes, where the GP surrogate trained with 200 randomly sampled solu-tions can already provide sufficiently accurate approxima-tions. Therefore, the advantage of PCM-based initialization becomes less significant in such cases. Overall, the results confirm that the performance improvement of CBA-BO is not solely attributed to the final LogcEI refinement, but also ben-efits from the proposed PCM-based threshold-aware learning strategy. The refinement step further improves the predicted solutions by correcting approximation errors and infeasible fluctuations introduced by the learned mapping. 
+
+Monotonicity Analysis of Monotonic Regularization 
+
+To quantitatively evaluate the effect of monotonic regular-ization on the learned threshold-response relationship, we further conduct a pairwise monotonicity test. Specifically, we randomly sample 10,000 pairs of constraint thresholds 
+
+(θ1, θ2) satisfying θ1 < θ2 and evaluate whether the cor-responding predicted objective values satisfy the expected monotonic relationship, i.e., f (x2) ≤ f (x1). The mono-tonicity rate is calculated as the percentage of pairs satisfying this condition. The results are summarized in Table 7. The results show that monotonic regularization gener-ally improves the monotonic consistency of the learned threshold-response relationship. Significant improvements are observed on several challenging problems, including SpeedReducer (+59.7%), KeaneBump (+32.0%), RCBeam (+22.9%), and GKXWC2 (+20.8%). These results indicate that the introduced monotonic prior effectively suppresses irregular variations in the parametric constraint model when the underlying threshold-solution relationship is difficult to learn. Similar improvements can also be observed on CEC2006-g06 and CEC2006-g10, where the monotonicity rate reaches 100.0% after regularization. Table 7: Objective-only pairwise monotonicity test ( N =10000 pairs). For each pair (θ1, θ2) with θ1 < θ2, we check if f (x2) ≤ f (x1).Problem No Mono (%) With Mono (%) ∆ (%) CEC2006-g01 98.7 99.7 +1.0 CEC2006-g06 85.1 100.0 +14.9 CEC2006-g07 81.9 72.5 -9.4 CEC2006-g10 87.2 100.0 +12.8 CEC2010-c13 82.5 86.0 +3.5 GKXWC1 44.8 59.5 +14.7 GKXWC2 75.5 96.3 +20.8 KeaneBump 61.7 93.8 +32.0 RCBeam 77.1 100.0 +22.9 SpeedReducer 40.3 100.0 +59.7 PressureVessel 100.0 100.0 0.0 ThreeTruss 100.0 100.0 0.0 Car 100.0 100.0 0.0 Meanwhile, monotonic regularization does not introduce noticeable degradation on problems where the original model already captures a naturally monotonic relationship. For PressureVessel, ThreeTruss, and Car, both models achieve a monotonicity rate of 100.0%, demonstrating that the regu-larization preserves the existing monotonic structure without imposing unnecessary bias. Although a slight decrease is observed on CEC2006-g07, the overall monotonicity remains high. This suggests that monotonic regularization is not designed to enforce mono-tonicity at the expense of model flexibility, but rather provides a structural preference that improves response consistency in problems where monotonic violations are more prominent. 
+
+Run time 
+
+We report the wall-clock time of one optimization iteration for each method in Table 8. For CBA-BO, we additionally provide the detailed computational cost of PCM training, PCM prediction, and one-step refinement. The PCM training time represents the cost of updating the threshold-solution relationship based on the current surrogate models, while the PCM prediction time measures the overhead of generat-ing solutions for new threshold configurations. The results show that PCM prediction introduces negligible computa-tional overhead, requiring only several milliseconds for all problems. The refinement step incurs additional computa-tional cost due to the optimization of the acquisition func-tion, but it effectively corrects prediction errors and infeasible fluctuations of PCM-generated solutions, thereby improving the final solution quality. For conventional constrained BO methods, a given thresh-old configuration is usually optimized independently through a sequential optimization process, requiring tens or hundreds of expensive evaluations before obtaining a satisfactory so-lution. When different threshold configurations need to be explored, this optimization process must be repeatedly per-formed from scratch. In contrast, after the PCM is learned within the optimization process (34 iterations in our exper-iments), CBA-BO can directly predict solutions for unseen threshold configurations with negligible prediction overhead and further improve them through refinement. In expensive constrained optimization problems, the dom-inant computational cost usually comes from objective and constraint evaluations, which may involve time-consuming simulations or real-world experiments. The internal com-putational overhead of all optimization algorithms, includ-ing surrogate modeling and acquisition optimization, is gen-erally negligible compared with the expensive evaluations. Therefore, the number of optimization iterations, which di-rectly determines the number of expensive evaluations, is a more critical factor for evaluating optimization efficiency. By learning the threshold-solution relationship, CBA-BO avoids repeatedly performing long optimization processes for dif-ferent threshold configurations and provides an efficient so-lution for continuously varying constraint thresholds. 
+
+## Parameter Analysis 
+
+We further analyze two important hyperparameters of CBA-BO: the confidence-bound coefficient used in GP-guided learning and the number of inner PCM training steps. The ex-periments are conducted on four representative problems, in-cluding CEC2006-g10, CEC2010-c13, PressureVessel, and ThreeTruss. For each alternative parameter setting, we com-pare it with the default setting used in the main experiments. Both settings are independently run five times, and the win rate (%) of the default setting against the alternative setting is reported. A value larger than 50% indicates that the default setting performs better on more threshold configurations. 
+
+Effect of the Confidence-Bound Coefficient 
+
+The confidence-bound coefficient β controls the influence of GP uncertainty in the LCB/UCB-based guidance. A small β
+
+relies more on the surrogate mean prediction, while a larger β
+
+introduces stronger uncertainty-aware guidance. The default setting uses β = 0 .5.As shown in Table 9, the default setting obtains win rates above 50% in most cases, indicating that it pro-vides a stable balance between surrogate mean exploita-tion and uncertainty-aware guidance. The only exception is CEC2010-c13 with β = 0 .01 , where the default setting achieves a win rate of 43 .0% , suggesting that a smaller uncer-tainty coefficient can be competitive on this problem. How-ever, on PressureVessel and ThreeTruss, the default setting consistently outperforms all alternative β values. These re-sults show that the chosen confidence-bound coefficient is generally robust across different problems. 
+
+Effect of the Number of Inner PCM Training Steps 
+
+We also investigate the number of inner PCM training steps performed after each GP fitting stage. This parameter con-trols how many gradient updates are applied to the PCM within each BO iteration. The default setting uses 50 inner PCM training steps. Table 8: Wall-clock time (seconds) of one optimization iteration. For CBA-BO, the computational costs of PCM training, PCM prediction, and refinement are separately reported. Problem PCM Training PCM Prediction Refinement cEI LogcEI ALBO SCBO CMA-ES CEC2006-g01 11.970 0.0003 5.318 5.264 9.931 34.990 3.458 0.0055 CEC2006-g06 7.890 0.0002 4.476 10.967 11.168 11.814 5.986 0.0010 CEC2006-g07 20.173 0.0002 16.435 12.241 14.767 26.281 11.644 0.0020 CEC2006-g10 12.885 0.0003 8.881 6.570 8.353 47.601 6.602 0.0010 CEC2010-c13 8.590 0.0002 6.396 1.792 2.794 21.075 2.124 0.0010 Ackley-10D 5.447 0.0003 1.586 1.178 1.532 3.298 0.935 0.0010 Ackley-2D 2.224 0.0002 1.100 0.573 0.630 1.547 0.361 0.0010 Ackley-6D 4.155 0.0001 2.566 1.049 1.451 2.123 0.770 0.0010 GKXWC1 1.085 0.0004 0.442 0.534 0.573 1.407 0.440 0.0010 GKXWC2 1.103 0.0002 0.489 0.255 0.379 0.847 0.200 0.0010 KeaneBump 16.019 0.0002 7.608 4.847 5.192 14.768 4.527 0.0045 PressureVessel 5.935 0.0001 3.044 4.003 2.937 32.946 2.413 0.0010 ReinforcedConcreteBeam 1.996 0.0001 0.639 0.742 0.976 1.097 1.085 0.0010 SpeedReducer 17.971 0.0002 12.108 15.340 16.535 15.524 10.928 0.0020 ThreeTruss 2.867 0.0004 1.678 1.122 1.631 3.613 0.822 0.0010 Table 9: Win rate (%) of the default setting against alternative confidence-bound coefficients β.                   
+
+> Alternative setting g10 c13 PressureVessel ThreeTruss
+> β= 0 .01 70.3 43.0 58.1 73.0
+> β= 1 .075.7 52.1 69.1 71.5
+> β= 2 .069.5 54.9 76.7 72.4
+
+Table 10: Win rate (%) of the default setting against alterna-tive numbers of inner PCM training steps.                    
+
+> Alternative setting g10 c13 PressureVessel ThreeTruss Inner = 20 99.1 50.7 57.5 78.4 Inner = 100 20.5 47.6 44.6 48.8 Inner = 200 0.2 55.5 35.5 48.6
+
+Table 10 shows that the effect of the number of inner PCM training steps is problem-dependent. The default set-ting outperforms Inner = 20 on PressureVessel and Three-Truss, suggesting that too few PCM updates may be in-sufficient for learning the threshold-to-solution mapping on problems where constraints strongly affect the optimum. On CEC2006-g10, however, the constraints are inactive in most tested threshold settings. Therefore, the comparison is mainly determined by the numerical accuracy of the predicted ob-jective value rather than by constraint satisfaction. Since the final feasible solutions are very similar in this case, using more inner updates can lead to slightly more accurate ob-jective optimization, which explains the low win rates of the default setting against Inner = 100 and Inner = 200 on CEC2006-g10. Nevertheless, increasing the number of in-ner steps does not consistently improve performance on the other problems and may increase the risk of over-adapting the PCM to the current GP surrogate. Therefore, the default set-ting adopts a moderate number of inner updates to maintain a stable trade-off between learning effectiveness, robustness, and computational efficiency. 
+
+Effect of the Monotonic Regularization Coefficient 
+
+The monotonic regularization coefficient α controls the strength of the monotonic constraint imposed on PCM. A smaller α provides a weaker monotonic regularization, while a larger α enforces stronger monotonic guidance during model learning. The default setting uses α = 0 .1.Table 11: Win rate (%) of the default setting against alterna-tive monotonic regularization coefficients α.                   
+
+> Alternative setting g10 c13 PressureVessel ThreeTruss
+> α= 0 .01 100.0 55.1 77.5 46.2
+> α= 0 .5100.0 50.0 68.6 49.7
+> α= 1 .0100.0 63.4 89.8 42.1
+
+As shown in Table 11, the default setting achieves compet-itive performance against different monotonic regularization coefficients. The results indicate that PCM is robust to the choice of α, with the default setting outperforming alterna-tive coefficients in most cases. Although different problems exhibit different preferences for the regularization strength, no consistent advantage is observed for any alternative set-ting. This suggests that the effectiveness of PCM mainly comes from exploiting the underlying monotonic relation-ship between constraint thresholds and solutions, rather than relying on a specific regularization coefficient. 0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> x2
+
+GKXWC1: Prediction 
+
+> Prediction
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 GKXWC1: Optimal 
+
+> Optimal
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> x2
+
+GKXWC2: Prediction 
+
+> Prediction
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 GKXWC2: Optimal 
+
+> Optimal
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> x2
+
+ThreeTruss: Prediction 
+
+> Prediction
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 ThreeTruss: Optimal 
+
+> Optimal
+
+Figure 3: Distribution of PCM-predicted solutions and grid-search optima on three 2D problems. For each problem, the left panel shows PCM predictions and the right panel shows the corresponding grid-search optima over 300 randomly sampled threshold settings. 0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> x2
+
+Pred 
+
+f=-2.0 
+
+Ref 
+
+f=-2.0 
+
+GKXWC1: Improve ( =[0.0]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=-2.0 
+
+Ref 
+
+f=-2.0 
+
+GKXWC1: Improve ( =[0.0]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=-2.0 
+
+Ref 
+
+f=-2.0 
+
+GKXWC1: Improve ( =[0.1]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=-2.0 
+
+GKXWC1: Maintain ( =[0.2]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> x2
+
+Pred 
+
+f=-0.7 
+
+Ref 
+
+f=-0.7 
+
+GKXWC2: Rescue ( =[0.6]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=-0.6 
+
+Ref 
+
+f=-0.6 
+
+GKXWC2: Rescue ( =[0.5]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=0.2 
+
+Ref 
+
+f=0.2 
+
+GKXWC2: Rescue ( =[0.0]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=0.1 
+
+Ref 
+
+f=0.2 
+
+GKXWC2: Rescue ( =[0.0]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+> x2
+
+Pred 
+
+f=64.9 
+
+Ref 
+
+f=88.8 
+
+ThreeTruss: Rescue ( =[8.8,0.2,1.9]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=85.5 
+
+Ref 
+
+f=87.6 
+
+ThreeTruss: Rescue ( =[6.8,7.3,0.4]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=91.2 
+
+Ref 
+
+f=90.1 
+
+ThreeTruss: Improve ( =[4.9,9.4,0.8]) 
+
+0.0 0.2 0.4 0.6 0.8 1.0 
+
+x1
+
+0.0 
+
+0.2 
+
+0.4 
+
+0.6 
+
+0.8 
+
+1.0 
+
+Pred 
+
+f=57.1 
+
+Ref 
+
+f=56.9 
+
+ThreeTruss: Improve ( =[7.4,3.2,8.8]) 
+
+Optimum Pred (feas) Pred (inf) Refine Pred->Ref Figure 4: Visualization of PCM prediction and LogcEI refinement on three 2D problems. Gold stars denote grid-search optima, green circles denote feasible PCM predictions, red circles denote infeasible PCM predictions, and blue squares denote refined solutions. Arrows connect each PCM prediction to its refined solution. Table 12: Detailed win rates (%) of direct prediction against baseline algorithms. Each block reports results under N ∈{1, 5, 10 , 20 , 50 } threshold configurations. Problem N CMA-ES cEI ALBO SCBO LogcEI CEC2006-g01 1 20.0 20.0 10.0 0.0 0.0 5 36.0 38.0 32.0 2.0 0.0 10 37.0 31.0 39.0 2.0 0.0 20 41.5 49.0 49.0 4.5 0.0 50 42.6 54.8 56.0 7.8 3.6 CEC2006-g04 1 90.0 80.0 80.0 90.0 80.0 5 100.0 100.0 100.0 100.0 100.0 10 97.0 95.0 95.0 97.0 95.0 20 98.5 98.0 98.0 98.5 98.0 50 98.4 98.2 97.8 98.4 97.4 CEC2006-g07 1 70.0 70.0 80.0 0.0 0.0 5 78.0 74.0 78.0 68.0 38.0 10 84.0 82.0 89.0 76.0 67.0 20 78.0 74.0 82.5 59.0 59.0 50 80.8 84.4 87.2 63.6 63.6 CEC2006-g10 1 100.0 100.0 90.0 100.0 80.0 5 100.0 96.0 90.0 100.0 72.0 10 99.0 92.0 91.0 99.0 64.0 20 100.0 95.0 95.0 100.0 67.0 50 100.0 96.4 97.2 100.0 67.0 CEC2010-c13 1 100.0 70.0 80.0 0.0 50.0 5 100.0 80.0 86.0 56.0 62.0 10 100.0 88.0 94.0 88.0 87.0 20 98.5 97.0 95.0 95.0 95.5 50 99.0 99.6 100.0 98.8 99.6 Ackley-2D 1 10.0 90.0 90.0 0.0 90.0 5 90.0 90.0 90.0 76.0 90.0 10 93.0 89.0 90.0 85.0 89.0 20 95.0 91.5 90.0 89.0 93.5 50 97.4 91.4 90.8 89.8 100.0 Ackley-6D 1 70.0 90.0 100.0 0.0 100.0 5 100.0 100.0 100.0 84.0 96.0 10 100.0 99.0 100.0 100.0 100.0 20 100.0 100.0 100.0 100.0 100.0 50 99.8 99.8 99.8 99.6 99.8 Ackley-10D 1 60.0 60.0 100.0 10.0 80.0 5 100.0 94.0 98.0 92.0 78.0 10 99.0 97.0 99.0 99.0 97.0 20 100.0 100.0 100.0 100.0 100.0 50 99.8 99.8 99.8 99.8 99.8 Problem N CMA-ES cEI ALBO SCBO LogcEI GKXWC1 1 0.0 10.0 0.0 0.0 0.0 5 86.0 40.0 48.0 16.0 6.0 10 90.0 56.0 68.0 60.0 14.0 20 90.0 76.0 82.5 86.5 50.0 50 90.0 86.6 87.6 89.6 86.4 GKXWC2 1 0.0 10.0 20.0 30.0 10.0 5 68.0 42.0 56.0 54.0 8.0 10 83.0 59.0 61.0 72.0 19.0 20 90.0 62.0 60.0 75.0 16.5 50 85.8 67.0 67.2 77.2 27.0 KeaneBump 1 40.0 0.0 20.0 10.0 0.0 5 62.0 34.0 34.0 60.0 38.0 10 56.0 47.0 43.0 66.0 43.0 20 62.0 54.5 46.5 69.5 54.0 50 62.0 65.4 56.4 71.6 61.8 PressureVessel 1 80.0 30.0 60.0 20.0 0.0 5 86.0 52.0 60.0 76.0 28.0 10 84.0 55.0 69.0 83.0 46.0 20 86.5 69.5 82.5 86.5 70.5 50 87.0 84.8 85.2 87.0 85.0 RCBeam 1 30.0 10.0 20.0 20.0 0.0 5 82.0 10.0 22.0 48.0 0.0 10 74.0 13.0 25.0 46.0 0.0 20 77.0 14.5 33.0 68.5 1.0 50 79.0 29.4 48.2 71.4 2.0 SpeedReducer 1 100.0 80.0 90.0 90.0 80.0 5 92.0 72.0 80.0 92.0 70.0 10 88.0 68.0 78.0 88.0 68.0 20 91.0 73.5 82.5 91.0 70.5 50 90.4 75.2 82.2 90.4 71.4 ThreeTruss 1 70.0 40.0 50.0 0.0 40.0 5 58.0 40.0 52.0 6.0 44.0 10 60.0 56.0 62.0 38.0 56.0 20 63.0 60.5 60.5 53.5 60.0 50 60.0 60.0 60.4 57.0 59.8 Car 1 90.0 40.0 20.0 30.0 0.0 5 64.0 46.0 20.0 64.0 2.0 10 74.0 32.0 13.0 74.0 2.0 20 74.5 45.5 25.0 74.5 8.0 50 73.6 44.0 33.8 73.6 13.6 Table 13: Detailed win rates (%) of CBA-BO with one-step refinement against baseline algorithms. Each block reports results under N ∈ { 1, 5, 10 , 20 , 50 } threshold configurations. Problem N CMA-ES cEI ALBO SCBO LogcEI CEC2006-g01 1 80.0 50.0 40.0 60.0 0.0 5 98.0 88.0 66.0 92.0 0.0 10 99.0 88.0 75.0 96.0 6.0 20 99.5 88.5 80.5 97.0 12.0 50 98.4 90.2 85.4 95.0 46.0 CEC2006-g04 1 100.0 80.0 90.0 90.0 80.0 5 100.0 100.0 100.0 100.0 100.0 10 100.0 99.0 100.0 99.0 97.0 20 99.5 99.5 99.5 99.5 98.5 50 99.6 99.4 99.6 99.4 98.8 CEC2006-g07 1 100.0 100.0 100.0 0.0 10.0 5 100.0 100.0 100.0 100.0 64.0 10 100.0 100.0 100.0 100.0 92.0 20 100.0 100.0 100.0 100.0 99.5 50 100.0 100.0 100.0 100.0 100.0 CEC2006-g10 1 100.0 100.0 100.0 100.0 100.0 5 100.0 100.0 100.0 100.0 100.0 10 100.0 100.0 100.0 100.0 100.0 20 100.0 100.0 100.0 100.0 100.0 50 100.0 100.0 100.0 100.0 99.6 CEC2010-c13 1 100.0 80.0 100.0 0.0 50.0 5 100.0 80.0 98.0 70.0 70.0 10 100.0 91.0 99.0 94.0 94.0 20 99.0 98.5 98.0 98.5 98.5 50 99.4 99.8 100.0 99.4 99.6 Ackley-2D 1 10.0 90.0 90.0 0.0 90.0 5 90.0 90.0 90.0 76.0 90.0 10 93.0 89.0 90.0 85.0 89.0 20 95.0 91.5 90.0 89.0 93.5 50 97.4 91.4 90.8 89.8 100.0 Ackley-6D 1 70.0 90.0 100.0 0.0 100.0 5 100.0 100.0 100.0 84.0 96.0 10 100.0 99.0 100.0 100.0 100.0 20 100.0 100.0 100.0 100.0 100.0 50 100.0 100.0 100.0 99.8 100.0 Ackley-10D 1 60.0 60.0 100.0 10.0 80.0 5 100.0 94.0 98.0 92.0 78.0 10 100.0 97.0 100.0 100.0 98.0 20 100.0 100.0 100.0 100.0 100.0 50 100.0 99.8 100.0 100.0 99.8 Problem N CMA-ES cEI ALBO SCBO LogcEI GKXWC1 1 0.0 10.0 0.0 0.0 0.0 5 88.0 42.0 50.0 18.0 8.0 10 90.0 60.0 69.0 62.0 19.0 20 90.0 76.5 82.5 86.5 53.0 50 90.0 86.8 87.6 89.8 86.4 GKXWC2 1 30.0 50.0 50.0 60.0 30.0 5 86.0 60.0 78.0 72.0 34.0 10 90.0 74.0 76.0 84.0 35.0 20 96.0 77.0 80.0 90.5 44.5 50 93.0 80.0 85.6 89.8 59.0 KeaneBump 1 50.0 0.0 20.0 10.0 0.0 5 64.0 36.0 38.0 64.0 38.0 10 57.0 48.0 43.0 71.0 44.0 20 63.5 56.0 48.0 71.0 54.5 50 64.4 66.6 58.2 75.6 63.2 PressureVessel 1 90.0 30.0 60.0 20.0 0.0 5 96.0 54.0 70.0 82.0 30.0 10 98.0 64.0 84.0 91.0 49.0 20 98.0 78.5 93.0 95.0 77.0 50 98.4 93.2 97.0 97.8 93.4 RCBeam 1 100.0 100.0 100.0 70.0 50.0 5 100.0 100.0 98.0 80.0 66.0 10 100.0 100.0 100.0 97.0 56.0 20 100.0 98.5 97.0 98.5 71.0 50 100.0 99.6 98.8 100.0 82.6 SpeedReducer 1 100.0 80.0 100.0 90.0 80.0 5 100.0 80.0 98.0 100.0 70.0 10 94.0 73.0 92.0 94.0 70.0 20 96.0 78.0 93.0 96.0 72.5 50 96.0 80.2 94.4 96.0 74.8 ThreeTruss 1 80.0 50.0 60.0 0.0 50.0 5 68.0 50.0 60.0 8.0 54.0 10 75.0 72.0 76.0 53.0 72.0 20 74.5 73.0 75.0 69.5 73.0 50 75.8 76.2 76.0 74.6 76.2 Car 1 100.0 100.0 80.0 100.0 50.0 5 94.0 94.0 66.0 94.0 28.0 10 97.0 94.0 84.0 97.0 59.0 20 96.5 94.0 86.5 96.5 73.0 50 95.6 94.0 86.6 95.6 83.0 Table 14: Single θ comparison for all problems ( N = 1 ). PCM denotes the directly predicted solution from the parametric constraint model, while Refinement represents the locally optimized solution initialized by PCM. Red values indicate infeasible solutions, and bold values denote the best objective among feasible solutions. Problem PCM Refinement CEI LogCEI ALBO SCBO CMAES CEC2006-g01 -1.09e+02 -1.33e+02 -1.33e+02 -1.40e+02 -1.37e+02 -1.30e+02 -6.33e+01 CEC2006-g06 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 CEC2006-g07 -2.17e+01 -2.17e+01 5.66e+01 -2.32e+01 6.18e+01 -2.35e+01 4.18e+01 CEC2006-g10 2.10e+03 2.10e+03 2.19e+03 2.10e+03 2.11e+03 2.11e+03 3.57e+03 CEC2010-c13 -5.02e+01 -5.02e+01 -5.22e+01 -6.97e+01 5.79e+01 -8.64e+01 3.76e+01 Ackley-10D 4.52e+00 4.52e+00 3.45e+00 4.32e+00 6.09e+00 1.99e+00 4.27e+00 Ackley-2D 3.06e-02 3.06e-02 1.14e+00 4.12e-01 2.23e+00 8.79e-03 2.29e-03 
+
+Ackley-6D 3.08e+00 3.08e+00 2.85e+00 3.53e+00 5.82e+00 1.13e+00 1.34e+00 Car 1.54e+01 1.52e+01 1.52e+01 1.52e+01 1.52e+01 1.52e+01 1.59e+01 GKXWC1 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 GKXWC2 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 KeaneBump -1.86e-01 -1.86e-01 -2.13e-01 -2.27e-01 -2.09e-01 -2.26e-01 -2.30e-01 
+
+PressureVessel 4.97e+02 4.97e+02 4.97e+02 4.87e+02 5.57e+02 5.01e+02 8.78e+03 RCBeam 1.04e+02 8.99e+01 9.45e+01 8.99e+01 9.01e+01 9.00e+01 8.99e+01 SpeedReducer 2.35e+03 2.35e+03 2.47e+03 2.35e+03 2.43e+03 2.36e+03 2.39e+03 ThreeTruss 2.37e+02 2.37e+02 2.52e+02 2.25e+02 2.25e+02 2.25e+02 2.25e+02 Win Count (2) 5 0 4 1 4 2Table 15: Single θ comparison for all problems ( N = 5 ). Problem PCM Refinement CEI LogCEI ALBO SCBO CMAES CEC2006-g01 -5.74e+01 -5.37e+01 -5.84e+01 -5.94e+01 -4.66e+01 -5.06e+01 -3.73e+01 CEC2006-g06 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.21e+04 CEC2006-g07 -2.27e+01 -2.27e+01 7.95e+01 -2.04e+01 2.42e+02 -1.09e+01 4.06e+02 CEC2006-g10 2.10e+03 2.10e+03 2.32e+03 2.10e+03 6.61e+03 2.46e+03 8.54e+03 CEC2010-c13 -4.51e+01 -4.51e+01 -2.79e+01 -7.58e+01 -1.30e+01 -3.71e+01 3.77e+01 Ackley-10D 4.47e+00 4.47e+00 6.35e+00 4.55e+00 7.55e+00 4.35e+00 8.70e+00 Ackley-2D 3.04e-02 3.04e-02 1.14e+00 1.11e-01 1.74e+00 3.89e-01 2.08e+00 Ackley-6D 3.09e+00 3.09e+00 3.66e+00 3.70e+00 5.73e+00 3.38e+00 4.60e+00 Car 1.91e+01 1.92e+01 2.20e+01 1.92e+01 1.92e+01 2.06e+01 2.29e+01 GKXWC1 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 
+
+GKXWC2 -9.96e-01 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -9.97e-01 KeaneBump -1.86e-01 -1.86e-01 -1.86e-01 -1.86e-01 -1.87e-01 -1.29e-01 -1.83e-01 PressureVessel 5.00e+02 5.00e+02 5.02e+02 4.92e+02 9.37e+02 6.70e+02 8.78e+03 RCBeam 1.05e+02 9.14e+01 9.62e+01 9.11e+01 1.20e+02 9.11e+01 1.02e+02 SpeedReducer 2.35e+03 2.35e+03 2.37e+03 2.35e+03 2.40e+03 2.41e+03 2.85e+03 ThreeTruss 2.26e+02 2.26e+02 2.25e+02 2.20e+02 2.25e+02 2.12e+02 2.16e+02 Win Count (6) 7 1 4 1 2 1Table 16: Single θ comparison for all problems ( N = 10 ). Problem PCM Refinement CEI LogCEI ALBO SCBO CMAES CEC2006-g01 -1.80e+02 -1.31e+02 -1.31e+02 -1.37e+02 -1.33e+02 -1.27e+02 -1.12e+02 CEC2006-g06 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.21e+04 -3.21e+04 CEC2006-g07 -2.17e+01 -1.56e+01 8.68e+01 8.19e+00 2.42e+02 6.51e+01 6.10e+02 CEC2006-g10 2.10e+03 2.10e+03 2.21e+03 2.10e+03 6.61e+03 3.09e+03 1.24e+04 CEC2010-c13 -2.49e+01 -2.49e+01 2.50e+01 -8.86e+00 -2.65e+01 3.54e+01 6.43e+01 Ackley-10D 4.46e+00 4.46e+00 6.42e+00 7.51e+00 8.67e+00 6.49e+00 1.04e+01 Ackley-2D 3.26e-02 3.26e-02 1.14e+00 4.12e-01 1.74e+00 3.89e-01 2.82e+00 Ackley-6D 3.07e+00 3.07e+00 3.67e+00 3.75e+00 5.73e+00 6.07e+00 5.34e+00 Car 1.52e+01 1.52e+01 1.52e+01 1.52e+01 1.52e+01 1.64e+01 2.15e+01 GKXWC1 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -1.99e+00 GKXWC2 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -1.00e+00 -9.94e-01 -9.69e-01 KeaneBump -1.86e-01 -1.86e-01 -1.44e-01 -1.67e-01 -1.43e-01 -1.29e-01 -1.69e-01 PressureVessel 5.02e+02 5.02e+02 5.14e+02 5.04e+02 1.27e+03 1.89e+03 8.78e+03 RCBeam 2.38e+02 2.25e+02 2.36e+02 2.24e+02 2.30e+02 2.29e+02 2.47e+02 SpeedReducer 2.35e+03 2.35e+03 3.12e+03 2.65e+03 3.21e+03 2.79e+03 3.89e+03 ThreeTruss 4.85e+01 4.59e+01 5.07e+01 6.53e+01 6.94e+01 4.79e+01 6.66e+01 Win Count (9) 12 1 3 0 0 0Table 17: Single θ comparison for all problems ( N = 20 ). Problem PCM Refinement CEI LogCEI ALBO SCBO CMAES CEC2006-g01 -4.76e+01 -8.01e+01 -7.45e+01 -9.94e+01 -4.49e+01 -8.12e+01 -3.63e+01 CEC2006-g06 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.21e+04 -3.21e+04 CEC2006-g07 -2.27e+01 -1.59e+01 7.28e+01 6.26e+00 1.51e+02 1.13e+02 1.96e+03 CEC2006-g10 2.10e+03 2.10e+03 2.23e+03 2.10e+03 6.61e+03 3.29e+03 1.31e+04 CEC2010-c13 -5.73e+01 -5.73e+01 6.38e+01 -7.58e+01 -2.16e+01 2.56e+01 6.43e+01 Ackley-10D 4.47e+00 4.47e+00 7.07e+00 7.86e+00 1.02e+01 7.85e+00 1.14e+01 Ackley-2D 3.14e-02 3.14e-02 1.14e+00 3.96e-01 3.61e+00 3.89e-01 2.90e+00 Ackley-6D 3.10e+00 3.10e+00 3.81e+00 4.82e+00 7.22e+00 6.60e+00 6.57e+00 Car 1.66e+01 1.67e+01 1.68e+01 1.67e+01 2.18e+01 1.89e+01 2.23e+01 GKXWC1 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -2.00e+00 -1.99e+00 -1.99e+00 GKXWC2 -1.00e+00 -1.00e+00 -8.45e-01 -1.00e+00 -1.00e+00 -9.89e-01 -8.31e-01 KeaneBump -1.86e-01 -1.86e-01 -1.60e-01 -1.55e-01 -1.39e-01 -1.29e-01 -1.64e-01 PressureVessel 4.97e+02 4.97e+02 5.08e+02 5.21e+02 1.90e+03 3.21e+03 8.78e+03 RCBeam 8.99e+01 8.99e+01 8.99e+01 8.99e+01 8.99e+01 9.43e+01 1.08e+02 SpeedReducer 2.35e+03 2.35e+03 2.37e+03 2.35e+03 2.40e+03 2.46e+03 3.05e+03 ThreeTruss 1.42e+02 1.42e+02 1.49e+02 1.43e+02 1.65e+02 1.47e+02 1.41e+02 
+
+Win Count (10) 13 0 2 0 0 1Table 18: Single θ comparison for all problems ( N = 50 ). Problem PCM Refinement CEI LogCEI ALBO SCBO CMAES CEC2006-g01 -6.92e+01 -9.12e+01 -1.04e+02 -9.28e+01 -4.49e+01 -8.09e+01 -3.70e+01 CEC2006-g06 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.22e+04 -3.20e+04 -3.15e+04 CEC2006-g07 -2.14e+01 -2.14e+01 1.13e+02 2.12e+02 2.81e+03 1.17e+02 1.96e+03 CEC2006-g10 2.10e+03 2.10e+03 2.23e+03 2.10e+03 6.61e+03 4.11e+03 1.31e+04 CEC2010-c13 -2.36e+01 -2.36e+01 2.50e+01 -7.58e+01 7.03e+01 2.56e+01 6.43e+01 Ackley-10D 4.47e+00 4.47e+00 7.61e+00 9.01e+00 1.02e+01 1.02e+01 1.14e+01 Ackley-2D 3.22e-02 3.22e-02 1.14e+00 4.12e-01 3.71e+00 3.89e-01 2.90e+00 Ackley-6D 3.09e+00 3.09e+00 6.34e+00 5.40e+00 8.01e+00 8.17e+00 6.57e+00 Car 1.98e+01 1.96e+01 2.20e+01 1.96e+01 1.98e+01 2.21e+01 2.45e+01 GKXWC1 -2.00e+00 -2.00e+00 -1.99e+00 -2.00e+00 -1.97e+00 -1.96e+00 -1.75e+00 GKXWC2 -8.00e-01 -8.23e-01 -6.10e-01 -8.07e-01 -5.60e-01 -8.16e-01 -5.93e-01 KeaneBump -1.86e-01 -1.86e-01 -1.44e-01 -1.55e-01 -1.39e-01 -1.29e-01 -1.64e-01 PressureVessel 5.00e+02 3.45e+03 2.86e+03 3.92e+03 2.94e+04 1.77e+04 2.03e+04 RCBeam 9.60e+01 9.51e+01 1.48e+02 9.53e+01 1.20e+02 1.08e+02 1.20e+02 SpeedReducer 2.35e+03 2.35e+03 2.46e+03 2.35e+03 2.40e+03 2.54e+03 3.05e+03 ThreeTruss 9.87e+01 9.87e+01 1.14e+02 1.26e+02 1.38e+02 1.15e+02 1.02e+02 Win Count (11) 14 0 2 0 0 0

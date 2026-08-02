@@ -1,16 +1,134 @@
 {
   "mode": "standard",
-  "generated_at": "2026-08-02T14:23:09.874473+00:00",
+  "generated_at": "2026-08-02T14:28:54.588775+00:00",
   "stats": {
     "mode": "standard",
     "tag_count": 1,
-    "deep_divecandidates": 0,
+    "deep_divecandidates": 1,
     "deep_cap": 6,
-    "deep_selected": 0,
-    "quick_candidates": 0,
+    "deep_selected": 1,
+    "quick_candidates": 2,
     "quick_skim_target": 11,
-    "quick_selected": 0
+    "quick_selected": 2
   },
-  "deep_dive": [],
-  "quick_skim": []
+  "deep_dive": [
+    {
+      "id": "2607.27389v1",
+      "source": "arxiv",
+      "title": "FunL2O: LLM-Guided Feature Function Design for Learning to Optimize",
+      "abstract": "Learning-to-optimize (L2O) methods accelerate repeated optimization by training models to predict solutions, warm starts, branching decisions, or other forms of solver guidance. A critical yet largely overlooked component of these pipelines is the feature function that maps problem instances to inputs for machine learning models. Existing L2O methods typically rely on hand-crafted features, making representation design manual and largely fixed across domains. We introduce FunL2O, the first unified framework for automating feature design through LLM-driven program evolution for L2O. In a FunSearch-style loop, an LLM proposes executable feature functions, while a fixed evaluation process retrains the original L2O model and measures downstream optimization performance. We evaluate FunL2O on linear and quadratic programming tasks involving solution prediction and warm-starting, as well as on mixed-integer optimization tasks using GNN-guided backdoor branching and Predict-and-Search. Across continuous and discrete optimization tasks and four LLMs, the evolved features consistently outperform hand-crafted representations. These results establish LLM-driven feature evolution as a general and effective approach to automating representation design in L2O.",
+      "authors": [
+        "Bingheng Li",
+        "Junyang Cai",
+        "Yupeng Zhang",
+        "Bistra Dilkina",
+        "Jayant Kalagnanam",
+        "Dzung T. Phan"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-07-29T18:52:44+00:00",
+      "link": "https://arxiv.org/pdf/2607.27389v1",
+      "tags": [
+        "keyword:sat-config",
+        "query:sat-config"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "LLM-guided automatic design of instance feature functions for learning-to-optimize solver guidance",
+      "llm_evidence_cn": "用大语言模型自动设计实例特征函数以辅助求解器引导",
+      "llm_evidence": "用大语言模型自动设计实例特征函数以辅助求解器引导",
+      "canonical_evidence": "用大语言模型自动设计实例特征函数以辅助求解器引导",
+      "llm_tldr_en": "This paper introduces FunL2O, an LLM-driven framework that automatically designs instance feature functions for learning-to-optimize models that guide solvers, addressing the manual feature engineering bottleneck.",
+      "llm_tldr_cn": "针对学习优化中实例特征手工设计繁琐且跨领域不通用的问题，本文提出FunL2O，一个由大语言模型驱动的特征函数自动设计框架。它采用FunSearch式循环，让大模型提出可执行特征函数，固定评估流程重训L2O模型并测量下游优化性能。实验表明框架能自动生成有效的实例特征，支持分支决策、求解器引导等场景，为机器学习辅助求解器配置提供了通用自动化方案。",
+      "llm_tldr": "针对学习优化中实例特征手工设计繁琐且跨领域不通用的问题，本文提出FunL2O，一个由大语言模型驱动的特征函数自动设计框架。它采用FunSearch式循环，让大模型提出可执行特征函数，固定评估流程重训L2O模型并测量下游优化性能。实验表明框架能自动生成有效的实例特征，支持分支决策、求解器引导等场景，为机器学习辅助求解器配置提供了通用自动化方案。",
+      "llm_tags": [
+        "query:sat-config"
+      ],
+      "matched_query_tag": "query:sat-config",
+      "matched_query_text": "Machine learning assisted configuration of SAT solvers",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.23448v1",
+      "source": "arxiv",
+      "title": "Constraint-Bound Agnostic Bayesian Optimization: One Model for All Thresholds",
+      "abstract": "Expensive constrained optimization problems in real-world industry design often involve constraint thresholds that are difficult to determine in advance. Engineers may need to adjust constraint thresholds to explore different feasibility-performance trade-offs, requiring solutions under a wide range of threshold settings. However, existing constrained Bayesian optimization methods treat each threshold configuration independently, leading to repeated optimization and failing to exploit the shared relationship among continuously varying thresholds. To address this challenge, we propose constraint-bound agnostic Bayesian optimization (CBA-BO), a learning-based framework that learns a parametric constraint model mapping thresholds to optimal solutions. Once learned, CBA-BO directly predicts solutions for arbitrary unseen threshold configurations without additional optimization, with a one-step Bayesian optimization refinement further improving solution quality. Experiments on benchmark and engineering problems demonstrate that CBA-BO learns a transferable threshold-solution mapping, enabling efficient prediction and optimization for arbitrary threshold queries. An intent-guided constraint-bound recommendation mechanism is further developed to improve objective performance while satisfying user-specified constraint preferences.",
+      "authors": [
+        "Jin Wang",
+        "Xi Lin",
+        "Handing Wang"
+      ],
+      "primary_category": "cs.NE",
+      "categories": [
+        "cs.NE",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-26T04:13:43+00:00",
+      "link": "https://arxiv.org/pdf/2607.23448v1",
+      "tags": [
+        "keyword:sat-config",
+        "query:sat-config"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Bayesian optimization framework for efficient tuning across varying constraints; transferable to algorithm parameter configuration.",
+      "llm_evidence_cn": "贝叶斯优化框架适用于多种约束下的高效调参，可迁移至算法参数配置。",
+      "llm_evidence": "贝叶斯优化框架适用于多种约束下的高效调参，可迁移至算法参数配置。",
+      "canonical_evidence": "贝叶斯优化框架适用于多种约束下的高效调参，可迁移至算法参数配置。",
+      "llm_tldr_en": "Proposes Constraint-Bound Agnostic Bayesian Optimization (CBA-BO), which learns a single parametric constraint model mapping thresholds to optimal solutions, thereby avoiding repeated optimization for every threshold and improving efficiency across continuously varying feasibility-performance trade-offs.",
+      "llm_tldr_cn": "真实工业设计中的昂贵约束优化常需调整约束阈值，现有方法对不同阈值独立优化，效率低。本文提出约束界限无关的贝叶斯优化（CBA-BO），通过学习阈值到最优解的参数化约束模型，实现一个模型应对所有阈值，显著减少重复优化成本，并能在多阈值设置下保持高质量解，为自动参数配置提供新工具。",
+      "llm_tldr": "真实工业设计中的昂贵约束优化常需调整约束阈值，现有方法对不同阈值独立优化，效率低。本文提出约束界限无关的贝叶斯优化（CBA-BO），通过学习阈值到最优解的参数化约束模型，实现一个模型应对所有阈值，显著减少重复优化成本，并能在多阈值设置下保持高质量解，为自动参数配置提供新工具。",
+      "llm_tags": [
+        "query:sat-config"
+      ],
+      "matched_query_tag": "query:sat-config",
+      "matched_query_text": "algorithm configuration",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.23676v1",
+      "source": "arxiv",
+      "title": "SpecAHD: Localize to Specialize for Automated Heuristic Design in Large-Scale Routing Problems",
+      "abstract": "LLM-based automated heuristic design (AHD) typically scores executable programs on complete instances or within fixed solver components. In large-scale routing problems, localized reconstruction reduces the size of each optimization task, but repair regions within the same incumbent can exhibit substantially different structures. One construction rule must therefore compromise across them. In this paper, we propose SpecAHD, a coupled bilevel framework for within-instance specialization. An upper-level search learns where to expose bounded repair regions, while a lower-level search evolves a complementary repertoire of executable heuristics for the induced repair tasks. The upper-level program determines the repair tasks seen by the lower level, while checked repair outcomes determine how upper-level programs are evaluated. The lower-level objective favors heuristics that perform well on average or solve tasks that the current repertoire handles poorly. For the repair tasks induced by a fixed upper-level program and a fixed lower-level candidate pool, this objective is monotone submodular, allowing greedy repertoire selection with a (1-1/e) approximation guarantee. Across four routing problems and multiple LLM backbones, SpecAHD reduces held-out objective cost by up to 57.7% against the strongest competing AHD baseline and outperforms the per-instance baseline envelope on most public instances.",
+      "authors": [
+        "Kezhao Lai",
+        "Yutao Lai",
+        "Hai-Lin Liu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-26T14:22:15+00:00",
+      "link": "https://arxiv.org/pdf/2607.23676v1",
+      "tags": [
+        "keyword:sat-config",
+        "query:sat-config"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "LLM-based automated heuristic design with bilevel specialization; analogous to machine learning assisted configuration",
+      "llm_evidence_cn": "基于LLM的自动化启发式设计，与机器学习辅助配置方法类似",
+      "llm_evidence": "基于LLM的自动化启发式设计，与机器学习辅助配置方法类似",
+      "canonical_evidence": "基于LLM的自动化启发式设计，与机器学习辅助配置方法类似",
+      "llm_tldr_en": "SpecAHD introduces a bilevel LLM-based automated heuristic design framework for large-scale routing, offering transferable ideas for machine-learning-assisted SAT solver configuration.",
+      "llm_tldr_cn": "针对大规模路由问题中修复区域结构差异大、单一启发式难以兼顾的问题，本文提出SpecAHD，一种上下层耦合的双层框架。上层搜索决定暴露哪些有界修复区域，下层则演化出一套互补的可执行启发式以适应该区域。该方法展示了LLM自动化设计启发式的可行性，并在实验中优于固定规则，其思路可能迁移到SAT求解器的自动配置与算法选择中。",
+      "llm_tldr": "针对大规模路由问题中修复区域结构差异大、单一启发式难以兼顾的问题，本文提出SpecAHD，一种上下层耦合的双层框架。上层搜索决定暴露哪些有界修复区域，下层则演化出一套互补的可执行启发式以适应该区域。该方法展示了LLM自动化设计启发式的可行性，并在实验中优于固定规则，其思路可能迁移到SAT求解器的自动配置与算法选择中。",
+      "llm_tags": [
+        "query:sat-config"
+      ],
+      "matched_query_tag": "query:sat-config",
+      "matched_query_text": "Machine learning assisted configuration of SAT solvers",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
 }
