@@ -256,6 +256,144 @@ subscriptions:
           source: manual
           note: ''
       updated_at: '2026-08-02T14:33:56.688Z'
+    - tag: sat-preproc
+      description: 请帮我查找SAT preprocessing技术论文
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: blocked clause elimination
+          keyword_cn: ''
+          query: blocked clause elimination
+        - keyword: SAT preprocessing
+          keyword_cn: SAT预处理
+          query: preprocessing techniques for Boolean satisfiability problem
+        - keyword: CNF formula simplification
+          keyword_cn: CNF公式化简
+          query: simplification of conjunctive normal form formulas in SAT
+        - keyword: variable elimination
+          keyword_cn: 变量消除
+          query: variable elimination techniques in SAT preprocessing
+        - keyword: clause elimination
+          keyword_cn: 子句消除
+          query: clause elimination methods for SAT solving
+        - keyword: SAT simplification
+          keyword_cn: SAT化简
+          query: simplification techniques for SAT instances
+      intent_queries:
+        - query: Comparison of SAT preprocessing algorithms
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: find research papers on preprocessing techniques for SAT solving
+          query_cn: 查找关于SAT求解预处理技术的研究论文
+          enabled: true
+          source: manual
+          note: ''
+        - query: how to simplify CNF formulas before SAT solving
+          query_cn: 如何在SAT求解前化简CNF公式
+          enabled: true
+          source: manual
+          note: ''
+        - query: preprocessing algorithms for improving SAT solver performance
+          query_cn: 提高SAT求解器性能的预处理算法
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:35:48.650Z'
+    - tag: branching
+      description: 请帮我查找SAT solver branching heuristic论文
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: restart strategy
+          keyword_cn: ''
+          query: restart strategy
+        - keyword: Jeruslow-Wang heuristic
+          keyword_cn: ''
+          query: Jeruslow-Wang heuristic
+        - keyword: phase saving heuristic
+          keyword_cn: ''
+          query: phase saving heuristic
+        - keyword: VSIDS
+          keyword_cn: ''
+          query: VSIDS
+        - keyword: variable selection heuristic
+          keyword_cn: 变量选择启发式
+          query: heuristics for selecting decision variables in SAT solving
+        - keyword: branching strategy
+          keyword_cn: 分支策略
+          query: branching strategy in DPLL algorithm
+      intent_queries:
+        - query: Comparison of branching heuristics for Boolean satisfiability problems
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: How to choose variable selection heuristics in SAT solving?
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: What are the best branching heuristics for CDCL SAT solvers?
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: recent advances in SAT solver branching heuristics
+          query_cn: SAT求解器分支启发式的最新进展
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:38:45.560Z'
+    - tag: inproc-sat
+      description: 现代CDCL SAT求解器中的inprocessing技术
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: clause minimization
+          keyword_cn: ''
+          query: clause minimization
+        - keyword: blocked clause elimination
+          keyword_cn: ''
+          query: blocked clause elimination
+        - keyword: clause vivification
+          keyword_cn: ''
+          query: clause vivification
+        - keyword: inprocessing techniques
+          keyword_cn: inprocessing技术
+          query: various inprocessing techniques used inside CDCL SAT solvers
+        - keyword: CDCL SAT solver
+          keyword_cn: CDCL SAT求解器
+          query: conflict-driven clause learning based SAT solver architecture
+        - keyword: bounded variable elimination
+          keyword_cn: 有界变量消除
+          query: bounded variable elimination with resource limits in CDCL
+      intent_queries:
+        - query: Comparison of preprocessing and inprocessing in CDCL SAT solvers
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: Inprocessing methods for SAT solving to simplify clauses during search
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: What are inprocessing techniques in modern CDCL SAT solvers?
+          query_cn: 现代CDCL SAT求解器中有哪些inprocessing技术？
+          enabled: true
+          source: manual
+          note: ''
+        - query: How does inprocessing improve the performance of CDCL SAT solvers?
+          query_cn: inprocessing如何提升CDCL SAT求解器的性能？
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:41:16.372Z'
 source_backends:
   arxiv:
     papers_table: arxiv_papers
