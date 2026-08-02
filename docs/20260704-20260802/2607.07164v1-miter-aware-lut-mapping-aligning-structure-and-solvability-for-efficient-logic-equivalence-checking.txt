@@ -1,0 +1,291 @@
+Title: Miter-Aware LUT Mapping: Aligning Structure and Solvability for Efficient Logic Equivalence Checking
+
+URL Source: https://arxiv.org/pdf/2607.07164v1
+
+Published Time: Thu, 09 Jul 2026 00:38:44 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# Miter-Aware LUT Mapping: Aligning Structure and Solvability for Efficient Logic Equivalence Checking 
+
+# Jiaying Zhu 1, Zhengyuan Shi 1*, Mengxia Tao 2, Kezhi Li 1, Min Li 3, Qiang Xu 1*
+
+> 1
+
+The Chinese University of Hong Kong, Hong Kong, China 
+
+> 2
+
+National Center of Technology Innovation for EDA, Nanjing, China 
+
+> 3
+
+Southeast University, Nanjing, China {jyzhu24,zyshi21,kzli24,qxu}@cse.cuhk.edu.hk,taomengxia@nctieda.com,min.li@seu.edu.cn 
+
+## Abstract 
+
+Logic Equivalence Checking (LEC), a fundamental hardware verifi-cation task, is often bottlenecked by synthesis-induced structural perturbations and XOR-dense regions that degrade SAT solver per-formance. We contend that the modeling of the miter is as critical as the SAT solver itself. To this end, we introduce a miter-aware mapping framework that strategically formulates the problem be-fore solving. By constructing a LUT-based miter —instead of a tradi-tional, flat netlist—our approach preserves critical structural corre-spondence between the two designs while making high-level logic relations explicit. Our framework uniquely integrates three tech-niques: equivalence-preserving mapping to structurally align the two circuits, Gaussian-guided XOR modeling to algebraically simplify dense arithmetic, and solver-oriented LUT selection to generate a representation optimized for efficient SAT reasoning. Evaluated on comprehensive datasets, our method achieves up to a 92.1% reduc-tion across state-of-the-art SAT solvers. This demonstrates that a solver-aware modeling paradigm, which unifies structural mapping with SAT reasoning, can fundamentally enhance LEC efficiency. 
+
+## 1 Introduction 
+
+Logic Equivalence Checking (LEC) [ 18 ] proves that a golden design and its implementation compute identical Boolean functions. The de facto LEC pipeline builds a miter by connecting the outputs of two designs through XOR gates and checks whether the miter can ever evaluate to 1. This turns equivalence checking into a single Boolean satisfiability (SAT) problem [ 6], and the approach has scaled thanks to modern SAT solvers [ 3 , 4, 42 ] and solver heuristics [ 12 , 16 , 21 , 35 ]. However, two challenges limit the robustness of such pipeline on complex designs. First, logic synthesis (e.g. rewriting [ 27 ], resubsti-tution [ 26 ] and decomposition [ 23 ]) can significantly perturb logic cones and obscure matchable points between the miter’s two sides. The resulting lack of recognizable internal equivalences inhibits functional merging, a key simplification step shrinking the SAT instance within solvers [ 5, 41 ]. Second, many real-world designs contain XOR-dense modules, such as arithmetic units and crypto-graphic units. Unfortunately, modern SAT solvers relying on the  
+
+> *Corresponding authors: Qiang Xu and Zhengyuan Shi.
+> This work is licensed under a Creative Commons Attribution 4.0 International License.
+> DAC ’26, Long Beach, CA, USA
+> ©2026 Copyright held by the owner/author(s). ACM ISBN 979-8-4007-2254-7/2026/07 https://doi.org/10.1145/3770743.3803929
+
+search-backtracking algorithm [ 24 ] poorly handle constraints de-rived from XOR chains, deducing a literal typically requires almost all inputs fixed and terminating searching branch after verbose decisions [10, 39, 40]. Although prior efforts attempt to simplify the SAT instances before solving [ 14 , 33 , 37 ], operating solely on the flattened miters remains insufficient. We attribute that LEC efficiency is determined largely by how the miter is modeled before solving . Rather than simply constructing a conventional miter and hoping the solver compensates, we advocate a modeling strategy that preserves struc-tural correspondence and exposes strong implications prior to SAT. In this work, we propose a novel mapping-based LEC formulation that constructs a simplified Look-up Table (LUT)-based miter (see Figure 1) instead of directly linking the two netlists at the bit level. By mapping both designs to LUT abstraction, our approach pre-serves more internal identical cones, makes XOR structure explicit, and reduces solving complexity. We realize this agenda through three contributions: 
+
+• An equivalence-preserving LUT mapping algorithm 
+
+that actively aligns corresponding subgraphs across the two designs, forming more internal equivalent logic between implementation and golden designs. 
+
+• A Gaussian-guided XOR modeling mechanism that de-tects XOR-dense area, implements with the LUTs represent-ing XOR logic, and leverages Gaussian elimination [ 17 , 22 ]to extract explicit affine relations. 
+
+• A solver-oriented LUT selection criterion within the mapping algorithm that quantifies the solver-friendliness to minimize overall SAT solving difficulty. We implement the proposed framework on top of a standard miter-based LEC flow and evaluate it using both structurally op-timized and arithmetic-heavy benchmarks. Experimental results demonstrate that our complete framework achieves up to 92.1% reduction across solvers, with an 83.3% average improvement over the baseline under the PAR2 metric. Ablation results further show that the miter-aware mapping alone reduces runtime by 62.5% ,while the Gaussian-guided XOR modeling mechanism alone yields a 
+
+36.8% reduction. Overall, our method can systematically reshape the problem representation—bridging LUT-mapping and SAT rea-soning into a unified framework that delivers more compact CNFs and scalable equivalence checking performance. In summary, this work introduces a solver-aware modeling para-digm for LEC that unifies miter-aware mapping, algebraic simplifi-cation, and solver-oriented LUT selection. Rather than introducing a new mapping framework, we embed SAT/LEC-specific insights arXiv:2607.07164v1 [cs.AR] 8 Jul 2026 DAC ’26, July 26–29, 2026, Long Beach, CA, USA Jiaying Zhu et al. z           
+
+> … …
+> Golden Design (G)
+> Imple .Design (I)
+> … …
+> Equivalence -Preserving LUT Mapping
+> Gaussian -Guided XOR Modeling
+> LUT 0x6
+> (XOR)
+> Input : LEC Problem
+> GI
+> Matched LUTs
+> high priority
+> LUT 0x7
+> (NAND)
+> Solver -Oriented LUT Selection
+> Conflict interpretability
+> Branch Count
+> Sensitivity
+> Determinacy
+> Monotonicity
+> Structural compactness
+> !𝑤𝑒𝑖𝑔ℎ𝑡 ∗
+> Cost Value LUT Mapping
+> Engine
+> SAT/UNSA T
+> Output : SAT Instance
+
+Figure 1: Overview of the proposed mapping-based framework. Given a miter of two circuits under verification, our framework formulates its representation through three components: (1) Equivalence-preserving LUT mapping aligning structurally corresponding regions to retain internal equivalences; (2) Gaussian-guided XOR modeling extracting affine relations in XOR-dense regions; and (3) Solver-oriented LUT selection optimizing each LUT by solver-friendliness metrics. 
+
+into standard LUT mapping so the resulting abstraction is solver-friendly rather than merely structurally compact. This approach marks a significant departure from recent works [ 33 , 37 ] that apply LUT mapping to single-circuit SAT problems. While their methods optimize an individual netlist, our core contribution is the joint mapping of both golden and implementation circuits. This strat-egy is designed to explicitly preserve and rediscover the internal equivalences often obscured by synthesis—a challenge unique to equivalence checking. Consequently, the proposed framework not only improves practical verification efficiency but also forges a conceptual bridge between circuit optimization and SAT solving. 
+
+## 2 Related Work 2.1 Logic Equivalence Checking 
+
+Logic Equivalence Checking (LEC) is a cornerstone of formal verifi-cation in EDA, aiming to ensure that two circuits, typically before and after synthesis, implement the same Boolean function [ 20 ]. The standard approach is to build a miter circuit by XORing correspond-ing outputs and ORing all XOR results together. Unsatisfiability of the resulting miter indicates functional equivalence. Typically, when two designs share a high degree of structural correspondence, equivalence points (i.e., functionally identical node pairs) can often be detected, making the miter instance of LEC easy to solve. However, aggressive logic synthesis disrupts the structural similarity [ 7 , 23 , 26 , 27 ] but retain the hard-to-solve regions (i.e., XOR-dense regions) [ 10 , 39 , 40 ]. Recent efforts apply preprocess-ing to the flattened miter to simplify the SAT instance prior to solving [ 33 , 37 ], yet overlooking the inherent cross-design correla-tions between the golden and implementation sides. Another line of research combines multiple engines, such as simulation-guided engine [ 13 , 28 ] or non-SAT alternatives [ 30 ], to solve the miter in-stance. While effective on certain classes of designs, these methods still rely heavily on favorable problem features and initial decisions. In contrast to operating solely on a flattened miter, our work targets the initial modeling stage of LEC, reconstructing similar structure and neutralizing hard-to-solve regions before SAT solving. 
+
+## 2.2 Look-up Table (LUT) Mapping 
+
+Look-up Table (LUT) mapping is a fundamental step in logic syn-thesis, where a Boolean network is decomposed into a network of 𝑘 -input LUTs for FPGA [ 8]. In a typical mapping procedure, the circuit is traversed in an output-to-input direction. For each node, multiple candidate LUTs are enumerated based on feasible input cuts and their corresponding Boolean functions, and the most suitable one is selected to optimize delay and latency. Recently, it has also attracted attention as a structure-preserving abstrac-tion for SAT solving, where multiple logic gates are packed into solver-friendly LUTs to reduce CNF size and improve clause local-ity [ 33 , 37 ]. Each LUT encapsulates a small truth table, offering flexibility for customized encoding strategies and fine-grained con-trol over structural granularity. The SAT-solving advantage of LUT-based abstraction arises from its ability to preserve local functional coherence [ 5, 33 ]. By grouping strongly related logic signals into a single LUT, the circuit repre-sentation becomes more compact and semantically cohesive, which helps remove redundant variables and clauses in the resulting CNF. Moreover, each LUT inherently defines a deterministic mapping between its inputs and output, enabling stronger inferences once partial assignments are known. This leads to more concentrated propagation, shorter implication chains, and overall improvement in solver efficiency. However, existing approaches primarily target single-circuit op-timization and overlook miter-specific structural patterns that arise in equivalence checking. Our work extends this line of research by performing miter-aware, solver-friendly LUT mapping , jointly considering structural alignment, XOR reasoning, and CNF-level propagation properties. 
+
+## 3 Methodology 3.1 Overview 
+
+Given the golden design ( G) and implementation design ( Imple. Design , I) in an LEC problem, our framework formulates it into an Miter-Aware LUT Mapping: Aligning Structure and Solvability for Efficient Logic Equivalence Checking DAC ’26, July 26–29, 2026, Long Beach, CA, USA 
+
+Figure 2: Illustration of equivalence-preserving mapping. 
+
+easy-to-solve SAT instance. As shown in Figure 1, our framework targets three objectives: (1) Preserve structural correspondence across the two sides of the miter, facilitating equivalence identification and func-tionally reduction. (2) Gaussian-guided XOR modeling to uncover the underly-ing affine relations among XOR variables and inject into the final CNF. (3) Select solver-friendly LUTs guided by multi-dimensional metrics that correlate with efficient branching, propagation, and conflict analysis. 
+
+## 3.2 Equivalence-preserving LUT Mapping 
+
+To mitigate the synthesis-induced structural perturbations, we intro-duce a miter-aware LUT mapping scheme (Figure 2) that explicitly reconstructs structural correspondence between the two sides of the miter. In a typical mapping procedure, the circuit is traversed in an output-to-input direction; for each node, multiple candidate LUTs 
+
+are enumerated from feasible input cuts and their corresponding Boolean functions, and the most suitable one is selected to optimize delay. Building upon this standard process, our mapping identifies XOR/XNOR structures near the primary outputs as natural com-parison anchors between the golden and implementation circuits. The two fan-in nodes of these XOR gates serve as the respective boundaries of the two sides, providing an approximate yet practical alignment even after aggressive synthesis. Starting from these boundary anchors, our mapper proceeds recursively to generate and match LUT candidates on both sides. At each level, we create paired LUTs from nodes exhibiting struc-tural similarity. This similarity is measured using a heuristic that combines topological depth, fan-in/fan-out counts, and the func-tional hash of the immediate logic cone. Such matched mapping preserves functional equivalences that would otherwise be obscured by synthesis transformations. While SAT-sweeping [ 13 , 28 ] detects equivalences via repeated SAT queries, our alignment provides a lightweight, orthogonal structural matching that complements such solver-based techniques without their computational cost. It is worth noting that LUT mapping inherently absorbs a group of primitive gates into each LUT, leaving only the LUT’s input and output variables exposed in the final CNF. Consequently, variables corresponding to internal gates disappear once absorbed. When mapping is guided to preserve equivalence points as LUT input or output boundaries, these equivalence variables remain explicit in the CNF and can be more effectively exploited by the solver’s redundancy elimination mechanisms [ 6 ]. Moreover, equivalence points located closer to the primary outputs enable earlier clause subsumption and stronger pruning within the search space, ampli-fying solver efficiency. If no direct correspondence can be found for a node pair—e.g., due to heavy resubstitution or decomposition—we independently select LUTs on each side according to the solver-friendliness metric introduced in Sec 3.4, maintaining comparable structural granu-larity across designs. The resulting LUT network thus achieves improved symmetry, enhanced clause reuse, and stronger impli-cation propagation, effectively bridging structural matching and solver-oriented optimization. 
+
+## 3.3 Gaussian-guided XOR Modeling 
+
+XOR-dominated circuits—such as arithmetic and cryptographic designs—pose major challenges to CDCL-based SAT solving, since their CNF encodings often require a large number of clauses and provide weak unit propagation. To this end, we first detect XOR relations within the AIG network and perform Gaussian elimination (GE) over the finite field GF (2) within XOR-dense regions. Each XOR gate represents an equation among variables. To construct equations with constant right-hand sides, we leverage simple transformations: 
+
+• 𝑥 1 ⊕ 𝑥 2 = 𝑥 3 ⇒ 𝑥 1 ⊕ 𝑥 2 ⊕ 𝑥 3 = 0
+
+• 𝑥 1 ⊙ 𝑥 2 = 𝑥 3 ⇒ 𝑥 1 ⊕ 𝑥 2 ⊕ 𝑥 3 = 1
+
+where ⊕ denotes XOR, ⊙ denotes XNOR. For example, given the XOR relations: 
+
+𝑥 1 ⊕ 𝑥 2 ⊕ 𝑥 3 ⊕ 𝑥 5 = 1,𝑥 1 ⊕ 𝑥 2 ⊕ 𝑥 4 = 1,𝑥 2 ⊕ 𝑥 3 ⊕ 𝑥 5 = 1,𝑥 1 ⊕ 𝑥 4 ⊕ 𝑥 5 = 0,
+
+performing elementary row transformations yields: 
+
+𝑥 1 ⊕ 𝑥 2 ⊕ 𝑥 5 = 1,𝑥 1 ⊕ 𝑥 3 = 0,𝑥 2 ⊕ 𝑥 4 = 1,𝑥 4 ⊕ 𝑥 5 = 0.
+
+Unlike conventional elimination that substitutes away variables, we selectively retain XOR-related LUTs whose variables partici-pate in nontrivial affine relations discovered by Gaussian elimina-tion. These LUTs are explicitly reconstructed as standalone XORs rather than merged into larger logic cones, ensuring that their par-ticipating variables remain visible and semantically linked in the final representation. Concretely, each affine relation derived from GE is directly instantiated as an XOR LUT connecting the involved variables, thereby materializing the linear dependency within the mapped circuit itself. For circuit-based solvers, this explicit construction enables early identification of XOR structures and reduces intermediate branch-ing and propagation effort. For CNF-based solvers, the preserved DAC ’26, July 26–29, 2026, Long Beach, CA, USA Jiaying Zhu et al. 
+
+Table 1: Branch count comparison of 2-input gates. (a) 2-input AND         
+
+> input1 input2 output
+> 0𝑥 0
+> 𝑥 00111
+
+(b) 2-input XOR           
+
+> input1 input2 output
+> 000011101110
+
+XOR LUTs naturally translate into small XOR substructures dur-ing CNF conversion, allowing the solver to recognize and leverage these dependencies for stronger propagation and redundancy elimi-nation [ 5 ]. Overall, our approach integrates Gaussian-derived affine relations into the circuit as explicit XOR logic, ensuring their vis-ibility across abstraction levels and improving both propagation and clause-level simplification. 
+
+## 3.4 Solver-oriented LUT Selection 
+
+For regions not dominated by XOR structures, we perform LUT implementations guided by a solver-friendliness metric. 
+
+1) Branching efficiency: These metrics capture how easily the solver can explore and prune the search space around 𝐿 .(a) Branch count: We measure how compactly 𝐿 partitions the input space into regions with fixed output. Formally, a 
+
+branch is a pattern 𝑝 ∈ { 0, 1, 𝑥 }|𝐼 | (where 𝑥 denotes “don’t care”) such that every assignment covered by 𝑝 produces the same output. Let bc (𝐿 ) be the minimum number of such patterns needed to cover all satisfying assignments of 𝐿 . We normalize by the input space size: 
+
+𝑓 branch (𝐿 ) = bc (𝐿 )
+
+2|𝐼 | .
+
+Intuitively, a smaller branch count indicates that the function can be characterized by fewer consistent input regions, im-plying that decisions on input literals more rapidly constrain the search space. From the SAT-solving perspective, such functions yield simpler decision trees, shorter BCP chains, and fewer case splits during clause learning, thus improving solver convergence. For example, a 2-input AND can be cov-ered by three branches (see Table 1), while XOR requires four fully specified minterms, hence AND yields a lower 𝑓 branch 
+
+and is considered more solver-friendly. (b) Sensitivity: Sensitivity reflects how reactive 𝐿 is to single-bit flips. For each input assignment 𝑎 ∈ { 0, 1}|𝐼 | and each input bit 𝑖 , we flip bit 𝑖 to obtain 𝑎 ⊕𝑒 𝑖 and check whether the output changes. Let 𝑇 𝐿 (·) be the Boolean function implemented by 
+
+𝐿 . We define 
+
+SensCount (𝐿 ) =∑︁   
+
+> 𝑎 ∈ { 0,1}|𝐼 |
+> |𝐼 |
+
+∑︁ 
+
+> 𝑖 =1
+
+1(𝑇 𝐿 (𝑎 )≠𝑇 𝐿 (𝑎 ⊕𝑒 𝑖 ) ) ,
+
+and normalize by the total number of flip trials: 
+
+𝑓 sensitivity (𝐿 ) = SensCount (𝐿 )|𝐼 | · 2|𝐼 | .
+
+Lower 𝑓 sensitivity indicates locally stable behavior and typi-cally leads to a narrower effective branching space for CDCL-based solvers. 
+
+2) Propagation strength. CDCL relies on Boolean Constraint Prop-agation (BCP)-partial assignments should force additional literals quickly. (a) Determinacy: Let 𝑉 = {𝑥 1, . . . , 𝑥 |𝐼 | , 𝑂 } be LUT inputs and output. For each non-empty subset 𝑆 ⊆ 𝑉 , enumerate partial assignments 𝑎 𝑆 on 𝑆 and test whether remaining variables 
+
+𝑉 \ 𝑆 become uniquely determined. Let 1det (𝑆, 𝑎 𝑆 ) be 1 if so and 0 otherwise. We define 
+
+DetCount (𝐿 ) =∑︁  
+
+> 𝑆 ⊂𝑉 𝑆 ≠∅
+
+∑︁ 𝑎 𝑆 ∈ { 0,1}|𝑆 |
+
+1det (𝑆, 𝑎 𝑆 ),𝑓 det (𝐿 ) = DetCount (𝐿 )
+
+Í𝑆 ⊂𝑉 , 𝑆 ≠∅ 2|𝑆 | .
+
+Higher 𝑓 det means partial assignments tend to collapse the remaining degrees of freedom, enabling stronger BCP. (b) Monotonicity: 𝑇 𝐿 is monotone if for any 𝑎, 𝑏 ∈ { 0, 1}|𝐼 |
+
+with 𝑎 𝑖 ≤ 𝑏 𝑖 for all 𝑖 , we have 𝑇 𝐿 (𝑎 ) ≤ 𝑇 𝐿 (𝑏 ). Monotone functions typically translate into Horn-like CNFs with few negative literals, which in turn yield shorter propagation chains and more localized learned clauses, improving solver efficiency [ 15 , 31 ]. Non-monotone functions (e.g., XOR) tend to generate balanced positive/negative clauses that weaken unit propagation. 
+
+3) Conflict interpretability. We also favor LUTs whose conflicts are easy to explain locally. For any non-empty 𝑆 ⊆ 𝑉 and partial as-signment 𝑎 𝑆 , we ask whether 𝑎 𝑆 is infeasible , i.e., no full assignment extending 𝑎 𝑆 is consistent with 𝑇 𝐿 . Let 1conf (𝑆, 𝑎 𝑆 ) = 1 if 𝑎 𝑆 is infeasible and 0 otherwise. We compute 
+
+InterpCount (𝐿 ) =∑︁  
+
+> 𝑆 ⊂𝑉 𝑆 ≠∅
+
+∑︁ 𝑎 𝑆 ∈ { 0,1}|𝑆 |
+
+1conf (𝑆, 𝑎 𝑆 ),𝑓 interp (𝐿 ) = InterpCount (𝐿 )
+
+Í𝑆 ⊂𝑉 , 𝑆 ≠∅ 2|𝑆 | .
+
+A higher 𝑓 interp means conflicts emerge from small local contexts, which leads to shorter learned clauses and faster convergence. 
+
+4) Structural compactness. Finally, we estimate how much internal logic a LUT absorbs from its fan-in cone, i.e., how many primitive logic gates (AIG nodes) are required to realize the Boolean function implemented by a 𝐿 . We approximate this count by performing a sum-of-products–based minimization that derives prime implicants from the truth table [ 25 , 34 ]. A larger gate count implies that the LUT encapsulates more local logic and thus eliminates more inter-mediate signals during mapping. To ensure comparability across different input sizes, the score is normalized as 
+
+𝑓 compact (𝐿 ) = |𝐼 |
+
+GateCount (𝐿 ) ,
+
+where a smaller value indicates stronger logic absorption and fewer CNF variables introduced. 
+
+Complexity and reusability. Although metrics like DetCount (𝐿 )
+
+and InterpCount (𝐿 ) require enumerating variable subsets and par-tial assignments, the cost is negligible since only 2/3/4-input LUTs are used. All scores are precomputed offline (in five seconds) and cached for reuse, introducing no overhead in synthesis or solving. Miter-Aware LUT Mapping: Aligning Structure and Solvability for Efficient Logic Equivalence Checking DAC ’26, July 26–29, 2026, Long Beach, CA, USA 
+
+Table 2: Solving performance comparison between Baseline and Ours across solvers.                                                   
+
+> Solver Setting #Solved Impv. PAR2 Red.
+> Kissat Baseline 1,729 –493.9 –Ours 1,731 0.12% 42.3 91.44% CaDiCaL Baseline 1,530 –856.6 –Ours 1,723 12.61% 67.4 92.13%
+> X-SAT Baseline 1,125 –2287.3 –Ours 1,498 33.16% 289.4 87.35% CSAT Baseline 373 –4170.1 –Ours 996 167.02% 868.7 79.17% CEC Baseline 1,735 –276.9 –Ours 1,735 0.00% 92.8 66.49%
+
+Cost aggregation and weight learning. The overall LUT cost combines each metric 𝑓 𝑖 (𝐿 ) with Bayesian-optimized [ 29 ] weight 
+
+𝑤 𝑖 , tuned on a small validation set to minimize solving time: Cost (𝐿 ) =∑︁ 
+
+> 𝑖
+
+𝑤 𝑖 𝑓 𝑖 (𝐿 ).
+
+While the weight 𝑤 𝑖 is tuned on a subset, the results are robust across all validation sets. Propagation ( 𝑓 det ) and branching ( 𝑓 branch )metrics dominate, confirming that strong BCP and effective search partitioning are key to solver efficiency. Their relative emphasis (higher 𝑓 det for SAT, higher 𝑓 branch for UNSAT) aligns with the dis-tinct behaviors of satisfaction and proof-oriented solvers. 
+
+## 4 Experiments 4.1 Experiment Setting 
+
+We construct a comprehensive benchmark suite to evaluate the efficiency of our proposed LEC formulation framework. This suite includes the circuit pairs derived from industrial LEC problem and the instances built from public sources: ForgeEDA [ 36 ], ITC99 [ 11 ], EPFL [ 2 ], and Opencore [ 32 ]. To build the equivalent circuit pairs, each circuit is synthesized and conjunctive with the original one to form a miter. To build the inequivalent circuit pairs, we introduce small functional perturbations by randomly modifying a few nodes in the synthesized AIGERs before miter construction. All circuits are synthesized with ABC [ 8 ], and LUT networks are generated using a customized cost-driven mapper built on Mock-turtle [ 38 ], restricted to 2-, 3-, and 4-input LUTs, since larger LUTs (i.e., ≥5 inputs) would produce exponentially more complex CNF encodings ( 2𝑛 clauses) and thus hinder subsequent SAT solving. Each instance runs on a single Intel(R) Xeon(R) Platinum 8375C core with a 3,600 seconds timeout. 
+
+## 4.2 Main results 
+
+To validate the effectiveness of our proposed framework, we com-pare the solving time of LEC instances formulated by our framework (Ours) and the baseline flow (Baseline). The performance is mea-sured using average PAR2 score, where any instance failing the 3,600s timeout is penalized with 7,200s. The PAR2 score for “Ours” includes both solving time and LUT mapping runtime, where the formulation overhead accounts for < 10% . Besides, we also record the number of solved instance within 3,600s time limit as #Solved .After formulating SAT instance of the given LEC problem, we employ two state-of-the-art CNF-based SAT solvers (Kissat [ 3]and CaDiCaL [ 4]), two circuit-based SAT solvers (X-SAT [ 33 ] and CSAT [ 42 ]) and an advanced LEC engine (command cec in ABC [ 8 ], denoted as CEC in Table 2), respectively. It should be noted that the LEC engine performs functional reduction (e.g., SAT-sweeping [ 28 ]) and invokes CNF-based modern solver for final checking. Since CEC constructs the miter and translates it to CNF before calling solver, our approach is seamlessly inserted as a plugin-like pre-CNF optimization layer .The results are summarized in Table 2, from which three key observations emerge. First, our framework consistently achieves significant positive gains across all solvers and engines. This is most dramatic with the CaDiCaL solver, where our approach reduces the PAR2 score by nearly an order of magnitude (from 856.6 to 67.4). Sec-ond, the improvement is particularly pronounced for the CNF-based SAT solvers, delivering reductions of 91.4% for Kissat and 92.1% for CaDiCaL. We attribute this to our framework’s ability to leverage circuit-based methods for effective elimination—optimizations that CNF-based solvers cannot perform on their own. Third, our frame-work still provides a 66.49% PAR2 reduction when used with the advanced CEC engine. Therefore, our approach is fully compatible with existing LEC tools, acting as a powerful pre-processing step that provides additional simplification, logic packing, and solver-friendly reformulation. 
+
+## 4.3 Ablation Studies 
+
+We further perform ablation studies to assess the effectiveness of the three key components in our framework using Kissat, the strongest solver among those tested. 
+
+4.3.1 Effectiveness of Equivalence-Preserving LUT Mapping. To as-sess the impact of our equivalence-preserving LUT mapping ,we conduct an ablation study comparing the configurations with (Ours. ) or without ( Ours.w/o Equiv ) the proposed method. Be-sides, we also evaluate the configurations with ( w CCC ) or with-out ( w/o CCC ) Clausal Congruence Closure (CCC) [ 5 ]. CCC is a powerful CNF-level circuit simplification technique, which detects AND, XOR, and ITE gate structures directly from CNF formulas and performs congruence closure to merge equivalent literals. We include such comparison to demonstrate our LUT mapping pro-vides benefits that are complementary to the subsequent CNF-based optimizations. Therefore, we have four settings in this experiments: 
+
+• Ours.w CCC : our proposed equivalence-preserving map-ping algorithm combined with the redundancy elimination in Clausal Congruence Closure (denoted as CCC). 
+
+• Ours.w/o CCC : our mapping method without CCC. 
+
+• Ours.w/o Equiv w CCC : the variant without our equivalence-preserving mapping but still using CCC. 
+
+• Ours.w/o Equiv w/o CCC : the variant that disables the equivalence-preserving mapping and also removing CCC. Here, Clausal Congruence Closure serves as a CNF-level circuit simplification technique , which detects AND, XOR, and ITE gate structures directly from CNF formulas and performs congruence DAC ’26, July 26–29, 2026, Long Beach, CA, USA Jiaying Zhu et al. 
+
+Table 3: Solving performance comparison under the equivalence-preserving LUT mapping ablation.                     
+
+> Setting #Solved Impv. PAR2 Red.
+> Ours.w/o Equiv w/o CCC 1,713 –396.5 –Ours.w/o Equiv w CCC 1,733 1.17% 314.5 20.67% Ours.w/o CCC 1,726 0.76% 56.2 85.83% Ours.w CCC 1,731 1.05% 42.3 89.33%
+
+Figure 3: Solving performance on 20 multipliers under the Gaussian-guided XOR modeling ablation. 
+
+closure to merge equivalent literals, thereby reducing structural redundancy and improving SAT solving efficiency. In contrast, our equivalence-preserving mapping operates at the circuit level dur-ing LUT decomposition, maintaining structural correspondence between the golden and implementation sides of the miter. We in-clude both with and without CCC settings to demonstrate that our method is complementary to CNF-level simplification—our mapping enhances structural regularity before CNF translation, while CCC further eliminates redundancy after translation. Table 3 presents the cumulative solving performance for all four variants on the entire dataset. Comparing Ours.w/o Equiv w/o CCC 
+
+and Ours.w/o Equiv w CCC shows that CCC alone contributes a noticeable performance gain by simplifying redundant CNF struc-tures. However, when our equivalence-preserving mapping is en-abled ( Ours.w/o CCC ), an even larger improvement is observed, indicating that preserving equivalence alignment early at the cir-cuit level leads to substantially better clause reuse and stronger implication propagation during solving. 
+
+4.3.2 Gaussian-guided XOR Modeling. To assess the contribution of the proposed Gaussian-guided XOR modeling , we compare the solver performance with ( Ours. ) and without ( Ours.w/o Gauss )this component. While we observe an average 5.3% PAR2 reduction across the entire dataset by using Gaussian-guided XOR modeling, the gain is especially significant on XOR-dense datapath circuits. Therefore, we perform a deeper analysis on 20 circuits con-structed from 32 ×32 multipliers implemented with diverse archi-tectures [ 1, 9]. These multipliers pose one of the most challenging verification tasks [ 19 ] due to their deep and XOR-dense structures. To maintain a consistent comparison and demonstrate complemen-tarity with CNF-level simplifications as Section 4.3.1, we again compare the configurations with ( w CCC ) or without CCC ( w/o CCC ). The results are shown in Figure 3. First, a large improvement on solving efficiency is seen when our method is applied ( Ours.w/o 
+
+Figure 4: Solving performance under the solver-oriented LUT selection ablation. Gauss w CCC v.s. Ours. w CCC ). With our method, all 20 XOR-dense instances are solved within 2,000 seconds. In contrast, the configuration without our Gaussian modeling solves only 7 in-stances by the 2,000s mark and 19 instances by 3,600s. Second, the two techniques are not conflicting, as they operate at different stages of the flow and can be applied simultaneously— Ours.w CCC 
+
+achieves the best overall performance, yielding an average speedup of 36.8% over Ours.w/o Gauss w CCC .
+
+4.3.3 Solver-Oriented LUT Selection Criterion. To evaluate the ef-fectiveness of our proposed solver-friendliness metric, we isolate it from the other two components and activate only the metric-guided LUT selection module (denoted as Ours.metric ). Two baselines are included for comparison: 
+
+• Comp.1 , from prior work [ 37 ], which employs a branching-based LUT cost function emphasizing structural complexity. 
+
+• Comp.2 , from prior work [ 14 ], which uses area-oriented cost functions based on CNF clause counts during mapping. As shown in Figure 4, Ours.metric consistently outperforms both Comp.1 and Comp.2 across the runtime range. Compared with Comp.1 , it solves 5.5% more instances within 3,600 seconds and yields an overall 34.1% average speedup. These results demon-strate that our metric effectively captures solver-oriented behaviors beyond structural complexity, leading to a more solver-efficient formulation. 
+
+## 5 Conclusion 
+
+This paper presented a mapping-based modeling framework for Logic Equivalence Checking. By integrating equivalence-preserving LUT mapping, Gaussian-guided XOR modeling, and solver-oriented LUT selection into a unified flow, our method formulates the miter into a structurally symmetric, algebraically simplified, and solver-efficient form. Experiments on comprehensive benchmarks confirm substantial and consistent improvements across multiple solver paradigms, demonstrating that modeling formulation can markedly enhance LEC efficiency and bridge the gap between logic synthesis and SAT-based formal verification. 
+
+## Acknowledgments 
+
+This work was supported in part by the Hong Kong Research Grants Council (RGC) under Grant No. N_CUHK451/25, 14202824, C6003-24Y, and T46-415/25-R. Miter-Aware LUT Mapping: Aligning Structure and Solvability for Efficient Logic Equivalence Checking DAC ’26, July 26–29, 2026, Long Beach, CA, USA 
+
+## References 
+
+[1] Shuja Abbasi, Zulhelmi Zulhelmi, and Abdulrahman Alamoud. 2015. FPGA Design, Simulation and Prototyping of a High Speed 32-bit Pipeline Multiplier Based on Vedic Mathematics. IEICE Electronics Express 12 (07 2015). doi:10.1587/ elex.12.20150450 [2] Luca Amaru, Pierre-Emmanuel Gaillardon, Eleonora Testa, and Giovanni De Micheli. 2019. The EPFL Combinational Benchmark Suite. In 24th International Workshop on Logic & Synthesis (IWLS) . doi:10.1109/TEST.1999.805857 [3] Biere Armin, Faller Tobias, Fazekas Katalin, Fleury Mathias, Froleyks Nils, and Pollitt Florian. 2024. CaDiCaL, Gimsatul, IsaSAT and Kissat entering the SAT Competition 2024. Proc. of SAT Competition (2024), 8–10. [4] Armin Biere, Tobias Faller, Katalin Fazekas, Mathias Fleury, Nils Froleyks, and Florian Pollitt. 2024. CaDiCaL 2.0. Springer-Verlag, Berlin, Heidelberg, 133–152. doi:10.1007/978-3-031-65627-9_7 [5] Armin Biere, Katalin Fazekas, Mathias Fleury, and Nils Froleyks. 2024. Clausal congruence closure. In 27th International Conference on Theory and Applications of Satisfiability Testing (SAT 2024) . Schloss Dagstuhl–Leibniz-Zentrum für Infor-matik, 6–1. [6] Armin Biere, Marijn J. H. Heule, Hans van Maaren, and Toby Walsh. 2021. Hand-book of Satisfiability . Frontiers in Artificial Intelligence and Applications, Vol. 336. IOS Press. [7] Robert K Brayton, Gary D Hachtel, and Alberto L Sangiovanni-Vincentelli. 2002. Multilevel logic synthesis. Proc. IEEE 78, 2 (2002), 264–300. [8] Robert K. Brayton and Alan Mishchenko. 2010. ABC: A System for Sequential Synthesis and Verification. In Proceedings of the 22nd International Conference on Computer Aided Verification (CAV) . 24–40. [9] Serap Cekli and Ali Akman. 2024. A high speed pipelined radix-16 Booth multi-plier architecture for FPGA implementation. AEU - International Journal of Elec-tronics and Communications 185 (2024), 155435. doi:10.1016/j.aeue.2024.155435 [10] Jingchao Chen. 2009. Building a hybrid SAT solver via conflict-driven, look-ahead and XOR reasoning techniques. In International Conference on Theory and Applications of Satisfiability Testing . Springer, 298–311. [11] S. Davidson. 1999. ITC’99 Benchmark Circuits - Preliminary Results. In Inter-national Test Conference 1999. Proceedings (IEEE Cat. No.99CH37034) . 1125–1125. doi:10.1109/TEST.1999.805857 [12] Niklas Eén and Armin Biere. 2005. Effective preprocessing in SAT through vari-able and clause elimination. In International conference on theory and applications of satisfiability testing . Springer, 61–75. [13] Niklas Een and Alan Mishchenko. 2007. Incremental SAT sweeping. In Proceedings of the IEEE/ACM International Conference on Computer-Aided Design (ICCAD) .IEEE, 223–230. [14] Niklas Eén, Alan Mishchenko, and Niklas Sörensson. 2007. Applying logic syn-thesis for speeding up SAT. In International Conference on Theory and Applications of Satisfiability Testing . Springer, 272–286. [15] Nick Feng, Alan J. Hu, Sam Bayless, Syed M. Iqbal, Patrick Trentin, Michael W. Whalen, Lee Pike, and John Backes. 2024. DRAT Proofs of Unsatisfiability for SAT Modulo Monotonic Theories. ArXiv abs/2401.10703 (2024). https://api. semanticscholar.org/CorpusID:267061064 [16] Youssef Hamadi, Said Jabbour, and Jabbour Sais. 2012. Control-based clause sharing in parallel SAT solving. In Autonomous Search . Springer, 245–267. [17] Cheng-Shen Han and Jie-Hong Roland Jiang. 2012. When Boolean Satisfiability Meets Gaussian Elimination in a Simplex Way. In International Conference on Computer Aided Verification . https://api.semanticscholar.org/CorpusID:18689957 [18] Shi-Yu Huang and Kwang-Ting Tim Cheng. 2012. Formal equivalence checking and design debugging . Vol. 12. Springer Science & Business Media. [19] Daniela Kaufmann and Armin Biere. 2023. Improving AMulet2 for verifying multiplier circuits using SAT solving and computer algebra. International Journal on Software Tools for Technology Transfer 25 (01 2023), 1–12. doi:10.1007/s10009-022-00688-6 [20] Andreas Kuehlmann and Florian Krohm. 2000. Combinational and sequential equivalence checking: Theory and practice. IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 19, 12 (2000), 1428–1449. [21] Jia Hui Liang, Vijay Ganesh, Ed Zulkoski, Atulan Zaman, and Krzysztof Czar-necki. 2015. Understanding VSIDS branching heuristics in conflict-driven clause-learning SAT solvers. In Haifa Verification Conference . Springer, 225–241. [22] Ole Lübke. 2024. IGMaxHS–An Incremental MaxSAT Solver with Support for XOR Clauses. arXiv preprint arXiv:2410.15897 (2024). [23] Lucas Machado and Jordi Cortadella. 2017. Boolean decomposition for aig opti-mization. In Proceedings of the Great Lakes Symposium on VLSI 2017 . 143–148. [24] Joao Marques-Silva, Inês Lynce, and Sharad Malik. 2009. Conflict-driven clause learning SAT solvers. Handbook of satisfiability (2009), 131–153. [25] Edward J. McCluskey. 1956. Minimization of Boolean functions. Bell System Technical Journal 35, 6 (1956), 1417–1444. [26] Alan Mishchenko and Robert K. Brayton. 2006. Scalable logic synthesis using a simple circuit structure. In Proc. IWLS , Vol. 6. 15–22. [27] Alan Mishchenko, Satrajit Chatterjee, and Robert Brayton. 2006. DAG-aware AIG rewriting a fresh look at combinational logic synthesis. In Proceedings of the 43rd annual Design Automation Conference . 532–535. [28] Alan Mishchenko, Satrajit Chatterjee, and Robert Brayton. 2006. Simulation-based boolean equivalence checking using AIGs. In Proceedings of the International Workshop on Logic and Synthesis (IWLS) . 7–12. [29] Jonas Mockus. 2006. Bayesian Approach to Global Optimization . Vol. 37. 473–481. doi:10.1007/BFb0006170 [30] In-Ho Moon and Carl Pixley. 2004. Non-miter-based combinational equivalence checking by comparing BDDs with different variable orders. In International Conference on Formal Methods in Computer-Aided Design . Springer, 144–158. [31] Naomi Nishimura, Prabhakar Ragde, and Stefan Szeider. 2004. Detecting Backdoor Sets with Respect to Horn and Binary Clauses. In International Conference on Theory and Applications of Satisfiability Testing . https://api.semanticscholar.org/ CorpusID:15232413 [32] Team OpenCore. 1999. OpenCore. https://opencores.org/ (1999). [33] Yuhang Qian, Zhihan Chen, Xindi Zhang, and Shaowei Cai. 2025. X-SAT: An Efficient Circuit-Based SAT Solver. In 2025 62nd ACM/IEEE Design Automation Conference (DAC) . IEEE, 1–7. [34] Willard V. Quine. 1952. The problem of simplifying truth functions. The American Mathematical Monthly 59, 8 (1952), 521–531. [35] Zhengyuan Shi, Wentao Jiang, Xindi Zhang, Jin Luo, Yun Liang, Zhufei Chu, and Qiang Xu. 2025. Dynamicsat: Dynamic configuration tuning for sat solving. In 
+
+31st International Conference on Principles and Practice of Constraint Programming (CP 2025) . Schloss Dagstuhl–Leibniz-Zentrum für Informatik, 34–1. [36] Zhengyuan Shi, Zeju Li, Chengyu Ma, Yunhao Zhou, Ziyang Zheng, Jiawei Liu, Hongyang Pan, Lingfeng Zhou, Kezhi Li, Jiaying Zhu, Lingwei Yan, Zhiqiang He, Chenhao Xue, Wentao Jiang, Fan Yang, Guangyu Sun, Xiaoyan Yang, Gang Chen, Chuan Shi, Zhufei Chu, Jun Yang, and Qiang Xu. 2025. ForgeEDA: Towards Verifiable and Customizable Circuit Benchmarks. arXiv preprint arXiv:2505.02016 
+
+(2025). https://arxiv.org/abs/2505.02016 [37] Zhengyuan Shi, Tiebing Tang, Jiaying Zhu, Sadaf Khan, Hui-Ling Zhen, Minjie Yuan, Zhufei Chu, and Qiang Xu. 2025. Logic Optimization Meets SAT: A Novel Framework for Circuit-SAT Solving. In Proceedings of the 62nd ACM/IEEE Design Automation Conference (DAC) . 1–6. [38] Mathias Soeken, Heinz Riener, Winston Haaswijk, Eleonora Testa, Bruno Schmitt, Giulia Meuli, Fereshte Mozafari, Siang-Yun Lee, Alessandro Tempia Calvino, Dewmini Sudara Marakkalage, et al . 2018. The EPFL logic synthesis libraries. 
+
+arXiv preprint arXiv:1805.05121 (2018). [39] Mate Soos and Kuldeep S Meel. 2019. BIRD: engineering an efficient CNF-XOR SAT solver and its applications to approximate model counting. In Proceedings of the AAAI Conference on Artificial Intelligence , Vol. 33. 1592–1599. [40] Mate Soos, Karsten Nohl, and Claude Castelluccia. 2009. Extending SAT solvers to cryptographic problems. In International Conference on Theory and Applications of Satisfiability Testing . Springer, 244–257. [41] He-Teng Zhang, Jie-Hong R Jiang, Luca Amarú, Alan Mishchenko, and Robert Brayton. 2021. Deep integration of circuit simulator and SAT solver. In 2021 58th ACM/IEEE Design Automation Conference (DAC) . IEEE, 877–882. [42] He-Teng Zhang, Jie-Hong R Jiang, and Alan Mishchenko. 2021. A circuit-based SAT solver for logic synthesis. In 2021 IEEE/ACM International Conference On Computer Aided Design (ICCAD) . IEEE, 1–6.

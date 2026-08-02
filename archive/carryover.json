@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-02T14:28:54.589782+00:00",
-  "updated_date": "20260724-20260802",
+  "generated_at": "2026-08-02T15:52:49.462291+00:00",
+  "updated_date": "20260704-20260802",
   "carryover_days": 9,
   "tag_states": {
     "sat-bva-cnf": {
@@ -9,12 +9,57 @@
       "items": []
     },
     "cdcl-sat": {
-      "updated_date": "20260724-20260802",
+      "updated_date": "20260704-20260802",
       "carryover_days": 9,
       "items": []
     },
     "sat-config": {
-      "updated_date": "20260724-20260802",
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "GNN-SAT": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "SAT-RL": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "neuro-cdcl": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "sat-preproc": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "branching": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "inproc-sat": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "SAT-formal": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "LLM-SAT": {
+      "updated_date": "20260704-20260802",
+      "carryover_days": 9,
+      "items": []
+    },
+    "sat-proof": {
+      "updated_date": "20260704-20260802",
       "carryover_days": 9,
       "items": []
     }
