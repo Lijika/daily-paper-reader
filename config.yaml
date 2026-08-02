@@ -440,6 +440,52 @@ subscriptions:
           source: manual
           note: ''
       updated_at: '2026-08-02T14:42:35.001Z'
+    - tag: LLM-SAT
+      description: 请帮我查找大语言模型辅助SAT求解器设计论文，包括LLM自动优化SAT solver代码、LLM生成heuristic、agent-based SAT solver engineering
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: large language model SAT solver
+          keyword_cn: 大语言模型求解器
+          query: using large language models to design SAT solver algorithms
+        - keyword: SAT solver code generation
+          keyword_cn: SAT求解器代码生成
+          query: automatic source code generation for SAT solvers
+        - keyword: SAT heuristic generation
+          keyword_cn: SAT启发式生成
+          query: learning to generate heuristics for Boolean SAT solving
+        - keyword: agent-based SAT solving
+          keyword_cn: 基于智能体的SAT求解
+          query: multi-agent approaches to SAT solver strategy engineering
+        - keyword: LLM code optimization solver
+          keyword_cn: 大语言模型优化求解器代码
+          query: large language model for optimizing solver code automatically
+        - keyword: SAT solver automated design
+          keyword_cn: SAT求解器自动设计
+          query: automated design of SAT solving algorithms
+      intent_queries:
+        - query: LLM based automatic optimization of SAT solver code
+          query_cn: ''
+          enabled: true
+          source: manual
+          note: ''
+        - query: papers on using large language models to automatically improve SAT solver performance
+          query_cn: 关于使用大语言模型自动提升SAT求解器性能的论文
+          enabled: true
+          source: manual
+          note: ''
+        - query: research on LLM generated heuristics for Boolean satisfiability
+          query_cn: 大语言模型生成布尔可满足性启发式的研究
+          enabled: true
+          source: manual
+          note: ''
+        - query: agent based frameworks for SAT solver development and tuning
+          query_cn: 用于SAT求解器开发与调优的智能体框架
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-08-02T14:45:38.751Z'
 source_backends:
   arxiv:
     papers_table: arxiv_papers
