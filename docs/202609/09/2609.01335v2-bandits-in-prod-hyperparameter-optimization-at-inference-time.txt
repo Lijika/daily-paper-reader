@@ -1,0 +1,2224 @@
+Title: Bandits in Prod: Hyperparameter Optimization at Inference Time
+
+URL Source: https://arxiv.org/pdf/2609.01335v2
+
+Published Time: Thu, 03 Sep 2026 01:24:57 GMT
+
+Number of Pages: 33
+
+Markdown Content:
+# BANDITS IN PROD : H YPERPARAMETER OPTIMIZATION AT 
+
+# INFERENCE TIME 
+
+Louis Abraham 
+
+Tiime Paris, France 
+
+louis.abraham@tiime.fr 
+
+Tuan-Anh Nguyen 
+
+Tiime Paris, France 
+
+tuan-anh.nguyen@tiime.fr 
+
+Nicolas Devatine 
+
+Tiime Paris, France 
+
+nicolas.devatine@tiime.fr 
+
+## ABSTRACT 
+
+Many production systems can assess a configuration only by using it on live requests and observing noisy feedback. Modern agentic systems are a prominent example, with inference-time choices such as model selection, retrieval depth, prompting strategy, and decoding temperature, yet often with no representative validation data. We formalize this setting as Online Hyperparameter Optimization (OHPO) and cast it as an infinitely many-armed bandit over mixed and conditional search spaces. We introduce IMABO, a general framework that combines any bandit policy for choosing among already sampled configurations with any oracle for proposing new ones. We instantiate it with IMOSS, a restart-free anytime policy whose active set grows as tβ , and prove an expected cumulative quantile-regret bound of O(p−1/β ρ + T (1+ β)/2), where β ∈ (0 , 1) controls active-set growth and pρ
+
+lower-bounds the probability that a proposed configuration falls in the top-ρ fraction of the search space. We combine IMOSS with three practical oracles: a Tree-structured Parzen Estimator, an incumbent-mutation oracle driven by a per-coordinate bandit, and a pretrained tabular foundation model, all three improving over the uniform random oracle baseline. IMABO outperforms all baselines in terms of regret across diverse OHPO settings, from tuning classical machine-learning models to configuring LLM-based agents. Our implementation is available at https://github. com/Tiime-Software/IMABO .
+
+## 1 Introduction 
+
+Hyperparameter optimization (HPO) is usually performed offline by evaluating configurations on a fixed dataset and keeping the best one, with methods such as grid search, random search, or Bayesian optimization [1, 2, 3]. A growing class of systems cannot be tuned this way. Applications built around large language models served by external providers expose only inference-time settings, such as the choice of model, the decoding temperature, or the prompting strategy. Without a dataset that reflects real usage, a configuration can be evaluated only by serving it and observing how it performs. We call this problem online hyperparameter optimization (OHPO). Because every evaluation is a served request, exploration is never free: what matters is the reward accumulated over the whole request stream, not the quality of a final recommendation, and the horizon of that stream is not known in advance. OHPO has received little attention, falling between (offline) HPO, which evaluates configurations before deployment, and online learning, which rarely exploits the structure of a hyperparameter space. This problem has the structure of a multi-armed bandit (MAB), where each configuration is an arm, and each served request is a pull of the chosen arm. But a hyperparameter space is typically continuous or mixed, combining real-valued, integer, and categorical settings, so the possible configurations far outnumber the requests the system will ever serve. Bandit problems in which the arms outnumber the available pulls are known as infinitely many-armed bandits (IMAB). Existing approaches either assume a metric under which nearby configurations earn similar rewards, an assumption that is meaningless for categorical parameters such as the choice of model, or draw new configurations at random, learning nothing from past rewards. arXiv:2609.01335v2 [cs.LG] 2 Sep 2026 We address this problem with IMABO (Infinitely Many-Armed Bandit with Oracle), a framework that pairs a bandit policy over a growing active set of configurations with an oracle that proposes which configuration to admit next. Our contributions are as follows. • We introduce and formalize the OHPO problem, cast it as an infinitely many-armed bandit, and propose IMABO, a framework that combines any bandit policy with any oracle, requiring only that a configuration can be scored from live feedback and making no further assumptions about the search space. • We introduce IMOSS, an anytime bandit policy for online hyperparameter optimization, prove a sublinear cumulative quantile-regret bound, and instantiate it with several arm-creation oracles: IMOSS-Random, IMOSS-TPE, IMOSS-TabPFN, and IMOSS-mutate-KL ×PE. These variants natively support continuous, integer, and categorical hyperparameters while remaining computationally efficient for production. Our implementation is publicly available. 1
+
+• We validate our method on both continuous and discrete HPOBench tasks, and on a real LLM-based question-answering system over a mixed search space of retrieval, prompting, and model choices. 
+
+## 2 Related Work 
+
+Our work lies at the intersection of HPO and MAB theory, and relates most closely to recent methods that bring bandit ideas into production. 
+
+Hyperparameter optimization. Most HPO methods run offline, optimizing a fixed objective over a budget. Grid and random search remain strong baselines on problems of low effective dimension [1]. Model-based methods fit a surrogate to choose where to sample, through Gaussian-process Bayesian optimization [2, 4], random forests for conditional and categorical spaces [5], or the Tree-structured Parzen Estimator (TPE) [6], which needs no metric and handles both continuous and categorical parameters, and whose density ratio has since been recast as a classification problem [7, 8]. Mixed continuous-categorical spaces have also been addressed by Gaussian-process optimization restricted to trust regions [9], which still assumes a kernel over the space. A recent class of surrogates avoids this per-task fitting by using a tabular foundation model, a transformer pretrained once on synthetic data that predicts how a configuration will perform in a single forward pass, with no retraining during the search. Such surrogates have been used both to forecast the final accuracy of a partially trained model [10] and to predict the objective directly in high-dimensional problems [11]. 
+
+Multi-, continuum-, and infinite-armed bandits. In the stochastic K-armed bandit setting, index policies such as UCB1 [12] and the minimax-optimal MOSS [13] pull the arm with the highest upper confidence bound. The anytime MOSS index [14] keeps the minimax guarantee without knowing the horizon T in advance. When the number of arms far exceeds the horizon, sublinear regret against the global optimum requires an additional assumption [15]. One class of methods assumes that nearby arms are similar, either via an explicit metric (continuum-armed [16]) or via metric-free optimistic partitioning [17, 18, 19, 20], several of which we use as baselines. Such a metric is natural for a continuous parameter but not for a categorical choice. A second class draws each arm from a fixed distribution over configurations (a reservoir) and measures regret relative to it [21]. Roy Chaudhuri and Kalyanakrishnan [22] take the target to be a quantile of the mean reward induced by the reservoir, their QRM1 and QRM2 running MOSS on a growing pool but staying anytime by restarting on a doubling schedule, while UCB-AIR [23] grows its arm set without restarts. No existing method is at once restart-free, anytime, and able to bound cumulative quantile regret over a growing arm set. A parallel line, contextual bandits, replaces per-arm means by a reward model shared across arms, linear [24], neural [25], tree-based [26], or, concurrently with this work, a prior-data fitted network [27]; all score a fixed enumerated action set and bound regret against its best arm, whereas our oracle uses such a surrogate to propose 
+
+arms not yet in the active set, a step Tan et al. [27] leave open for large action spaces. 
+
+Bandits & HPO. Bandit ideas first entered HPO in the offline training setting, where Successive Halving [28], Hyperband [3], and BOHB [29] allocate a limited training budget across configurations by casting the choice as best-arm identification, and where CoCaBO [30] runs a bandit over the categorical coordinates alongside Gaussian-process optimization over the continuous ones. Shang et al. [31] extend this best-arm view to a fixed reservoir of configurations with D-TTTS, but evaluate on offline validation data and target simple regret. Bandits have long been proposed as a successor to A/B testing [32, 33]. A recent line of work tunes hyperparameters online, bounding dynamic regret over continuous coordinates under a Lipschitz assumption [34, 35] or running E XP 3 over mixed actions that must be enumerated in advance and scored on a validation split [36]. Population-based training [37] and its bandit  
+
+> 1Code and experiments: https://github.com/Tiime-Software/IMABO
+
+2variants [38, 39] instead tune during a training run by inheriting weights across parallel workers, which a single serving stream against a fixed provider-side model cannot supply. A separate line couples bandit selection with mutation of the best solution found so far: bandit-based random mutation hill-climbing [40] mutates it one component at a time, using a set of per-coordinate bandits to decide which component to change, and Mutant-UCB [41] injects evolutionary mutation operators into a UCB best-arm-identification bandit for model selection. 
+
+Inference-time tuning of LLM systems. LLM systems have made our setting widespread, and the closest prior work tunes them online with bandits. Only two of these methods take a configuration as an arm. AutoRAG-HP [42] tunes a RAG pipeline from live rewards alone with a hierarchy of per-hyperparameter bandits, so cost scales with the sum rather than the product of the axis sizes, but every axis must be discretized in advance, and no regret guarantee is given. Each trial changes one hyperparameter and leaves the others so the search is a random walk on a pre-declared grid that credits each observed reward to the single coordinate it just moved; we include it in our benchmark. BanditSpec [43] does bound a stopping-time regret over speculative-decoding configurations, but its rounds are token steps inside a single generation and its objective is decoding latency rather than answer quality. In the rest of this literature, as in routing benchmarks [44], an arm is a bare model identity drawn from an enumerated pool, with no structure to interpolate and nothing to propose outside it. Within this group, Xia et al. [45] commit to a model before observing one reward, with a logarithmic bound, but over a handful of candidates and under an increasing-then-converging reward trend. The others either relax the protocol, by cascading several models per request [46, 47] or choosing after seeing the query [48], or depend on offline artifacts we do without, such as preference data, per-model quality and cost predictors, or acceptance thresholds. Across all of these, the candidate set is declared in advance, and most optimize cost or latency rather than reward quality. 
+
+## 3 Online Hyperparameter Optimization 
+
+Let X be a hyperparameter search space mixing continuous, integer, and categorical coordinates (a temperature, a retrieval depth, a choice of model). It may be tree-structured, with some parameters becoming active only once others are fixed, as when a chosen model determines which hyperparameters apply [6]. The horizon is unknown. At each round 
+
+t = 1 , 2, . . . , a learner commits a configuration xt ∈ X to serve the next request, then observes a reward rt ∈ [0 , 1] (a task success, a click, or a graded answer) drawn independently from an unknown distribution Pxt with mean μxt . This reward is the only feedback: there is no validation set to query on the side, and past rounds cannot be replayed under a different configuration. Competing with the global optimum μ⋆ = sup x∈X μx is not possible in this setting, as X contains far more con-figurations than the system will ever try. We therefore measure performance against a quantile of the mean reward, defined relative to a baseline sampling distribution P0 over X . Such a baseline is easy to construct even on a tree-structured space, by drawing each decision uniformly, or log-uniformly when a parameter is specified on a loga-rithmic scale. For ρ ∈ (0 , 1) , let μρ be the top-ρ quantile of the mean reward μx when x is drawn from P0, and let 
+
+TOP ρ = {x ∈ X | μx ≥ μρ} be the corresponding set of good configurations. A draw from P0 lands in TOP ρ
+
+with probability at least ρ, so about 1/ρ draws are enough to find a good configuration. We evaluate a learner by its cumulative ρ-regret Rρ, + 
+
+> T
+
+= PTt=1 (μρ − μxt )+, with a+ = max( a, 0) . It accumulates the reward lost on every request served by a configuration below the target. We also define the simple ρ-regret Rρ, +(T ) =  μρ − μx(T )
+
+
+
+> +
+
+, which measures the quality of the configuration x(T ) returned after T rounds. Optimizing a running system in this setting is the problem we call online hyperparameter optimization (OHPO). 
+
+## 4 Infinitely Many-Armed Bandit with Oracle 
+
+In our formulation of OHPO, each configuration is an arm and each served request is a pull. A hyperparameter space X
+
+is often continuous or mixed, giving infinitely many arms, or at least far more than the system can ever try, which places the problem in the infinitely many-armed bandit (IMAB) setting studied by Berry et al. [15] and Wang et al. [23]. 2
+
+An IMAB algorithm maintains an active set Mt ⊆ X of the arms seen so far, starting from the empty set and adding one arm at a time. At each round it makes a binary choice. It either pulls an arm already in Mt, selected by whatever bandit rule it runs over the active set, or admits a new arm drawn from X , adds it to Mt, and pulls it. The standard formulation draws each new arm from a fixed reservoir distribution over X , so the arm admitted at any round is statistically independent of every reward seen before it.     
+
+> 2The formulation applies equally to a finite X, as long as Xis large enough.
+
+3Algorithm 1 IMABO ( A, O) 
+
+> 1:
+
+Input: space X , oracle O, bandit policy A 
+
+> 2:
+
+M ← ∅  
+
+> 3:
+
+for t = 1 , 2, 3, . . . do  
+
+> 4:
+
+if A.EXPAND () then  
+
+> 5:
+
+x ← O .SUGGEST () {draw a new arm}  
+
+> 6:
+
+M ← M ∪ { x} 
+
+> 7:
+
+else  
+
+> 8:
+
+x ← A .SELECT () {pull a known arm}  
+
+> 9:
+
+end if  
+
+> 10:
+
+Serve x on the next request, observe reward r, update its statistics  
+
+> 11:
+
+end for 
+
+IMABO changes only the expansion step. When a new arm enters Mt, it is supplied not by a fixed reservoir distribution but by an oracle O, a mapping from the history of past pulls and their rewards to a configuration in X . Setting O to draw from the baseline P0 regardless of the history recovers the standard IMAB algorithm with reservoir P0, whereas an oracle that reads the history can steer new arms toward the regions of X that past rewards suggest are promising. We place no further restriction on O, which could be a density estimator over X , or even a large language model prompted with past configurations and their rewards. Algorithm 1 gives IMABO for an arbitrary oracle O and bandit policy 
+
+A, and a concrete algorithm is obtained by choosing these two components. Selecting which arm of Mt to serve is itself a standard bandit problem with its own exploration–exploitation trade-off. A policy that restarts its statistics at intervals may either reset the oracle along with its own statistics or let the oracle keep the full history, a choice left to the instantiation. 
+
+4.1 The IMOSS Family 
+
+In this paper, we use IMOSS as the bandit policy. IMOSS is an anytime bandit policy adapted from MOSS [13]; pairing it with four different oracles yields the four concrete algorithms we study. IMOSS-Random draws new configurations from the baseline P0, while the other three use past rewards to target promising regions of X . IMOSS-TPE proposes from a density ratio fitted on the whole active set; IMOSS-mutate-KL ×PE instead improves the best arm found so far one coordinate at a time, using a one-dimensional Parzen estimator on the selected coordinate to propose local mutations; and IMOSS-TabPFN ranks its candidates with a tabular foundation model. Appendix C compares the four and asks which to use on which problem. 
+
+4.1.1 IMOSS 
+
+We adapt MOSS [13, 14] to the IMAB setting. Standard MOSS scores each arm from its observed rewards and serves the highest scorer, attaining the minimax-optimal cumulative regret O(√KT ) for a K-armed bandit, but its score requires the horizon T and a fixed arm count K, and neither is available here. IMOSS therefore uses the anytime MOSS index [14], which substitutes the current round t for T ; IMOSS recomputes this index at every round with the current active-set size Kt = |M t| in place of K. It serves the arm of highest index 
+
+Bt(x) = ˆ μx +
+
+vuut 1 + α
+
+2 ·
+
+max 
+
+
+
+0, log 
+
+ tKt nx
+
+ 
+
+nx
+
+(1) where ˆμx is the empirical mean reward of arm x, nx is the number of times it has been served, and α > 0 is a confidence parameter carried over from the anytime MOSS index [14]. The square-root term is an exploration bonus that shrinks as nx grows, and also shrinks as Kt grows: admitting a new arm spreads the same budget over more candidates, so it lowers the bonus of every arm already in Mt. The parameter α scales this bonus through the factor (1 + α)/2, a larger value pushing the policy toward exploration. In the experiments, we set α = 0 .1 as suggested by Degenne and Perchet [14]. Growth of the active set follows a power law similar to UCB-AIR [23]. Specifically, a new arm is requested from the oracle whenever |M t| < t β , with β ∈ (0 , 1) fixed, yielding an active-set size of ⌊tβ ⌋. The exponent trades off discovery against estimation, as a set that grows too slowly delays finding a good region of X , while one that grows too fast leaves each arm too few observations to be ranked reliably, and Theorem 1 quantifies this balance as a regret bound. In our experiments, we set β = 0 .5, so that the active set grows as √t, which we found empirically to strike this 4Algorithm 2 IMOSS ( β, α, Ns, proposal distribution PO ) 
+
+> 1:
+
+Input: active set Mt, round t, exponent β ∈ (0 , 1) , confidence α > 0, warm-up size Ns 
+
+> 2:
+
+if |M t| < N s then  
+
+> 3:
+
+draw x ∼ P0 {warm-up}  
+
+> 4:
+
+Mt ← M t ∪ { x} 
+
+> 5:
+
+return x 
+
+> 6:
+
+else if |M t| < t β then  
+
+> 7:
+
+draw x ∼ PO {admit a new arm}  
+
+> 8:
+
+Mt ← M t ∪ { x} 
+
+> 9:
+
+return x 
+
+> 10:
+
+else  
+
+> 11:
+
+return arg max 
+
+> x∈M t
+
+Bt(x) {serve a known arm}  
+
+> 12:
+
+end if 
+
+balance. A brief warm-up precedes the first round, drawing Ns = 10 configurations from P0 by default and serving each once before the index takes over. Algorithm 2 states the resulting policy. 
+
+4.1.2 Theoretical Analysis 
+
+We bound the cumulative ρ-regret of IMOSS under a single top-ρ coverage condition on the oracle: whenever a new arm is requested, the oracle proposes, given the history so far, a top-ρ configuration with probability at least pρ. The analysis places no other restriction on the oracle, which enters the bound only through pρ; since TOP ρ is defined relative to the baseline P0, so is pρ. The oracle of IMOSS-Random samples from that same baseline, hence satisfies the condition with pρ = ρ by construction, and a more sophisticated oracle is meant to raise this discovery probability. To bring such an oracle within the scope of the analysis, it suffices to mix it with the baseline in the spirit of ε-greedy: drawing the new arm from P0 with probability ε and querying the oracle otherwise guarantees pρ ≥ ερ .
+
+Theorem 1. Let ρ ∈ (0 , 1) . We assume that rewards are supported on [0 , 1] and that each proposed configuration lies in TOP ρ with conditional probability at least pρ > 0:
+
+∀t ≥ 1, PPO (xt ∈ TOP ρ | F t−1) ≥ pρ.
+
+Then the expected cumulative ρ-regret of IMOSS satisfies 
+
+E Rρ, +
+
+> T
+
+ = O
+
+
+
+p−1/β ρ + T (1+ β)/2
+
+.
+
+We provide detailed proofs for the regret bound in Theorem 1 and analyze the memory and running time of IMOSS, along with the per-call complexity of each oracle, in Appendices A and B, respectively. 
+
+4.1.3 IMOSS-TPE 
+
+As a first oracle, we propose the Tree-structured Parzen Estimator (TPE) [6], which splits the arms of Mt at a score quantile γ into a good group and a complementary bad group. It fits a Parzen density to each ( ℓ and g, one kernel per parameter), and selects as the proposal, from a pool sampled from ℓ, the candidate with the highest ratio ℓ(x)/g (x),a proxy for expected improvement. TPE requires no metric on X and handles continuous, integer, and categorical parameters natively, which suits our search spaces. Standard TPE is defined for offline HPO, where each configuration is evaluated once and the split acts directly on the observed function values. In our setting, an arm instead accumulates noisy rewards over repeated pulls, so the split requires a per-arm score, and we order arms by the MOSS index Bt of Equation (1) rather than by the empirical mean ˆμx, since an arm that appears strong after only a few pulls should not yet be classified as reliably good, and the index folds this uncertainty into the classification. This follows the optimistic principle used by index policies and by tree searches such as HOO [17]. In our implementation, we set the good fraction to γ = 0 .3, so the good group contains the top 30% of arms, and each call draws 24 candidates from ℓ, matching Optuna’s default TPE configuration. The same oracle applies unchanged when X is finite but too large to enumerate. 3
+
+4.1.4 IMOSS-mutate-KL ×PE 
+
+TPE fits its density over a whole configuration, with one kernel per parameter, so it samples every coordinate inde-pendently and can combine values from different good arms into a proposal that matches no single one of them. Our  
+
+> 3On a finite space the oracle may propose a configuration already in Mt. IMOSS then serves that arm again rather than admit a duplicate; this deviation from the theory avoids requerying the oracle until it yields a fresh arm.
+
+5second oracle works the other way: it is local and uses no global surrogate model. It takes the best arm found so far 
+
+ˆx and changes exactly one of its parameters, in the spirit of bandit-driven local search [40, 41]. We split each such proposal into three steps: • (a) Which arm to change: the arm of Mt with the highest empirical mean, ˆx = arg max x∈M t ˆμx. This is deliberately not the arm the allocation rule is pulling right now: MOSS ranks arms by their mean plus an exploration bonus, and mutating that optimistic pick instead of the best arm measurably hurts the oracle. • (b) Which parameter to change: a KL-UCB bandit [49] over the d coordinates. Choosing coordinate i means “mutate parameter i”, and its reward is the empirical mean of the arm that mutation produced. Each proposed arm contributes one such reward, and that reward is updated as later pulls refine the arm’s mean rather than added again. We use the KL index instead of a Hoeffding bonus because the rewards this bandit sees sit near the top of [0 , 1] : there a Hoeffding confidence width is several times wider than the gaps it needs to tell apart, and the bandit would fall back to trying every parameter in turn. • (c) Which value to give it: a one-dimensional Parzen estimator (PE) on that coordinate alone. We split Mt
+
+into a good and a bad group exactly as in Section 4.1.3 and fit the univariate pair ℓ/g to the i-th coordinate values of the arms in each group. The oracle then draws 24 candidate values from ℓ and keeps the one with the highest ratio ℓ/g that differs from the current value of ˆx, so the mutation always changes something. Until 10 arms have each returned at least one reward, the oracle samples from P0 instead, since fitting a density and forming a good/bad split needs a populated active set. On a finite space a mutation often lands on an arm already in 
+
+Mt; that arm is then pulled again. The oracle fits a single one-dimensional density per call and trains no surrogate model, so its per-call cost is negligible next to the model-based oracle below. 
+
+4.1.5 IMOSS-TabPFN 
+
+We instantiate the oracle with TabPFN-3 [50], a tabular foundation model pretrained to predict a target from a table of examples with no further training required. We use the regression variant of the publicly released model. 4 At each expansion step, the oracle builds a table from the arms tried so far, with parameters as columns and mean rewards as the label, 5 and provides it to TabPFN as in-context examples. The pool of 100 candidates is built mostly around the best arm so far ˆx rather than sampled from P0. 90 of the candidates are mutations of that arm: one of its parameters is picked at random and given a new value, drawn by a Gaussian step whose width is 0.1 of that parameter’s range (taken in log space for log-scaled parameters, and clamped to stay in range); for a categorical parameter the new value is instead one of its other categories, chosen uniformly. The remaining 10 candidates are drawn from P0, so the pool always keeps some reach into unexplored regions. Drawing the whole pool from P0 instead puts no candidate near a good arm and measurably weakens the oracle. Before scoring, we clean up the pool: identical candidates are merged, and any candidate that is already an open arm is dropped. This matters because the pool is meant to pick the next new arm to admit. On a finite space, without this step, TabPFN would often score an already-open neighbor of ˆx above every new candidate; the oracle would then keep re-proposing arms it already has, and the active set would stop growing and fall behind its tβ schedule. Each surviving candidate is then scored by TabPFN. For a candidate x, we read the q = 0 .975 quantile ˆF −1 
+
+> x
+
+(q)
+
+of the predictive distribution TabPFN returns, and propose the candidate with the largest such quantile. This is an upper-confidence-bound rule in quantile form [11]: if the predictive distribution were Gaussian, ranking by this quantile would be the same as ranking by ˆμ(x) + κ ˆσ(x) with κ = Φ −1(q) ≈ 1.96 . Using the quantile directly is safer than the 
+
+ˆμ + κˆσ form, because TabPFN’s predictive distribution is a skewed, heavy-tailed histogram: the quantile always lands on a value the model actually considers possible, whereas adding κ ˆσ can overstate the exploration bonus when the distribution is far from Gaussian. The predictive distribution comes from an ensemble of four estimators, each conditioned on the same table under a different ordering and preprocessing of the features. The table is refit and every candidate is rescored at each expansion step. Until 10 arms have returned a reward, there are too few points to fit TabPFN, so the oracle samples from P0
+
+instead. 
+
+> 4https://huggingface.co/Prior-Labs/tabpfn_3
+> 5Providing all the pulls instead would give TabPFN the raw observations and let arms with more evaluations carry more weight, yet in our experiments the two choices give similar results, so we keep the more compact per-arm table labeled by the mean reward.
+
+65 Experiments 
+
+We evaluate IMABO across discrete, continuous, and mixed HPO search spaces using synthetic, machine-learning benchmarks and an online question-answering task. 
+
+5.1 Toy Problems 
+
+We consider four synthetic benchmark functions, listed in Table 1 and illustrated in two dimensions in Figure 1. Sin1 ,
+
+Garland and Rastrigin are additively separable: each is a sum of d copies of the same one-dimensional profile, and the three differ only in how oscillatory that profile is. The Gaussian function is not separable: it places two modes on the main diagonal, a local one at xℓ1 and a better global one at xg 1, where 1 is the all-ones vector. Table 1: Toy functions 
+
+Function Formula Domain Sin1 
+
+> d
+
+X
+
+> i=1
+
+sin(13 xi) sin(27 xi) + 1 2 [0 , 1] d
+
+Garland 
+
+> d
+
+X
+
+> i=1
+
+4xi(1 − xi)
+
+
+
+0.75 + 0 .25 
+
+
+
+1 − p| sin(60 xi)|
+
+ 
+
+[0 , 1] d
+
+Rastrigin d + 140 
+
+> d
+
+X
+
+> i=1
+
+10 (cos(2 πx i) − 1) − x2
+
+> i
+
+ [−5.12 , 5.12] d
+
+Gaussian 0.9 exp 
+
+
+
+−
+
+Pdi=1 (xi − xg )2
+
+2σ2
+
+> d
+
+
+
++ 0 .6 exp 
+
+
+
+−
+
+Pdi=1 (xi − xℓ)2
+
+2σ2
+
+> d
+
+
+
+[0 , 1] d
+
+For Gaussian : σd = 0 .35 ( xg − xℓ)pd/ 2, with xℓ = 12π and xg = 1 − 12π .0.0 0.5 1.0 0.5 1.0 Sin1    
+
+> 0.0 0.5 1.0 0.5 1.0
+
+Garland    
+
+> −5.12 0.00 5.12 0.00 5.12
+
+Rastrigin    
+
+> 0.0 0.5 1.0 0.5 1.0
+
+Gaussian 
+
+> 0.5 1.0 1.5
+> 0.0 0.5 1.0 1.5
+> 0.0 0.5 1.0 1.5 2.0
+> 0.2 0.4 0.6 0.8
+
+Figure 1: Illustration of the toy functions of Table 1 in two dimensions, over their native domains. The lattice structure of Sin1 , Garland and Rastrigin reflects their separability. The Gaussian instead has two modes on the diagonal, the local one marked ◦ and the global one ⋆, and is separable in neither coordinate. Since Sin1 , Garland and Rastrigin are sums of d one-dimensional components, the scale of f (x) grows linearly with d,so we work throughout with the normalized objective 
+
+g(x) = f (x)
+
+d for Sin1 , Garland , Rastrigin , g(x) = f (x) for Gaussian , (2) since the Gaussian function already takes values in [0 , 1] . At each evaluation, the algorithm observes a noisy value of g.For the three separable functions the noise is additive 
+
+r(x) = g(x) + ε, ε ∼ N (0 , σ 2), (3) whereas for the Gaussian function g(x) is a success probability and a pull returns a single binary observation, 
+
+r(x) ∼ Bernoulli( g(x)) , matching the observation model used in this paper. The algorithms use only the noisy 7observations r(x). When reporting results, we compute regret on the noiseless normalized objective. The cumulative regret is defined as 
+
+RT =
+
+> T
+
+X
+
+> t=1
+
+(g∗ − g(xt)) 
+
+where g∗ = max x g(x) and xt is the configuration evaluated at step t. For the separable functions, g∗ is the optimum of a single one-dimensional component, so this normalization makes regret values comparable across dimensions. 
+
+5.2 Comparison Against Baseline Algorithms 
+
+We next compare IMOSS-TPE with three hierarchical optimistic optimization baselines, StoSOO [19], HOO-T [17], and StroquOOL [20], and with the factored baseline Hier-MAB [42], which requires finite axes and runs on a grid of 11 
+
+evenly spaced values per coordinate of the native domain (Hier-MAB-11). We consider the four-dimensional versions of all four functions of Table 1. For each method, we use evaluation budgets T ∈ { 1000 , 3000 , 5000 , 10000 } and repeat every experiment with 20 independent random seeds. Observations follow the model of Equation (3): additive Gaussian noise for Sin1 , Garland and Rastrigin , and a single Bernoulli draw for the Gaussian . Regrets are computed using the corresponding noiseless objective. The tree-based baselines construct their hierarchical partitions over the unit hypercube [0 , 1] d, whereas the toy functions are defined on their native domains: [0 , 1] d for Sin1 , Garland and the Gaussian , and [−5.12 , 5.12] d for Rastrigin . To ensure that all methods optimize over the same domain, each suggestion z ∈ [0 , 1] d produced by a tree-based method is mapped back to the native search space before evaluation, 
+
+xi = ℓi + ( ui − ℓi)zi, (4) where [ℓi, u i] denotes the native range of coordinate i. The observed reward is then fed back to the tree-based method as the reward of the corresponding normalized point z. This affine transformation preserves the hierarchical partition on [0 , 1] d while ensuring that objective values and regrets are evaluated over the same search space as IMOSS-TPE. Once each budget is exhausted, every method returns a single recommendation x(T ), but the recommendation rules differ. IMOSS-TPE returns the evaluated configuration with the largest empirical mean in its active set. Hier-MAB returns its per-axis best values, the combination of the empirical-mean-maximizing value on each axis. StoSOO returns the empirical-mean maximizer at the maximum depth at which a cell has been expanded. HOO-T instead returns the visited node with the largest cached optimistic B-value at round T , using the same optimism-under-uncertainty criterion that guides its search. StroquOOL separates candidate generation from final validation: it constructs a shortlist by selecting the empirical-mean maximizer among nodes satisfying progressively larger sampling thresholds, evaluates each shortlisted candidate on a fresh independent batch, and returns the candidate with the largest validation mean. Recommendations produced in normalized tree coordinates are mapped back to the native search space before computing simple regret. Consequently, the reported simple regret reflects each algorithm’s native recommendation rule, rather than a common post-processing rule applied to all methods. 0.0 0.2 0.4 0.6 0.8 0.2 0.3 0.4              
+
+> Online Avg. Regret  Sin1
+> 0.2 0.4 0.6 0.25 0.30 0.35 0.40
+> Garland
+> 0.0 0.2 0.4 0.1 0.2 0.3 0.4 0.5 Rastrigin
+> 0.0 0.2 0.4 0.6 0.8 0.2 0.4 0.6
+> Gaussian
+> Simple Regret
+> IMOSS-TPE StoSOO HOO-T StroquOOL Hier-MAB-11
+
+Figure 2: Trade-off between simple regret and online average regret RT (terminal value of the running average at budget 
+
+T ) on Sin1 , Garland , Rastrigin and Gaussian in 4D. We report four evaluation budgets T ∈ { 1000 , 3000 , 5000 , 10000 },with larger markers corresponding to larger budgets. Small dots show individual runs, and ellipses represent the empirical covariance across 20 repetitions. Figure 2 reports the joint behavior of simple regret and online average regret RT . Each large marker represents the mean performance at one evaluation budget, with marker size increasing with T . Small dots show individual runs, and the ellipses show one-standard-deviation contours of the empirical covariance across the 20 repetitions. The lower-left region is preferable, corresponding to both an accurate final recommendation and a low average regret. 8Against the three tree-based baselines, IMOSS-TPE achieves the most balanced trade-off. On Sin1 it maintains substantially lower average regret than all three while reaching competitive simple regret, and on Garland it keeps a smaller but consistent advantage on average regret. StroquOOL often produces a better final recommendation, but at a higher average regret, whereas HOO-T exhibits persistently high simple regret. The same pattern holds on Rastrigin :at T = 10000 , IMOSS-TPE obtains better online average regret than StroquOOL at comparable simple regret, and StoSOO and HOO-T are worse on both criteria. Hier-MAB-11 behaves exactly as its structural assumption predicts. The first three functions are additively separable across coordinates, the ideal regime for coordinate-wise credit assignment, and on Sin1 and Rastrigin it attains both the best recommendation and the lowest average regret of all methods. On Garland , whose per-coordinate profile oscillates rapidly, its 11 -point grid cannot resolve the axis optima and its recommendation falls behind every method except HOO-T. On the non-separable Gaussian , Hier-MAB-11 falls behind IMOSS-TPE on both criteria at every budget, and here the grid is not the obstacle, since it does contain a point close to the global mode: its per-axis best values settle on the grid point nearest the local mode, which no single-coordinate move can leave. These differences are consistent with the algorithms’ recommendation rules. StroquOOL explicitly revalidates shortlisted candidates and therefore favors simple regret, while HOO-T selects its recommendation by its optimistic B-value. IMOSS-TPE recommends the empirical-mean maximizer and uses MOSS to control the cost incurred throughout optimization. Overall, IMOSS-TPE is the only method that occupies the favorable region of the empirical Pareto frontier on all four functions. Hier-MAB-11 beats it where its factorization is exactly well-specified and its grid is fine enough, but degrades sharply on Garland and on the non-separable Gaussian , while the tree-based baselines never combine competitive recommendations with low online regret. 
+
+5.3 Impact of the IMOSS bandit policy 
+
+We investigate the effect of the IMOSS allocation by comparing IMOSS-TPE with fixed-replication TPE variants implemented using Optuna [51]. For these baselines, denoted TPE-k, each configuration suggested by TPE is evaluated exactly k times before a new configuration is requested. Optuna observes the empirical mean 
+
+bμ(x) = 1
+
+k
+
+> k
+
+X
+
+> j=1
+
+rj (x)
+
+Under an evaluation budget T , TPE-k therefore explores approximately T /k distinct configurations. In contrast, IMOSS-TPE maintains an active set of Θ( T β ) configurations and adaptively chooses between admitting a new configuration through TPE and re-evaluating an existing one through MOSS. The two methods therefore allocate the same budget differently: TPE-k controls the number of distinct configurations through k, whereas IMOSS-TPE trades configuration-space coverage against the accuracy with which existing configurations are evaluated. The two methods evaluate numbers of distinct configurations of the same order when 
+
+Tk ≃ T β , or equivalently k ≃ T 1−β .
+
+In our experiments, we use T = 5000 evaluations on the four-dimensional versions of these functions and β = 0 .5,giving a crossover near k = 71 . Thus, TPE-50 evaluates more distinct configurations than IMOSS-TPE, TPE-70 evaluates approximately the same number, and the larger-k baselines evaluate fewer. Figure 3 shows that IMOSS-TPE achieves lower cumulative regret than every TPE-k baseline on all four functions. Importantly, this advantage persists for TPE-50 and TPE-70, whose surrogates are fitted using at least as many distinct configurations as the IMOSS-TPE surrogate. The cumulative-regret improvement therefore cannot be explained solely by the number of configurations available to TPE. Rather, it reflects the benefit of adaptive evaluation allocation: TPE-k commits k evaluations to every suggestion, including configurations that appear unpromising after only a few observations, whereas IMOSS reallocates subsequent evaluations according to both observed performance and uncertainty. 
+
+5.4 HPOBench 
+
+HPOBench [52] collects HPO benchmarks built from precomputed model evaluations, reporting validation performance for predefined configurations and evaluation budgets. Configurations can therefore be served repeatedly online without retraining the underlying models, and the known validation results allow exact regret computation. 90 2000 4000 0500 1000 1500 2000             
+
+> Cumulative Regret  Sin1
+> 02000 4000 0500 1000 1500 2000
+> Garland
+> 02000 4000 0500 1000 1500 2000
+> Rastrigin
+> 02000 4000 01000 2000 3000
+> Gaussian
+> Iteration
+> IMOSS-TPE TPE-1 TPE-10 TPE-50 TPE-70 TPE-100 TPE-200
+
+Figure 3: Cumulative regret over 5000 evaluations on the four-dimensional Sin1 , Garland , Rastrigin and Gaussian 
+
+functions. IMOSS-TPE is compared with fixed-replication TPE-k baselines for k ∈ { 1, 10 , 50 , 70 , 100 , 200 }. The observation noise follows Equation (3) with σ = 0 .7 for Sin1 , Garland and Rastrigin , and is a single Bernoulli draw for the Gaussian .0100 200 300 400                        
+
+> Cumulative Regret
+> segment credit-g numerai28.6
+> 01000 2000 3000 4000 5000 0.7 0.8 0.9 1.0
+> Oracle Proposal Quality
+> 01000 2000 3000 4000 5000
+> Iteration
+> 01000 2000 3000 4000 5000
+> IMOSS-Random IMOSS-TPE IMOSS-mutate-KLxPE UCB-AIR Hier-MAB Random TPE mutate-KLxPE
+
+Figure 4: Cumulative regret (upper row, lower is better) and true mean reward of the arms each oracle proposes (lower row, higher is better) on the three discrete OpenML HPO problems, averaged over 30 paired runs. UCB-AIR and Hier-MAB have no oracle and appear only in the upper row. 
+
+5.4.1 HPO on Discrete Parameters 
+
+We use the random forest benchmarks provided by HPOBench for three OpenML classification tasks, segment ,
+
+credit-g , and numerai28.6 . An arm x is a random-forest configuration defined by max_depth , max_features ,
+
+min_samples_leaf , and min_samples_split ; discretizing these into evenly spaced values yields K = 2250 arms per task. Every configuration uses 512 trees and the full training set (subsample fraction 1), the largest evaluation budget available in the benchmark, and an arm’s mean reward px is its validation accuracy averaged over five training seeds. We turn this offline benchmark into an online one by binarization: pulling xt at round t returns rt ∼ Bernoulli( pxt ),so the optimizer observes a noisy binary outcome rather than the true mean. Since all means are known, we set 
+
+p⋆ = max x∈X px and compute cumulative regret RT exactly. We compare IMOSS-Random, IMOSS-TPE and IMOSS-mutate-KL ×PE, which share the same active-set schedule and MOSS allocation rule with β = 0 .5 and differ only in their oracle. UCB-AIR serves as a restart-free infinitely many-armed baseline, and Hier-MAB, the two-level hierarchical bandit of AutoRAG-HP [42], as a factored one: a high-level UCB1 bandit picks which hyperparameter to perturb and one low-level UCB1 bandit per hyperparameter picks its value, while every other coordinate keeps its per-axis best value: the value with the highest mean reward on that axis alone. Crediting the reward to the perturbed coordinate therefore presumes near-separable rewards. For every task and method, we perform thirty paired runs with 
+
+T = 5000 pulls. 10 Figure 4 compares cumulative regret and oracle proposal quality across the three discrete HPO tasks. Every IMABO variant accumulates less regret than UCB-AIR, including IMOSS-Random, indicating that the active-set schedule and MOSS allocation rule already help before any learned oracle is added. The two learned oracles are strongest overall and IMOSS-mutate-KL ×PE attains the lowest regret on all tasks: segment , credit-g , and numerai28.6 . The lower row, measured on a copy of the optimizer state so these diagnostic proposals never alter the trajectory, explains much of this. Random proposals stay at constant quality by construction, whereas both learned oracles quickly begin proposing arms of substantially higher true mean reward. On credit-g , mutate-KL ×PE sustains a high, stable proposal quality whereas TPE is lower and markedly more variable, consistent with a sparse optimum depending on two hyperparameters at once. On segment and numerai28.6 , whose rewards vary mainly with max_depth , both learned oracles reach high proposal quality without difficulty; on numerai28.6 many arms additionally share near-identical means, so the residual gap between the oracles translates into only mild differences in accumulated regret. 
+
+5.4.2 HPO on Continuous Parameters 0250 500 750 1000           
+
+> LR Cum. Regret
+> 0.0 0.2 0.4
+> Simple Regret
+> 02000 4000 6000 8000 10000
+> Iteration
+> 01000 2000
+> SVM Cum. Regret
+> 1000 3000 5000 10000
+> Evaluation Budget
+> 0.0 0.2 0.4
+> Simple Regret
+> IMOSS-TPE IMOSS-mutate-KLxPE HOO-T StoSOO StroquOOL Hier-MAB-10
+
+Figure 5: Cumulative regret (left) and simple regret of the recommended configuration (right) on the two continuous OpenML HPO problems, Logistic Regression (LR) and Support Vector Machine (SVM). Lower is better. StroquOOL’s curve ends after 6866 evaluations because its schedule is built to spend at most T = 10000 evaluations, and it stops once that schedule is complete. We evaluate IMOSS-TPE and IMOSS-mutate-KL ×PE on the Logistic Regression and Support Vector Machine benchmarks associated with the kr-vs-kp dataset (OpenML task 167149). 6 Both define two-dimensional continuous search spaces with logarithmic scaling: the SGD regularization parameter α and the initial learning rate η0 over [10 −5, 1] 
+
+for Logistic Regression, and C and γ over [2 −10 , 210 ] for Support Vector Machine, both with default benchmark settings. For each evaluation budget T , we perform 20 independent runs. We compare both IMABO variants, with β = 0 .5,against StoSOO [19], StroquOOL [20], and HOO-T [17]. None of these three baselines is anytime, so we give each of them the horizon T in advance, information that the IMABO family does not need. We use the horizon-aware variant HOO-T because the per-round cost of the anytime original grows quadratically with T , which is impractical at our budgets. We also run Hier-MAB, which requires every hyperparameter to range over an explicit finite set, with both axes discretized on geometrically spaced grids of 10 values per axis (Hier-MAB-10). For the tree-based methods, each logarithmic search space is normalized to the unit square [0 , 1] 2 and suggested points are mapped back to the original ranges before evaluation. Figure 5 compares cumulative regret during optimization (left) and simple regret of the final recommendation (right). The two IMABO variants, IMOSS-TPE and IMOSS-mutate-KL ×PE, obtain the lowest cumulative regret on both tasks without a pre-declared discretization of the axes, and both reach near-zero simple regret. On simple regret, they are matched by StroquOOL and Hier-MAB-10, which also converge to near-zero final regret, so the methods separate mainly through cumulative regret rather than through the quality of the final recommendation. We compare against HOO-T, the only baseline explicitly designed to control cumulative regret, and StroquOOL, whose simple-regret 
+
+> 6https://www.openml.org/t/167149
+
+11 guarantees are state of the art under unknown smoothness and noise. On Logistic Regression, the IMABO variants and StroquOOL are essentially tied for the lowest cumulative regret, whereas on Support Vector Machine the IMABO variants are clearly ahead, with StroquOOL accumulating far more regret while sweeping its schedule. StoSOO incurs the highest cumulative regret on both tasks, and its simple regret, although it does decrease with the budget, remains far above that of the IMABO variants; HOO-T is the weakest on simple regret, which stays high on both tasks and does not improve with the budget. On Logistic Regression, StroquOOL ends below HOO-T on cumulative regret even though only HOO-T targets that metric. Hier-MAB-10 is competitive on Logistic Regression but stays clearly behind IMABO on Support Vector Machine. 
+
+5.5 LLM Question Answering on HotpotQA 
+
+HotpotQA [53] is an open-domain question-answering benchmark built from Wikipedia, in which each example pairs a question and its answer with supporting facts drawn from several articles, so answering requires combining information across documents. We use the retrieval version distributed through BEIR [54]. Each question is answered by a retrieval-augmented generation pipeline: a retriever selects the top_k Wikipedia passages by cosine similarity, and a large language model generates the answer from a prompt containing the question and those passages. At round t, the optimizer selects the complete pipeline configuration xt before observing question qt, so it must find a configuration that performs well across the stream rather than adapt to each question. Retrieval uses all-MiniLM-L6-v2 embeddings [55], precomputed for all Wikipedia documents and normalized to unit ℓ2 norm, as are the encoded questions. A configuration includes the generation model, the prompt template, the retrieval depth top_k from 1 to 10 , and the generation temperature in [0 , 1] . Prompt templates are few_shot with fixed examples, zero_shot with instructions but no examples, and naive with only the question and retrieved documents. The full model list, prompt templates, and generation details are given in Section D.1. For each question q, answer quality aq (x) is the normalized token-overlap F1 between the generated and gold answers, and retrieval quality rq (x) is the title-level F1 between the retrieved and gold supporting documents. The reward combines both as w · aq (x) + (1 − w) · rq (x) with w = 0 .8, and we report online average regret RT = RT /T . After the stream, each method returns its best configuration, which we evaluate on a disjoint set of unseen questions and report as average per-question simple regret. For each of five seeds, we randomly permute the test questions and use 5000 for the online stream and a disjoint 500 for final evaluation, giving all methods the same split and question order. We compare IMOSS-TPE, IMOSS-mutate-KL ×PE and IMOSS-TabPFN with Random and Hier-MAB. Random selects configurations uniformly without using previous observations, and Hier-MAB requires explicit finite axes, so its temperature, the only continuous axis, is discretized to eleven evenly spaced values. 0 1000 2000 3000 4000 5000     
+
+> Iteration
+> 0.7 0.8 0.9
+> Online Avg. Regret
+> Random Hier-MAB IMOSS-mutate-KLxPE IMOSS-TPE IMOSS-TabPFN 0.50 0.55 0.60 0.65 0.70 0.75
+> Simple Regret
+> Random Hier-MAB IMOSS-mutate-KLxPE IMOSS-TPE IMOSS-TabPFN
+
+Figure 6: Online average regret and simple regret on HotpotQA, averaged over 5 seeds; shaded bands and error bars show standard deviations across seeds. Lower is better. In Figure 6, both ˆx-mutation variants, IMOSS-mutate-KL ×PE and IMOSS-TabPFN, improve on Random on both metrics and on Hier-MAB online, and their online advantage widens as more questions are observed, consistent with the learned oracles making greater use of the accumulated observations. IMOSS-TPE, by contrast, trails Hier-MAB on both metrics. HotpotQA is a near-separable space, the regime in which coordinate-local search is strongest: the mutation oracles refine the best configuration one coordinate at a time and Hier-MAB holds every axis except one at its per-axis best, so both keep the active set concentrated around the strongest configuration. IMOSS-TPE instead 12 admits arms from across the whole good region; although each proposal is individually reasonable, the active set is more dispersed, so more pulls land away from the best accumulated configuration, raising online regret while the best neighborhood is refined less and leaving the final recommendation behind as well. IMOSS-TabPFN attains the lowest online average regret, with IMOSS-mutate-KL ×PE and Hier-MAB close behind. On simple regret the two ˆx-mutation variants and Hier-MAB are statistically indistinguishable and all clearly below Random, so Hier-MAB matches them on the quality of the final recommendation while trailing them online. Overall, the methods that keep the active set concentrated around the strongest configuration, the two mutation oracles and Hier-MAB, dominate on both metrics, while IMOSS-TPE, the only method that proposes across the whole good region, trails even Hier-MAB; online average regret separates more sharply than simple regret does. 
+
+## 6 Practical Usage 
+
+We propose extensions of IMABO that address specific problems encountered when running it in production. 
+
+6.1 Delayed and censored feedback 
+
+In many applications the reward is not available the moment a configuration is tried. For instance, it may depend on user feedback that follows the interaction, and this feedback may arrive after an unknown delay or fail to arrive at all. The policy must keep selecting configurations without waiting for these rewards, so at any round it faces a mixture of pulls that have already returned a reward and pulls that are still pending. Write nrew  
+
+> x
+
+and npend  
+
+> x
+
+for the completed and pending pulls of arm x, and N rew and N pend for their totals over all arms. Let p ∈ (0 , 1] be the fraction of pulls that eventually return a reward, estimated from the logs. IMABO counts each pending pull as a fraction p of a reward, which lets both the expansion rule and the index run on the rewards that the pending pulls will produce in expectation, 
+
+˜Nt = N rew + p N pend , eBt(x) = ˆ μx +
+
+s
+
+1 + α
+
+2 · max  0, log   ˜Nt/( ˜N βt ˜nx) 
+
+˜nx
+
+, (5) where ˜nx = nrew  
+
+> x
+
++ p n pend  
+
+> x
+
++ 1 and ˆμx averages the completed rewards of the arm. A new arm enters whenever 
+
+|M t| < ˜N βt . With p = 1 and N pend = 0 every pull has already returned its reward and the rule reduces to (1). A pull that remains pending beyond a fixed window is dropped from the count. 
+
+6.2 Experimental evaluation 
+
+We evaluate the delay-aware switching rule above against a delay-oblivious variant and a no-delay skyline on LCBench, accessed through the YAHPO-Gym surrogate, which models AutoPyTorch multilayer-perceptron training on OpenML tabular tasks [56]. We use three instances: higgs (167200), APSFailure (168868), and Fashion-MNIST (189908). Each defines the seven-dimensional search space of Table 2. The surrogate returns a validation accuracy in [0 , 100] ,rescaled to a success probability p ∈ [0 , 1] ; the reward for each pull is a Bernoulli (p) random variable. As the maximum achievable accuracy p⋆ has no closed form on a continuous space, we estimate it once per instance from a dense random sample of 100 ,000 configurations. Table 2: LCBench search space (seven hyperparameters, mixed continuous and finite). Bounds and log-scale flags are read from the surrogate’s configuration space.                        
+
+> Hyperparameter Type Range
+> num_layers Categorical {1, . . . , 5}
+> batch_size Integer (log-scaled) [16 ,512]
+> max_units Integer (log-scaled) [64 ,1024]
+> learning_rate Continuous (log-scaled) [10 −4,10 −1]
+> momentum Continuous [0 .1,0.99]
+> weight_decay Continuous [10 −5,10 −1]
+> max_dropout Continuous [0 .0,1.0]
+
+Each configuration’s feedback delay is set by its own predicted training time, returned in seconds alongside the accuracy by the surrogate. To express this runtime in simulator steps, we divide it by a fixed per-instance constant τ ,
+
+steps (x) = runtime_seconds (x)
+
+τ , τ = ˜t
+
+6 ,
+
+13 where ˜t is the median predicted runtime over the 100 ,000 -configuration sample. Choosing τ = ˜ t/ 6 fixes the step scale by anchoring it to the median configuration, whose runtime is ˜t by definition. A stochastic delay is then obtained by scaling steps (x) with a multiplicative log-normal jitter that represents queueing noise (a job with predicted runtime t
+
+does not always take exactly t), 
+
+delay (x) = delay_scale × steps (x) × ξ, ξ ∼ LogNormal(0 , σ 2),
+
+with σ = 0 .5 (median jitter 1) and delay_scale = 1 . Feedback is then lost in two independent ways: a configuration-independent Bernoulli filter admits a pull only with probability feedback_freq = 0 .2 (crashed or never-submitted jobs, 80% dropped outright), and a patience window drops any admitted pull whose delay exceeds the q = 0 .95 quantile of that instance’s delay distribution ( 32 , 33 , and 19 steps for higgs , APSFailure , and Fashion-MNIST ). A pull is therefore never observed with probability 
+
+P(never observed ) = (1 − feedback_freq ) + feedback_freq · P(delay > patience ).
+
+We consider three variants of IMOSS-TPE: IMOSS-TPE Delayed is the delay-aware switching rule above, run under delayed and censored feedback; IMOSS-TPE Naive is the identical optimizer exposed to the same delayed and censored environment but ignoring pending pulls, isolating the cost of delay-blindness; IMOSS-TPE is that same optimizer under instant feedback, the no-delay skyline. UCB-AIR is an infinitely many-armed bandit reference, also run under instant feedback. All four methods use β = 0 .5.0 2500 5000 7500 10000 0.15 0.20 0.25 0.30 
+
+> Online Avg. Regret
+
+higgs     
+
+> 02500 5000 7500 10000
+> Iteration
+> 0.02 0.04 0.06
+
+APSFailure     
+
+> 02500 5000 7500 10000 0.1 0.2 0.3 0.4
+
+Fashion-MNIST    
+
+> IMOSS-TPE IMOSS-TPE Delayed IMOSS-TPE Naive UCB-AIR
+
+Figure 7: Delayed and censored feedback on three LCBench instances ( higgs , APSFailure , Fashion-MNIST ). Each panel plots online average regret RT ; lower is better. Curves are means over 10 seeds and shaded bands are ±1 standard deviation. Feedback is delayed by each configuration’s predicted training time (median 6 steps, log-normal jitter 
+
+σ = 0 .5) and censored by a Bernoulli filter ( feedback_freq = 0 .2) plus a per-instance q = 0 .95 patience window (32 , 33 , 19 steps), so only about 19% of pulls ever return a reward. IMOSS-TPE (green) is the no-delay skyline and 
+
+UCB-AIR (grey) is a no-delay reference baseline; IMOSS-TPE Delayed (blue) and IMOSS-TPE Naive (orange) run the same optimizer under delayed feedback, with and without the delay-aware switching rule. Figure 7 reports online average regret over T = 10000 iterations with 10 seeds. The ordering is consistent across all three instances: the delay-aware rule sits between the delay-blind Naive variant and the no-delay skyline, closing most of the gap to the skyline. The two delayed methods share the environment and receive the same censored stream — only about 19% of pulls ever return a reward — so the gap between them is caused by the switching rule alone. The mechanism is made explicit in Figure 8. The Naive rule admits a new arm whenever |M t| < t β , using the raw step count, so at the horizon it holds the full tβ = √T ≈ 100 arms even though most of those steps never returned a reward. The delay-aware rule instead throttles admission by the effective count ˜Nt of (5): because roughly 80% of pulls never arrive, ˜Nt ≪ t and the active set settles at about 60 arms. Both delayed methods observe the same ≈ 1,900 
+
+rewards, so spreading them over fewer arms substantially raises the observations per arm for the delay-aware rule over the Naive one, though both stay well below the skyline, which observes every pull. More observations per arm means tighter arm-mean estimates, which is what lets the delay-aware rule rank candidates reliably and recover most of the distance to the skyline, while the Naive rule pays for exploring arms it cannot resolve. Despite discarding roughly 80% 
+
+of feedback, the delay-aware optimizer still finishes below UCB-AIR, which sees instant feedback. 
+
+Restart on an evolving search space. A search that runs for a long time will usually see its space of configurations grow, whether because a provider ships a new model or because an existing parameter is allowed a new value. We would like IMABO to give those late additions as much attention as it gave the first configurations it ever saw. It does 14 2500 5000 7500 10000 025 50 75 100 
+
+> Rewards per Active Arm
+> 100.0 32.5 18.1
+
+higgs    
+
+> 2500 5000 7500 10000
+
+Iteration  
+
+> 025 50 75 100 100.0 32.6 19.5
+
+APSFailure     
+
+> 2500 5000 7500 10000 025 50 75 100 100.0 32.6 19.4
+
+Fashion-MNIST   
+
+> IMOSS-TPE IMOSS-TPE Delayed IMOSS-TPE Naive
+
+Figure 8: Observed rewards per active arm on the three LCBench instances: the cumulative number of rewards delivered so far divided by the number of active arms |M t|, against iteration. Under identical delayed and censored feedback, the two delayed methods observe the same total number of rewards ( ≈ 1,900 ), so this ratio measures how concentrated that feedback is across the active set. The delay-aware rule ( IMOSS-TPE Delayed , blue) throttles arm admission by the effective count ˜Nt and holds ≈ 60 active arms, giving ≈ 33 rewards per arm; the delay-blind IMOSS-TPE Naive 
+
+(orange) expands to the full ≈ 100 arms and reaches only ≈ 18 . The no-delay skyline ( IMOSS-TPE , green) observes every pull, giving 100 rewards per arm. Curves are means over 10 seeds. not do so by default, because it explores the most at the beginning of a run. The condition |M t| < t β is easy to meet when t is small and hard to meet once t is large, so newly added configurations, arriving when t is already large, would be picked up only rarely. We correct this by restarting the schedule at the round t0 at which the space changed. With 
+
+N0 = |M t0 | arms already in place, a new arm enters when 
+
+|M t| − N0 < (t − t0)β .
+
+Only the schedule is reset, and all past rewards are preserved, so when the oracle proposes configurations from the larger space it still uses everything learned so far, unlike a true restart, which would discard that knowledge. 
+
+## 7 Conclusion 
+
+We addressed OHPO by framing it as an infinitely many-armed bandit over a mixed and possibly conditional search space. We introduced IMABO, a framework that combines a bandit policy for allocating pulls with an oracle for suggesting new configurations, and IMOSS, an anytime and restart-free policy with a cumulative quantile-regret bound. When instantiated with a Random, a TPE, a mutate-KL ×PE, or a TabPFN oracle, IMABO outperformed its baselines on both classical machine-learning models and a language-model agent while being computationally efficient for online optimization. Several features set IMABO apart among online tuners. It operates directly on mixed, conditional, tree-structured spaces without discretizing any coordinate, and it comes with a cumulative quantile-regret guarantee. Because its active set grows only as tβ , it requests fewer distinct configurations than rounds, an advantage when adopting a configuration carries a training or warm-up cost. Its heuristic extension to delayed and censored feedback also performs well under production conditions. A central challenge is the imbalance induced by adaptive sampling: promising configurations receive many observations, whereas most remain weakly estimated. This process can also introduce survivorship bias, since configurations favored by unusually strong early rewards are more likely to remain active and accumulate further evidence, making their true performance difficult to estimate. Developing uncertainty-aware or debiased estimators tailored to this adaptive data collection process is therefore a promising direction. The modularity of IMABO opens several further directions. When request context is available before selection, the allocation policy could be replaced by a contextual bandit without changing the proposal mechanism. A large language model could also serve as the oracle, reading the best configurations found so far together with a description of the parameters and returning the next one to admit, and the same mechanism would extend the search to prompts themselves [57, 58]. Constrained or multi-objective settings, such as maximizing quality subject to a cost or latency budget, are a natural extension. More broadly, jointly learning when to expand, what to propose, and which active configuration to serve could further improve the balance between discovery and exploitation. 15 References 
+
+[1] James Bergstra and Yoshua Bengio. Random search for hyper-parameter optimization. Journal of Machine Learning Research , 13:281–305, 2012. [2] Jasper Snoek, Hugo Larochelle, and Ryan P. Adams. Practical Bayesian optimization of machine learning algorithms. In Advances in Neural Information Processing Systems (NeurIPS) , pages 2951–2959, 2012. [3] Lisha Li, Kevin Jamieson, Giulia DeSalvo, Afshin Rostamizadeh, and Ameet Talwalkar. Hyperband: A novel bandit-based approach to hyperparameter optimization. Journal of Machine Learning Research , 18(185):1–52, 2017. [4] Bobak Shahriari, Kevin Swersky, Ziyu Wang, Ryan P. Adams, and Nando de Freitas. Taking the human out of the loop: A review of Bayesian optimization. Proceedings of the IEEE , 104(1):148–175, 2016. [5] Frank Hutter, Holger H. Hoos, and Kevin Leyton-Brown. Sequential model-based optimization for general algorithm configuration. In Learning and Intelligent Optimization (LION) , pages 507–523. Springer, 2011. [6] James Bergstra, Rémi Bardenet, Yoshua Bengio, and Balázs Kégl. Algorithms for hyper-parameter optimization. In Advances in Neural Information Processing Systems (NeurIPS) , pages 2546–2554, 2011. [7] Louis C. Tiao, Aaron Klein, Matthias Seeger, Edwin V. Bonilla, Cedric Archambeau, and Fabio Ramos. BORE: Bayesian optimization by density-ratio estimation, 2021. [8] Jiaming Song, Lantao Yu, Willie Neiswanger, and Stefano Ermon. A general recipe for likelihood-free Bayesian optimization. In Proceedings of the 39th International Conference on Machine Learning (ICML) ,2022. arXiv:2206.13035. [9] Xingchen Wan, Vu Nguyen, Huong Ha, Binxin Ru, Cong Lu, and Michael A. Osborne. Think global and act local: Bayesian optimisation over high-dimensional categorical and mixed search spaces. In Proceedings of the 38th International Conference on Machine Learning (ICML) , 2021. arXiv:2102.07188. [10] Herilalaina Rakotoarison, Steven Adriaensen, Neeratyoy Mallik, Samir Garibov, Edward Bergman, and Frank Hutter. In-context freeze-thaw bayesian optimization for hyperparameter optimization. In AutoML Conference 2024 (Workshop Track) , 2024. URL https://openreview.net/forum?id=TPwrOQhyRj .[11] Rosen Ting-Ying Yu, Cyril Picard, and Faez Ahmed. GIT-BO: High-dimensional bayesian optimization with tabular foundation models. In 1st ICML Workshop on Foundation Models for Structured Data , 2025. URL 
+
+https://openreview.net/forum?id=oJEAh2Jdgp .[12] Peter Auer, Nicolò Cesa-Bianchi, and Paul Fischer. Finite-time analysis of the multiarmed bandit problem. 
+
+Machine Learning , 47(2–3):235–256, 2002. [13] Jean-Yves Audibert and Sébastien Bubeck. Minimax policies for adversarial and stochastic bandits. In Proceedings of the 22nd Annual Conference on Learning Theory (COLT 2009) ,pages 217–226, 2009. URL https://www.microsoft.com/en-us/research/publication/ minimax-policies-adversarial-stochastic-bandits/ .[14] Rémy Degenne and Vianney Perchet. Anytime optimal algorithms in stochastic multi-armed bandits. In 
+
+Proceedings of the 33rd International Conference on Machine Learning (ICML 2016) , volume 48, pages 1587– 1595. PMLR, 2016. URL https://proceedings.mlr.press/v48/degenne16.html .[15] Donald A. Berry, Robert W. Chen, Alan Zame, David C. Heath, and Larry A. Shepp. Bandit problems with infinitely many arms. The Annals of Statistics , 25(5):2103 – 2116, 1997. doi: 10.1214/aos/1069362389. URL 
+
+https://doi.org/10.1214/aos/1069362389 .[16] Robert Kleinberg. Nearly tight bounds for the continuum-armed bandit problem. In Advances in Neural Information Processing Systems (NeurIPS) , 2004. [17] Sébastien Bubeck, Rémi Munos, Gilles Stoltz, and Csaba Szepesvári. X-armed bandits. Journal of Machine Learning Research , 12, 2011. [18] Remi Munos. Optimistic optimization of a deterministic function without the knowledge of its smoothness. In 
+
+Advances in Neural Information Processing Systems (NeurIPS) , pages 783–791, 2011. [19] Michal Valko, Alexandra Carpentier, and Remi Munos. Stochastic simultaneous optimistic optimization. In 
+
+Proceedings of the 30th International Conference on Machine Learning (ICML) , pages 19–27. PMLR, 2013. [20] Peter L. Bartlett, Victor Gabillon, and Michal Valko. A simple parameter-free and adaptive approach to opti-mization under a minimal local smoothness assumption. In Proceedings of the 30th International Conference on Algorithmic Learning Theory (ALT) , pages 1–23. PMLR, 2019. 16 [21] Alexandra Carpentier and Michal Valko. Simple regret for infinitely many-armed bandits. In Proceedings of the 32nd International Conference on Machine Learning (ICML) . PMLR, 2015. [22] Arghya Roy Chaudhuri and Shivaram Kalyanakrishnan. Quantile-regret minimisation in infinitely many-armed bandits. In Proceedings of the 2018 Conference on Uncertainty in Artificial Intelligence (UAI 2018) , pages 425–434. AUAI Press, 2018. [23] Yizao Wang, Jean-Yves Audibert, and Rémi Munos. Algorithms for infinitely many-armed bandits. In Proceedings of the 22nd International Conference on Neural Information Processing Systems , NIPS’08, page 1729–1736, Red Hook, NY, USA, 2008. Curran Associates Inc. ISBN 9781605609492. [24] Lihong Li, Wei Chu, John Langford, and Robert E. Schapire. A contextual-bandit approach to personalized news article recommendation. In Proceedings of the 19th International Conference on World Wide Web (WWW) , pages 661–670, 2010. doi: 10.1145/1772690.1772758. [25] Dongruo Zhou, Lihong Li, and Quanquan Gu. Neural contextual bandits with UCB-based exploration. In 
+
+Proceedings of the 37th International Conference on Machine Learning (ICML) , volume 119 of Proceedings of Machine Learning Research , pages 11492–11502. PMLR, 2020. [26] Hannes Nilsson, Rikard Johansson, Niklas Åkerblom, and Morteza Haghir Chehreghani. Tree ensembles for contextual bandits. Transactions on Machine Learning Research (TMLR) , 2024. URL https://openreview. net/forum?id=59DCkSGw8S .[27] Yan Shuo Tan, Kenyon Ng, Ruizhe Deng, Sumetha Loganathan, Qiong Zhang, and Bibhas Chakraborty. PFN-TS: Thompson sampling for contextual bandits via prior-data fitted networks, 2026. Preprint. [28] Kevin Jamieson and Ameet Talwalkar. Non-stochastic best arm identification and hyperparameter optimization. In Proceedings of the 19th International Conference on Artificial Intelligence and Statistics (AISTATS) . PMLR, 2016. [29] Stefan Falkner, Aaron Klein, and Frank Hutter. Bohb: Robust and efficient hyperparameter optimization at scale. In Proceedings of the 35th International Conference on Machine Learning (ICML) . PMLR, 2018. [30] Binxin Ru, Ahsan S. Alvi, Vu Nguyen, Michael A. Osborne, and Stephen J. Roberts. Bayesian optimisation over multiple continuous and categorical inputs, 2019. [31] Xuedong Shang, Emilie Kaufmann, and Michal Valko. A simple dynamic bandit algorithm for hyper-parameter tuning. In 6th Workshop on Automated Machine Learning at the International Conference on Machine Learning (AutoML@ICML) , Long Beach, CA, USA, 2019. [32] Steven L. Scott. A modern Bayesian look at the multi-armed bandit. Applied Stochastic Models in Business and Industry , 26(6):639–658, 2010. [33] Olivier Chapelle and Lihong Li. An empirical evaluation of Thompson sampling. In Advances in Neural Information Processing Systems (NeurIPS) , pages 2249–2257, 2011. [34] Shiyin Lu, Yu-Hang Zhou, Jing-Cheng Shi, Wenya Zhu, Qingtao Yu, Qing-Guo Chen, Qing Da, and Lijun Zhang. Non-stationary continuum-armed bandits for online hyperparameter optimization. In Proceedings of the Fifteenth ACM International Conference on Web Search and Data Mining (WSDM) , pages 618–627. ACM, 2022. doi: 10.1145/3488560.3498396. [35] Yue Kang, Cho-Jui Hsieh, and Thomas Chun Man Lee. Online continuous hyperparameter optimization for generalized linear contextual bandits. Transactions on Machine Learning Research , 2024. URL https:// openreview.net/forum?id=lQE2AcbYge .[36] Yaoyao Liu, Yingying Li, Bernt Schiele, and Qianru Sun. Online hyperparameter optimization for class-incremental learning. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 37, pages 8906–8913, 2023. doi: 10.1609/aaai.v37i7.26070. [37] Max Jaderberg, Valentin Dalibard, Simon Osindero, Wojciech M. Czarnecki, Jeff Donahue, Ali Razavi, Oriol Vinyals, Tim Green, Iain Dunning, Karen Simonyan, Chrisantha Fernando, and Koray Kavukcuoglu. Population based training of neural networks, 2017. [38] Jack Parker-Holder, Vu Nguyen, Shaan Desai, and Stephen J. Roberts. Tuning mixed input hyperparameters on the fly for efficient population based autorl. In Advances in Neural Information Processing Systems , volume 34, 2021. [39] Xingchen Wan, Cong Lu, Jack Parker-Holder, Philip J. Ball, Vu Nguyen, Binxin Ru, and Michael Osborne. Bayesian generational population-based training. In Proceedings of the First International Conference on Automated Machine Learning , volume 188 of Proceedings of Machine Learning Research , pages 14/1–27. PMLR, 2022. 17 [40] Jialin Liu, Diego Pérez-Liébana, and Simon M. Lucas. Bandit-based random mutation hill-climbing. In 2017 IEEE Congress on Evolutionary Computation (CEC) , pages 2145–2151. IEEE, 2017. arXiv:1606.06041. [41] Margaux Brégère and Julie Keisler. A bandit approach with evolutionary operators for model selection, 2024. [42] Jia Fu, Xiaoting Qin, Fangkai Yang, Lu Wang, Jue Zhang, Qingwei Lin, Yubo Chen, Dongmei Zhang, Saravan Rajmohan, and Qi Zhang. AutoRAG-HP: Automatic online hyper-parameter tuning for retrieval-augmented generation. In Findings of the Association for Computational Linguistics: EMNLP 2024 , pages 3875–3891. Association for Computational Linguistics, 2024. doi: 10.18653/v1/2024.findings-emnlp.223. [43] Yunlong Hou, Fengzhuo Zhang, Cunxiao Du, Xuan Zhang, Jiachun Pan, Tianyu Pang, Chao Du, Vincent Y. F. Tan, and Zhuoran Yang. BanditSpec: Adaptive speculative decoding via bandit algorithms. In Proceedings of the 42nd International Conference on Machine Learning (ICML) , volume 267 of Proceedings of Machine Learning Research , pages 24045–24079. PMLR, 2025. [44] Qitian Jason Hu, Jacob Bieker, Xiuyu Li, Nan Jiang, Benjamin Keigwin, Gaurav Ranganath, Kurt Keutzer, and Shriyash Kaustubh Upadhyay. RouterBench: A benchmark for multi-LLM routing system. arXiv preprint arXiv:2403.12031 , 2024. [45] Yu Xia, Fang Kong, Tong Yu, Liya Guo, Ryan A. Rossi, Sungchul Kim, and Shuai Li. Which LLM to play? convergence-aware online model selection with time-increasing bandits. In Proceedings of the ACM Web Conference (WWW) , 2024. [46] Lingjiao Chen, Matei Zaharia, and James Zou. FrugalGPT: How to use large language models while reducing cost and improving performance. arXiv preprint arXiv:2305.05176 , 2023. [47] Pranjal Aggarwal, Aman Madaan, Ankit Anand, Srividya Pranavi Potharaju, Swaroop Mishra, Pei Zhou, Aditya Gupta, Dheeraj Rajagopal, Karthik Kappaganthu, Yiming Yang, Shyam Upadhyay, Manaal Faruqui, and Mausam. AutoMix: Automatically mixing language models. In Advances in Neural Information Processing Systems (NeurIPS) , 2024. [48] Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gonzalez, M. Waleed Kadous, and Ion Stoica. RouteLLM: Learning to route LLMs from preference data. In The Thirteenth International Conference on Learning Representations (ICLR) , 2025. [49] Aurélien Garivier and Olivier Cappé. The kl-ucb algorithm for bounded stochastic bandits and beyond. In 
+
+Proceedings of the 24th Annual Conference on Learning Theory (COLT) , pages 359–376. JMLR Workshop and Conference Proceedings, 2011. [50] Noah Hollmann, Samuel Müller, Lennart Purucker, Arjun Krishnakumar, Max Körfer, Shi Bin Hoo, Robin Tibor Schirrmeister, and Frank Hutter. Accurate predictions on small data with a tabular foundation model. Nature , 637 (8045):319–326, 2025. doi: 10.1038/s41586-024-08328-6. [51] Takuya Akiba, Shotaro Sano, Toshihiko Yanase, Takeru Ohta, and Masanori Koyama. Optuna: A next-generation hyperparameter optimization framework. In Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD ’19) , pages 2623–2631. ACM, 2019. doi: 10.1145/3292500. 3330701. URL https://doi.org/10.1145/3292500.3330701 .[52] Katharina Eggensperger, Philipp Müller, Neeratyoy Mallik, Matthias Feurer, Rene Sass, Aaron Klein, Noor Awad, Marius Lindauer, and Frank Hutter. HPOBench: A collection of reproducible multi-fidelity benchmark problems for HPO. In Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track (Round 2) , 2021. URL https://openreview.net/forum?id=1k4rJYEwda-.[53] Zhilin Yang, Peng Qi, Saizheng Zhang, Yoshua Bengio, William W. Cohen, Ruslan Salakhutdinov, and Christo-pher D. Manning. HotpotQA: A dataset for diverse, explainable multi-hop question answering. In Conference on Empirical Methods in Natural Language Processing (EMNLP) , 2018. [54] Nandan Thakur, Nils Reimers, Johannes Daxenberger, and Iryna Gurevych. BEIR: A heterogeneous benchmark for zero-shot evaluation of information retrieval models. In Thirty-fifth Conference on Neural Information Processing Systems Datasets and Benchmarks Track , 2021. URL https://openreview.net/forum?id=wCu6T5xFjeJ .[55] Nils Reimers and Iryna Gurevych. Sentence-BERT: Sentence embeddings using siamese BERT-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP) , pages 3982–3992, 2019. [56] Lucas Zimmer, Marius Lindauer, and Frank Hutter. Auto-pytorch: Multi-fidelity metalearning for efficient and robust autodl. IEEE Transactions on Pattern Analysis and Machine Intelligence , 43(9):3079–3090, 2021. [57] Chengrun Yang, Xuezhi Wang, Yifeng Lu, Hanxiao Liu, Quoc V. Le, Denny Zhou, and Xinyun Chen. Large language models as optimizers, 2024. URL https://arxiv.org/abs/2309.03409 .18 [58] Yongchao Zhou, Andrei Ioan Muresanu, Ziwen Han, Keiran Paster, Silviu Pitis, Harris Chan, and Jimmy Ba. Large language models are human-level prompt engineers, 2023. URL https://arxiv.org/abs/2211.01910 .19 APPENDIX 
+
+## A Theoretical Analysis 
+
+In this section, we prove the main theoretical result in two stages. First, we establish Lemma 1, which extends the usual MOSS allocation bound to a growing active set. The regular growth condition 
+
+tKt
+
+≤ λ TKT
+
+allows us to sandwich the time-varying MOSS confidence radius between two fixed-KT radii. We can then use the standard MOSS underestimation/overestimation decomposition and peeling argument to obtain a gap-dependent bound, which is converted into the distribution-free guarantee O(√KT T ). Importantly, the lemma holds relative to a reference arm xg that is admitted at a possibly random time τ and remains active thereafter. We then apply this lemma to prove Theorem 1. Let τρ be the first time a top-ρ configuration enters the active set, and take the first such configuration as the reference arm xg . We split the ρ-regret as 
+
+Rρ, + 
+
+> T
+
+≤ R disc  
+
+> T
+
++ Rexpand  
+
+> T
+
++ RMOSS  
+
+> T
+
+,
+
+corresponding to three terms: the cost accumulated before τρ, the cost of expansion rounds after τρ, and the cost of MOSS exploitation rounds after τρ. We bound each in turn. The discovery term is controlled by the conditional coverage assumption, which bounds the tail probability of τρ and gives O(p−1/β ρ ). The expansion term counts rounds that admit a new arm: each such round pulls a single arm, incurring cost at most 1, and there are at most KT such rounds, so this term is O(KT ) = O(T β ). The exploitation term is where the lemma enters: xg remains active and satisfies μxg ≥ μρ,so the regret relative to μρ is bounded by the regret relative to xg , and Lemma 1 gives O(√KT T ) = O(T (1+ β)/2).Finally, since β < 1, the expansion term T β is dominated by the exploitation term T (1+ β)/2, yielding the claimed rate. Let each configuration x ∈ X have an unknown reward distribution supported on [0 , 1] with mean μx. For ρ ∈ (0 , 1) ,let μρ denote the top-ρ threshold and define 
+
+TOP ρ := {x ∈ X : μx ≥ μρ} .
+
+We consider the ρ-regret defined as: 
+
+Rρ, + 
+
+> T
+
+:= 
+
+> T
+
+X
+
+> t=1
+
+(μρ − μxt )+ , (a)+ := max {a, 0} .
+
+Let Mt be the active set after round t, and let Kt = |M t|. The expansion schedule satisfies Kt = Θ( tβ ) with 
+
+β ∈ (0 , 1) ; we use Kt = O(tβ ) and Kt = Ω( tβ ) wherever the corresponding constant is needed. At each round, IMOSS either admits a new arm (an expansion round) or serves an arm already in Mt through the MOSS index (an 
+
+exploitation round). We write Texpand for the set of expansion rounds and TMOSS for the set of exploitation rounds, so that every round t belongs to exactly one of the two. 
+
+Lemma 1 (Allocation regret of growing-active-set MOSS) . Let (Ft)t≥0 be the filtration generated by the rounds up to and including round t, and let (Mt)t≤T be a possibly random, nondecreasing sequence of active sets, with Kt = |M t|
+
+and K = KT . Assume that the arm admitted or pulled at round t is Ft−1-measurable, and that, conditionally on Ft−1,each new observation from arm x is independent, supported on [0 , 1] , and has mean μx.Assume that the active-set schedule satisfies, for some constant λ ≥ 1,
+
+tKt
+
+≤ λ TK ∀t ≤ T
+
+Assume that, at exploitation rounds, an arm can be selected by the allocation policy only after it has received at least one observation. At an exploitation round t, the policy selects 
+
+xt ∈ arg max 
+
+> x∈M t
+
+(bμx(nx(t)) + 
+
+s
+
+1 + α
+
+2max {0, log ( t/ (Ktnx(t))) }
+
+nx(t)
+
+)
+
+Let τ ≤ T be an (Ft)-stopping time and let xg be an Fτ −1-measurable arm, i.e., chosen using only information available up to round τ − 1. Assume that xg is active from time τ onward, and define 
+
+∆xg 
+
+> x
+
+:= ( μxg − μx)+.
+
+20 Then there exists a constant Cα,λ > 0, depending only on α and λ, such that 
+
+E
+
+" TX
+
+> t=τ
+
+∆xg 
+
+> xt
+
+1 {t ∈ T MOSS }
+
+#
+
+≤ Cα,λ 
+
+√KT (6) 
+
+Proof. The argument below is conditional on Fτ −1, which fixes the comparator μxg and hence the gaps ∆x and their ordering. Conditionally on Fτ −1 the per-arm reward streams from time τ onward remain independent with means 
+
+μx by assumption, so the concentration bounds below apply. Since the resulting bound is uniform in Fτ −1, taking expectations at the end gives the stated unconditional bound. Let K := KT . Since the reference arm xg is fixed throughout the proof, we drop the superscript and abbreviate the gap of arm x relative to xg as 
+
+∆x := ∆ xg 
+
+> x
+
+= ( μxg − μx)+.
+
+For each arm x satisfying μx ≥ μxg , we have ∆x = 0 and it does not contribute to the regret. Order the arms in MT
+
+by increasing gap, 
+
+0 = ∆ 1 ≤ ∆2 ≤ · · · ≤ ∆K ,
+
+where the reference arm xg is one of the zero-gap arms. We identify each arm with its rank k in this ordering, so that 
+
+∆k, μk, zk, and Nk(T ) all refer to the k-th arm. Throughout the proof, we write 
+
+log( u) := max {1, log u}
+
+and define the regret under study as 
+
+Rxg (T ) := 
+
+> T
+
+X
+
+> t=τ
+
+∆xt 1 {t ∈ T MOSS } .
+
+Step 1: confidence-radius sandwich. For s ≥ 1, define the MOSS bonus 
+
+bt(s) := 
+
+r 1 + α
+
+2max {0, log ( t/ (Kts)) }
+
+s
+
+so that the MOSS index of (1) evaluated at arm x (the index Bt(x) of Algorithm 2) reads 
+
+Bt(x) := bμx(nx(t)) + bt(nx(t)) ,
+
+where nx(t) is the number of times x has been pulled before round t. We write bμx,s for the empirical mean over the first s pulls of x, so that bμx(nx(t)) = bμx,n x(t). Define two fixed-K envelope bonuses: 
+
+b− 
+
+> t
+
+(s) := 
+
+r 1 + α
+
+2max {0, log ( t/ (Ks )) }
+
+s
+
+and 
+
+b+ 
+
+> T
+
+(s) := 
+
+r 1 + α
+
+2max {0, log ( λT /Ks )}
+
+s
+
+Since Kt ≤ KT = K, we have t/ (Kts) ≥ t/ (Ks ), which implies bt(s) ≥ b− 
+
+> t
+
+(s). Moreover, the regular growth condition gives t/ (Kts) ≤ λT / (Ks ), and therefore bt(s) ≤ b+ 
+
+> T
+
+(s). Thus, for all t ≤ T and all s ≥ 1,
+
+b− 
+
+> t
+
+(s) ≤ bt(s) ≤ b+ 
+
+> T
+
+(s).
+
+Step 2: reduction to arms with non-negligible gaps. Fix k0 ∈ { 1, . . . , K − 1}. We split the regret into pulls of arms with gap at most ∆k0 and pulls of arms with larger gap. Since every pull of an arm with gap at most ∆k0 contributes at most ∆k0 , we decompose the regret as: 
+
+Rxg (T ) = 
+
+> T
+
+X
+
+> t=τ
+
+∆xt 1 {t ∈ T MOSS } 1 {∆xt ≤ ∆k0 } +
+
+> T
+
+X
+
+> t=τ
+
+∆xt 1 {t ∈ T MOSS } 1 {∆xt > ∆k0 }
+
+For an arm with gap ∆k ≥ ∆k0 , we split its per-pull cost into a baseline part ∆k0 and an excess part ∆k − ∆k0 . The baseline part is paid at most once per round, so its total over the horizon is at most T ∆k0 , which yields 
+
+Rxg (T ) ≤ T ∆k0 + X
+
+> k>k 0
+
+(∆ k − ∆k0 )Nk(T ),
+
+where Nk(T ) is the number of exploitation pulls of arm k between τ and T . It remains to bound the expectation of the second term, E[P 
+
+> k>k 0
+
+(∆ k − ∆k0 )Nk(T )] .21 Step 3: decomposition into underestimation and overestimation events. For k > k 0, define the intermediate threshold 
+
+zk := μxg − ∆k
+
+2 = μxg + μk
+
+2
+
+and let zk0 = + ∞. Thus zk lies halfway between the mean of the reference arm xg and the mean of arm k. At any exploitation round t ≥ τ , the reference arm xg is active and has been observed, hence eligible for selection in the argmax. If the policy instead selects a suboptimal arm k > k 0, its index must be at least that of xg :
+
+Bt(k) ≥ Bt(xg ).
+
+Such a pull can be charged to one of two events: (A) the reference arm xg is underestimated i.e., Bt(xg ) ≤ zk
+
+or (B) the selected arm k is overestimated i.e., Bt(k) ≥ zk
+
+Indeed, if (A) fails, then Bt(xg ) ≥ zk, and hence Bt(k) ≥ Bt(xg ) ≥ zk, so (B) holds; thus one of the two events always occurs. We now adapt this decomposition to the growing-active-set index. Let the lower-envelope index of the reference arm be defined as 
+
+B− 
+
+> t
+
+(xg ) := bμxg (nxg (t)) + b− 
+
+> t
+
+(nxg (t)) 
+
+Since b− 
+
+> t
+
+≤ bt, if (A) holds, then 
+
+B− 
+
+> t
+
+(xg ) ≤ Bt(xg ) ≤ zk
+
+Thus underestimation of xg can be controlled through the lower-envelope event. Similarly, let the upper-envelope index of arm k be defined as 
+
+B+ 
+
+> t
+
+(k) := bμk(nk(t)) + b+ 
+
+> T
+
+(nk(t)) 
+
+Since bt ≤ b+ 
+
+> T
+
+, if (B) holds, then 
+
+B+ 
+
+> t
+
+(k) ≥ Bt(k) ≥ zk
+
+Thus, overestimation of arm k can be controlled through the upper-envelope event. To bound the regret, we use the usual peeling over gap thresholds. Suppose arm i > k 0 is selected. Its excess regret above the baseline ∆k0 is 
+
+∆i − ∆k0 =
+
+> i
+
+X
+
+> k=k0+1
+
+(∆ k − ∆k−1)
+
+Hence a pull of arm i is charged across the thresholds k = k0 + 1 , . . . , i . For a fixed threshold k ≤ i, suppose that 
+
+B− 
+
+> t
+
+(xg ) < z k, i.e., that the lower-envelope index of the reference arm xg is below the threshold zk. We charge the threshold increment ∆k − ∆k−1 to an underestimation event of xg . Otherwise, if B− 
+
+> t
+
+(xg ) ≥ zk, then since the algorithm selected arm i we have Bt(i) ≥ Bt(xg ), and it follows that 
+
+Bt(i) ≥ Bt(xg ) ≥ B− 
+
+> t
+
+(xg ) ≥ zk
+
+Since i ≥ k and the gaps are in nondecreasing order, we have ∆i ≥ ∆k, and the corresponding midpoint thresholds satisfy the reverse inequality: 
+
+zi = μxg − ∆i
+
+2 ≤ μxg − ∆k
+
+2 = zk
+
+Hence 
+
+Bt(i) ≥ zk ≥ zi
+
+Since the upper-envelope index dominates the actual index of arm i, i.e., Bt(i) ≤ B+ 
+
+> t
+
+(i), we have 
+
+B+ 
+
+> t
+
+(i) ≥ Bt(i) ≥ zi
+
+22 Thus, for every threshold k ≤ i, the corresponding charge ∆k − ∆k−1 is accounted for in one of two ways: either the lower-envelope index of xg falls below zk, or the selected arm i has upper-envelope index above its own midpoint zi.Therefore all charges from selecting arm i are covered by the underestimation events of xg and the overestimation events of selected suboptimal arms. For r ≥ 0 and k > k 0, define the underestimation event 
+
+Axg 
+
+> r
+
+(k) :=  ∃s ≥ 1 : bμxg ,s + b−
+
+> r+s
+
+(s) < z k
+
+ . (7) Here r counts the pulls of large-gap arms (gap larger than ∆k0 ) that have occurred so far, and s counts the pulls of the reference arm. After r such pulls and s pulls of xg , the calendar time is at least r + s. Since the bonus b− 
+
+> t
+
+(s)
+
+is nondecreasing in t, evaluating it at the lower bound r + s can only shrink it, so the event above contains the true underestimation event at the current time; bounding Axg 
+
+> r
+
+(k) therefore suffices. For r ≥ 1 and i > k 0, define the overestimation event 
+
+Cir :=  bμi,r + b+ 
+
+> T
+
+(r) ≥ zi
+
+ (8) where r is the number of times arm i has been pulled. By the charging argument, we have 
+
+E Rxg (T ) ≤ T ∆k0 + U + V
+
+where 
+
+U := 
+
+> K
+
+X
+
+> k=k0+1
+
+(∆ k − ∆k−1) X
+
+> r≥0
+
+P(Axg 
+
+> r
+
+(k)) 
+
+and 
+
+V := 
+
+> K
+
+X
+
+> i=k0+1
+
+∆i
+
+X
+
+> r≥1
+
+P(Cir )
+
+The term U controls the threshold contributions charged to underestimation of the reference arm xg , while V controls the pulls charged to overestimation of suboptimal arms. In V we charge the full gap ∆i to each overestimation pull rather than the per-threshold increment; this only inflates the bound, since the increments over k0 < k ≤ i sum to at most ∆i, and it keeps the overestimation term simpler. 
+
+Claim 1 (Lemma 4, [14]) . Let erk := ⌈K/ (2∆ 2
+
+> k
+
+)⌉. There exists a constant cα > 0, depending only on α, such that, for every k > k 0,
+
+X
+
+> r> erk
+
+P(Axg 
+
+> r
+
+(k)) ≤ cα
+
+K
+
+∆2
+
+> k
+
+
+
+log 
+
+ 2eT ∆2
+
+> k
+
+K
+
+
+
++ 1 
+
+
+
+(9) In our setting, b− 
+
+> t
+
+coincides with the fixed-K anytime MOSS confidence radius with K = KT , so the claim applies to the lower-envelope underestimation events Axg 
+
+> r
+
+(k) verbatim. 
+
+Step 4: peeling of the two probability sums. Recall erk := ⌈K/ (2∆ 2
+
+> k
+
+)⌉ from Claim 1, and for every k > k 0 define 
+
+er′ 
+
+> k
+
+:= 
+
+
+
+c′
+
+> α
+
+log 
+
+ 2λT ∆2
+
+> k
+> K
+
+
+
+∆2
+
+> k
+
+
+
+where c′ 
+
+> α
+
+> 0 is a sufficiently large constant depending only on α. We bound U + V by A + B + C + D, where 
+
+A := 
+
+> K
+
+X
+
+> k=k0+1
+
+(∆ k − ∆k−1) erk, B := 
+
+> K
+
+X
+
+> k=k0+1
+
+(∆ k − ∆k−1) X
+
+> r> erk
+
+P(Axg 
+
+> r
+
+(k)) ,C := 
+
+> K
+
+X
+
+> k=k0+1
+
+∆k er′
+
+> k
+
+, D := 
+
+> K
+
+X
+
+> k=k0+1
+
+∆k
+
+X
+
+> r> er′
+> k
+
+P(Ckr ).
+
+We now bound these four terms. 23 Bound on A. Since erk ≤ K/ (2∆ 2
+
+> k
+
+) + 1 , we have 
+
+A ≤
+
+> K
+
+X
+
+> k=k0+1
+
+(∆ k − ∆k−1)
+
+ K
+
+2∆ 2
+
+> k
+
++ 1 
+
+
+
+.
+
+By monotonicity of the gaps and a sum-integral comparison, P 
+
+> k>k 0
+
+(∆ k −∆k−1)/∆2 
+
+> k
+
+≤ 2/∆k0+1 , while P 
+
+> k>k 0
+
+(∆ k −
+
+∆k−1) ≤ ∆K ≤ 1 because rewards are supported on [0 , 1] . Therefore A ≤ K/ ∆k0+1 + 1 .
+
+Bound on B. The term B is the underestimation term for the reference arm xg . Since b− 
+
+> t
+
+is exactly the fixed-K
+
+MOSS confidence radius with K = KT , Claim 1 bounds P 
+
+> r> erk
+
+P(Axg 
+
+> r
+
+(k)) by cα(K/ ∆2
+
+> k
+
+)[log(2 eT ∆2
+
+> k
+
+/K ) + 1] , and since λ ≥ 1 we may replace 2eT ∆2
+
+> k
+
+/K by 2eλT ∆2
+
+> k
+
+/K inside the logarithm. Hence 
+
+B ≤ cαK
+
+> K
+
+X
+
+> k=k0+1
+
+(∆ k − ∆k−1)log 
+
+ 2eλT ∆2
+
+> k
+> K
+
+
+
++ 1 ∆2
+
+> k
+
+.
+
+A sum-integral comparison bounds the sum by c [log(2 eλT ∆2
+
+> k0+1
+
+/K ) + 1] /∆k0+1 for a universal constant c > 0,whence 
+
+B ≤ cα
+
+K
+
+∆k0+1 
+
+"
+
+log 2eλT ∆2
+
+> k0+1
+
+K
+
+!
+
++ 1 
+
+#
+
+.
+
+Bound on C. By definition of er′
+
+> k
+
+, and splitting off the +1 ,
+
+C ≤ c′
+
+> αK
+
+X
+
+> k=k0+1
+
+log 
+
+ 2λT ∆2
+
+> k
+> K
+
+
+
+∆k
+
++
+
+> K
+
+X
+
+> k=k0+1
+
+∆k.
+
+Since each ∆k ≤ 1 and the sum has at most K terms, the second sum is at most K. For the first, write δ := ∆ k0+1 and 
+
+r = ∆ k/δ ≥ 1; by the inequality sup r≥1 log( Ar 2)/r ≤ c (log( A) + 1) (valid for a universal constant c and all A > 0), applied with A = 2 λT δ 2/K , each summand is at most (cλ/δ )[log(2 λT δ 2/K ) + 1] for a constant cλ depending only on λ. Therefore, 
+
+C ≤ cα,λ 
+
+K
+
+∆k0+1 
+
+"
+
+log 2λT ∆2
+
+> k0+1
+
+K
+
+!
+
++ 1 
+
+#
+
++ K. 
+
+Bound on D. The term D is the overestimation tail for suboptimal arms. By the definition of er′
+
+> k
+
+, for all r > er′ 
+
+> k
+
+we have b+ 
+
+> T
+
+(r) ≤ ∆k/4, so on the event Ckr the inequality bμk,r + b+ 
+
+> T
+
+(r) ≥ zk = μk + ∆ k/2 forces bμk,r − μk ≥ ∆k/4.Since rewards are supported on [0 , 1] , Hoeffding’s inequality gives P(Ckr ) ≤ exp( −r∆2
+
+> k
+
+/8) . Consequently, 
+
+X
+
+> r> er′
+> k
+
+P(Ckr ) ≤ X
+
+> r≥1
+
+exp 
+
+
+
+− r∆2
+
+> k
+
+8
+
+
+
+≤ c
+
+∆2
+
+> k
+
+for a universal constant c > 0, and therefore D ≤ c P 
+
+> k>k 0
+
+1/∆k ≤ cK/ ∆k0+1 . Combining the bounds on A, B, C, D ,we obtain 
+
+E Rxg (T ) ≤ T ∆k0 + Cα,λ 
+
+K
+
+∆k0+1 
+
+"
+
+log 2eλT ∆2
+
+> k0+1
+
+K
+
+!
+
++ 1 
+
+#
+
++ K
+
+where Cα,λ depends on α and λ.
+
+Step 5: distribution-free conversion. We now convert the gap-dependent bound into a distribution-free bound, with the gaps ordered as 0 = ∆ 1 ≤ · · · ≤ ∆K . If K > T , the trivial bound Rxg (T ) ≤ T ≤ √KT already suffices, so we assume K ≤ T and set ε := pK/T ≤ 1. We distinguish two cases. 
+
+Case 1: all gaps are small. If ∆k ≤ ε for all k, then every exploitation round has regret at most ε, so Rxg (T ) ≤ T ε =
+
+√KT .24 Case 2: at least one gap is larger than ε. Since (∆ k) is nondecreasing with ∆1 = 0 ≤ ε and some gap exceeds ε,there is a last index with gap at most ε; set k0 := max {k : ∆ k ≤ ε}, so that 1 ≤ k0 < K and ∆k0 ≤ ε < ∆k0+1 . The baseline term then satisfies T ∆k0 ≤ T ε = √KT . Writing r := ∆ k0+1 /ε > 1, so that ∆k0+1 = rpK/T , we get 
+
+K/ ∆k0+1 = √KT /r and 2eλT ∆2
+
+> k0+1
+
+/K = 2 eλr 2, hence 
+
+K
+
+∆k0+1 
+
+"
+
+log 2eλT ∆2
+
+> k0+1
+
+K
+
+!
+
++ 1 
+
+#
+
+= √KT log(2 eλr 2) + 1 
+
+r ≤ Hλ
+
+√KT , 
+
+where Hλ := sup r≥1[log(2 eλr 2) + 1] /r is finite (the numerator grows logarithmically in r, the denominator linearly). Plugging this k0 into the gap-dependent bound gives E[Rxg (T )] ≤ Cα,λ 
+
+√KT + K, and since K ≤ T implies 
+
+K ≤ √KT , we obtain E[Rxg (T )] ≤ C′
+
+> α,λ
+
+√KT . Recalling K = KT , we obtain 
+
+E
+
+" TX
+
+> t=τ
+
+∆xg 
+
+> xt
+
+1 {t ∈ T MOSS }
+
+#
+
+≤ C′
+
+> α,λ
+
+pKT T . 
+
+Theorem 2 (Restatement of Theorem 1) . Let ρ ∈ (0 , 1) . We assume that rewards are supported on [0 , 1] and that each proposed configuration lies in TOP ρ with conditional probability at least pρ > 0:
+
+∀t ≥ 1, PPO (xt ∈ TOP ρ | F t−1) ≥ pρ.
+
+Then the expected cumulative ρ-regret of IMOSS satisfies 
+
+E Rρ, +
+
+> T
+
+ = O
+
+
+
+p−1/β ρ + T (1+ β)/2
+
+.
+
+Proof. Let Et be the event that no top-ρ configuration has entered the active set by the end of round t:
+
+Et := {M t ∩ TOP ρ = ∅}
+
+and let 
+
+τρ := inf {t : Mt ∩ TOP ρ̸ = ∅}
+
+be the first round at which a top-ρ configuration is active. We decompose the clipped ρ-regret into three parts: 
+
+Rρ, + 
+
+> T
+
+≤ R disc  
+
+> T
+
++ Rexpand  
+
+> T
+
++ RMOSS 
+
+> T
+
+where Rdisc  
+
+> T
+
+accounts for rounds before a top-ρ arm has been discovered, Rexpand  
+
+> T
+
+accounts for expansion pulls after discovery, and RMOSS  
+
+> T
+
+accounts for exploitation pulls once a top-ρ arm is active. 
+
+Discovery cost. Before discovery every served configuration has mean below μρ, so each round contributes at most 1
+
+and 
+
+Rdisc  
+
+> T
+
+:= 
+
+> T
+
+X
+
+> t=1
+
+(μρ − μxt )+ 1 {t < τ ρ} ≤ 
+
+> T
+
+X
+
+> t=1
+
+1 {t < τ ρ} =
+
+> T
+
+X
+
+> t=1
+
+1(Et),
+
+since {t < τ ρ} = {M t ∩ TOP ρ = ∅} = Et. By the coverage assumption, each of the Kt arms admitted up to round t
+
+lies in TOP ρ with conditional probability at least pρ given the history before its admission. Iterating this over the Kt
+
+admissions, 
+
+P(Et) ≤ (1 − pρ)Kt ≤ exp( −pρKt),
+
+where the last step uses 1 − x ≤ e−x for all x ≥ 0. Since Kt = Ω( tβ ), there is a constant c0 > 0 with Kt ≥ c0tβ for all t ≥ 1, hence P(Et) ≤ exp( −pρc0tβ ). Taking expectations in the display above, 
+
+E Rdisc 
+
+> T
+
+ ≤
+
+> T
+
+X
+
+> t=1
+
+P(Et) ≤
+
+> ∞
+
+X
+
+> t=1
+
+exp( −pρc0tβ ).
+
+The sum is bounded by an integral: 
+
+> ∞
+
+X
+
+> t=1
+
+e−pρc0tβ
+
+≤ 1 + 
+
+Z ∞
+
+> 0
+
+e−pρc0xβ
+
+dx 
+
+25 With the change of variables u = pρc0xβ , we have 
+
+Z ∞
+
+> 0
+
+e−pρc0xβ
+
+dx = Γ(1 /β )
+
+β (pρc0)−1/β = O
+
+
+
+p−1/β ρ
+
+
+
+Therefore, 
+
+E Rdisc 
+
+> T
+
+ ≤ 1 + Γ(1 /β )
+
+β (pρc0)−1/β = O(p−1/β ρ )
+
+Expansion cost after discovery. Recall that Texpand is the set of expansion rounds, and define 
+
+Rexpand  
+
+> T
+
+:= 
+
+> T
+
+X
+
+> t=τρ
+
+(μρ − μxt )+ 1 {t ∈ T expand } .
+
+At every expansion round, the newly admitted configuration is pulled once and may incur regret at most 1. The number of expansion rounds by time T is at most KT , and KT = O(T β ). Therefore, 
+
+E
+
+h
+
+Rexpand 
+
+> T
+
+i
+
+≤ KT = O(T β ).
+
+Exploitation cost after discovery. If τρ > T , no top-ρ arm is discovered within the horizon; the sum defining RMOSS 
+
+> T
+
+below is then empty and RMOSS  
+
+> T
+
+= 0 , so we may assume τρ ≤ T . Let xg be the first top-ρ arm admitted to the active set, i.e., the arm admitted at round τρ. Then μxg ≥ μρ, so for every t,
+
+(μρ − μxt )+ ≤  μxg − μxt
+
+ 
+
+> +
+
+= ∆ xg 
+
+> xt
+
+.
+
+Summing over exploitation rounds after discovery, 
+
+RMOSS  
+
+> T
+
+:= 
+
+> T
+
+X
+
+> t=τρ
+
+(μρ − μxt )+ 1 {t ∈ T MOSS } ≤ 
+
+> T
+
+X
+
+> t=τρ
+
+∆xg 
+
+> xt
+
+1 {t ∈ T MOSS } .
+
+Since Mt and TOP ρ are determined by the admissions and the fixed means, τρ is an (Ft)-stopping time, and xg is the arm admitted at round τρ, hence Fτρ−1-measurable and active for all t ≥ τρ. We may now invoke Lemma 1 with reference arm xg and stopping time τ = τρ: the schedule Kt = Θ( tβ ) satisfies the regular growth condition. Indeed, using Kt = Ω( tβ ) to upper-bound t/K t and KT = O(T β ) to lower-bound T /K T ,
+
+tKt
+
+= O  t1−β  = O  T 1−β  = O
+
+ TKT
+
+
+
+∀t ≤ T, 
+
+where we used that t1−β is nondecreasing in t for β < 1. Hence t/K t ≤ λ T /K T for a constant λ ≥ 1 depending only on the schedule. Lemma 1 therefore gives 
+
+E RMOSS 
+
+> T
+
+ ≤ E
+
+
+
+> T
+
+X
+
+> t=τρ
+
+∆xg 
+
+> xt
+
+1 {t ∈ T MOSS }
+
+ ≤ O
+
+p KT T
+
+
+
+.
+
+Using KT = O  T β , we have 
+
+E RMOSS 
+
+> T
+
+ = O
+
+
+
+T (1+ β)/2
+
+Therefore, combining the three parts, we have 
+
+E Rρ, +
+
+> T
+
+ ≤ O
+
+
+
+p−1/β ρ
+
+
+
++ O(T β ) + O
+
+
+
+T (1+ β)/2
+
+Since β ∈ (0 , 1) , we have T β ≤ T (1+ β)/2. Therefore, 
+
+E Rρ, +
+
+> T
+
+ ≤ O
+
+
+
+p−1/β ρ
+
+
+
++ O
+
+
+
+T (1+ β)/2
+
+26 B Complexity Analysis 
+
+We separate the complexity of the IMOSS policy, which treats the oracle as a black box, from the complexity of a single oracle call, which depends on the instantiation. Throughout, Kt = |M t| denotes the size of the active set, d the number of parameters of X , and c the size of the candidate pool drawn by the oracle. 
+
+IMOSS. After T rounds the active set holds KT = O(T β ) arms, each stored as its configuration together with a running mean and two counters, so memory grows as O(d T β ), sublinear in the horizon. At each round, deciding whether to expand the active set amounts to comparing Kt with tβ , which takes constant time. An exploitation round runs Algorithm 2, which evaluates the index (1) of every arm and returns the maximizer; since the statistics entering the index are maintained incrementally, each evaluation is O(1) and the full pass costs O(Kt) = O(T β ). An expansion round replaces this pass with a single oracle call, and since the oracle is queried only when an arm is admitted, at most 
+
+KT = O(T β ) calls occur over the whole horizon. Writing CO (K) for the cost of one oracle call given an active set of 
+
+K arms, the total running time after T rounds is 
+
+O  T 1+ β + T β CO (T β ) ,
+
+where the first term accounts for the index passes and the second for the oracle calls. For IMOSS-Random, one call draws a single configuration in CO (K) = O(d), so the total is O(T 1+ β ).
+
+TPE oracle. One call to the TPE oracle sorts the active set by the index (1) in O(K log K), fits the Parzen densities ℓ
+
+and g with one kernel per arm and per parameter in O(d K ), samples c candidates from ℓ in O(c d ), and scores each candidate by the ratio ℓ(x)/g (x), each density evaluation summing over O(K) kernels per parameter, for O(c d K ) in total. Hence 
+
+CTPE (K) = O (K (log K + c d )) ,
+
+and the oracle contributes O  T 2β (log T + c d ) to the total running time. Since 2β < 1 + β for β ∈ (0 , 1) , this is asymptotically dominated by the index passes, and IMOSS-TPE runs in O(T 1+ β ) total time for fixed c and d.
+
+Mutate-KL ×PE oracle. One call selects the best arm so far ˆx and refreshes the coordinate bandit in O(K), evaluates the d KL-UCB indices in O(d) with a constant number of bisection steps each, and sorts the active set by the index (1) in O(K log K). It then fits and scores the Parzen pair for the selected coordinate only : O(K) kernels to fit, c candidate draws, and O(K) kernel evaluations per candidate, for O(c K ). Hence 
+
+CKL ×PE (K) = O (K (log K + c) + d) ,
+
+a factor d cheaper in the density work than the TPE oracle, which fits and evaluates one kernel per parameter. The oracle contributes O  T 2β (log T + c) to the total running time and, like the TPE oracle, is asymptotically dominated by the index passes. 
+
+TabPFN oracle. One call to the TabPFN oracle assembles a context table of the K arms and their mean rewards in 
+
+O(d K ), then runs an ensemble of E forward passes ( E = 4 in our implementation) of the pretrained transformer over the table extended with the c candidate rows. With self-attention across the rows of the table, one forward pass costs 
+
+O  (K + c)2, treating the width and depth of the network as constants, so 
+
+CTabPFN (K) = O  E (K + c)2 .
+
+Once K exceeds the pool size c, the oracle contributes O(E T 3β ) to the total running time. For β < 1/2 this remains dominated by the O(T 1+ β ) index passes; at β = 1 /2, the value used in our experiments, both terms are O(T 3/2), up to model-dependent constants; for larger β the oracle calls dominate. In practice the wall-clock cost of a call is governed by the constant factors of the pretrained network rather than by the cost’s asymptotic growth in K, since each call is a single batched forward pass. 
+
+## C Oracle ablation: which oracle, and when? 
+
+We have already introduced three learned admission oracles. A natural question to ask is which oracle should be used on which problem . We compare them, together with the uniform baseline, under the same active-set schedule and MOSS allocation rule, with β = 0 .5 and T = 5000 , over 10 seeds, so that every difference is attributable to the proposal mechanism alone. 27 We arrange the four oracles so that two of the comparisons are controlled, each isolating a single design choice. IMOSS-TPE (Section 4.1.3) and IMOSS-mutate-KL ×PE (Section 4.1.4) rank candidates with the same machinery, a Parzen density ratio ℓ/g fitted on the same MOSS-scored good/bad split, and differ only in where the proposal is drawn: globally, from a density fitted on all good arms, or locally, by changing one coordinate of the best arm so far. Comparing the two therefore isolates the effect of locality . IMOSS-mutate-KL ×PE and IMOSS-TabPFN (Section 4.1.5) are both local, each scoring a pool of single-coordinate mutations of the same best arm so far ˆx, and differ only in what ranks those candidates: a univariate density ratio for the former, a pretrained reward surrogate for the latter. Comparing the two therefore isolates the effect of the surrogate . IMOSS-Random, which neither localizes nor learns, is the floor against which they are compared. We run all four on the three discrete random-forest grids of Section 5.4.1 and on three LCBench instances defined in Section 6.2. Together the two families give six reward landscapes that differ widely in structure. 
+
+C.1 Landscape structure and surrogate accuracy 
+
+Two properties govern how much an oracle can help on a given task: how the reward is spread over the search space, and, for the model-based oracle, how well that reward can be predicted from the arms tried so far. We measure both on the random-forest grids before turning to the comparison itself. 
+
+What makes the three grids differ. The three random-forest grids are the clearest case, since their reward landscapes can be inspected directly. 00.22 0.44 0.78 1
+
+max_features 
+
+> 1235813 20 32 50
+> max_depth
+
+segment 
+
+> 00.22 0.44 0.78 1
+
+max_features 
+
+> 1235813 20 32 50
+
+credit-g 
+
+> 00.22 0.44 0.78 1
+
+max_features 
+
+> 1235813 20 32 50
+
+numerai28.6 
+
+> 0.6 0.8
+> val_acc
+> 0.75 0.80
+> val_acc
+> 0.6 0.7 0.8
+> val_acc
+
+Figure 9: Mean validation accuracy of the three RF tabular benchmarks as a function of max_depth and max_features ,averaged over min_samples_leaf and min_samples_split .0.00 0.25 0.50 0.75 1.00 
+
+Reward   
+
+> 0.00 0.25 0.50 0.75 1.00
+> Fraction of arms
+> segment credit-g numerai28.6
+
+Figure 10: Empirical CDF of arm reward, normal-ized within each task. Figure 9 shows that segment and numerai28.6 behave alike: reward climbs steadily with max_depth and barely responds to 
+
+max_features , so a single hyperparameter essentially decides how good an arm is. credit-g is the exception: its high-reward arms sit in a vertical band at large max_features that only emerges once max_depth is also large, so finding a good arm there means getting two hyperparameters right at once rather than one. In short, on segment and numerai28.6 the quality of an arm is driven almost entirely by max_depth , while on credit-g it depends on max_depth and max_features together, with neither one enough on its own. Figure 10 makes the resulting difference in optimum sparsity ex-plicit. The three empirical CDFs of arm reward differ markedly in shape. For credit-g (orange), the CDF rises steeply from 
+
+x = 0 : arms are concentrated at low reward and only a thin slice near x = 1 is competitive, indicating a sparse optimum. segment 
+
+(blue) exhibits the opposite behavior, with the CDF remaining flat across most of the range and rising only near x = 1 ; the majority of arms therefore attain near-optimal reward, indicating a broad optimum. numerai28.6 (green) lies between these two regimes: its CDF rises faster than segment ’s at low reward but far more slowly than credit-g ’s. This intermediate profile is consistent with the heatmap: the optimum of numerai28.6 is as easy to locate as that of segment , since both 28 are governed primarily by max_depth , but reward is less uniformly high within the good region, making the arms there harder to rank. Together, Figures 9 and 10 give the landscape taxonomy we use below to interpret the oracle comparison: segment is a near-one-dimensional, broad-optimum landscape, whereas credit-g has a sparse, interaction-dependent optimum. The location of numerai28.6 ’s optimum is determined by a single hyperparameter, but rewards are less concentrated within that region. 
+
+How well the surrogate models them. The surrogate axis of the ablation rests on TabPFN ranking candidates better than a univariate density ratio does, which it can only do if its predicted rewards are accurate on these landscapes. We therefore probe its predictions directly, on the same three grids. 0 1000 2000 3000 4000 5000 10 −3          
+
+> 10 −2
+> 10 −1
+> TabPFN Candidate-Pool MSE  segment
+> 01000 2000 3000 4000 5000
+> Iteration
+> 10 −3
+> 10 −2
+> credit-g
+> 01000 2000 3000 4000 5000 10 −3
+> 10 −2
+> numerai28.6
+> IMOSS-TabPFN
+
+Figure 11: Mean squared error of the TabPFN oracle’s reward predictions over its whole candidate pool on the three RF tabular benchmarks (log scale). At every probed exploration step, the oracle scores a pool of 100 candidate configurations; each point reports the MSE between the predicted and true mean rewards of all candidates in that pool, not only the proposed configuration. Curves show means over 30 paired runs, and shaded bands show one standard deviation across runs. Figure 11 reports how accurately the TabPFN oracle predicts rewards across its entire candidate pool as the run progresses. On segment and credit-g , the pool-wide MSE drops by roughly an order of magnitude over the first 
+
+2000 iterations as evaluated arms accumulate in the in-context table, showing that the oracle’s reward model improves over the whole candidate space and not merely on the configurations it proposes. On numerai28.6 , the error stays flat at a low level: most arms have nearly indistinguishable mean rewards, so the pool-wide error is dominated by the residual spread among near-tied arms rather than by ranking improvements, consistent with the landscape analysis above. 0 1000 2000 3000 4000 5000 10 −5           
+
+> 10 −4
+> 10 −3
+> 10 −2
+> 10 −1
+> TabPFN Suggested-Config MSE  segment
+> 01000 2000 3000 4000 5000
+> Iteration
+> 10 −4
+> 10 −3
+> 10 −2
+> 10 −1
+> credit-g
+> 01000 2000 3000 4000 5000 10 −3
+> 10 −2
+> 10 −1numerai28.6
+> IMOSS-TabPFN
+
+Figure 12: Mean squared error of the TabPFN oracle’s reward prediction on the configuration it proposes, on the three RF tabular benchmarks (log scale). At every probed exploration step, each point reports the squared error between the predicted mean reward of the proposed configuration and its true mean reward. Curves show means over 30 paired runs, and shaded bands show one standard deviation across runs. Figure 12 complements the pool-wide view by measuring accuracy exactly where the oracle acts, on the configuration it proposes. This error falls by one to two orders of magnitude on all three tasks and ends well below the pool-wide MSE, 29 since proposals concentrate in high-reward regions that are densely represented in the in-context table. Notably, it keeps decreasing on numerai28.6 even though the pool-wide error stays flat there: the oracle becomes increasingly accurate on the arms it exploits, while the pool-wide error remains dominated by the residual spread of the near-tied bulk. 
+
+C.2 Comparing the oracles A decomposition of oracle quality. Let MT be the set of arms admitted up to round T , nx the number of pulls arm x
+
+receives, so that P 
+
+> x∈M T
+
+nx = T . Recall that RT = P 
+
+> x∈M T
+
+nx(p⋆ − μx), and that p⋆ − μx = ( p⋆ − μbest ) + ( μbest −
+
+μx) where μbest = max x∈M T μx is the best true mean the oracle admitted. The online average regret is decomposed as 
+
+RT
+
+T =  p⋆ − μbest 
+
+| {z }
+
+> best-arm gap
+
++ 1
+
+T
+
+X
+
+> x∈M T
+
+nx
+
+ μbest − μx
+
+| {z }
+
+> cost of the other arms
+
+. (10) The first term depends only on the oracle: it asks whether the set contains a good configuration at all, and no allocation rule can reduce it. The second asks how much is lost on everything else in the set, and is what the policy pays for every pull it spends away from the best arm it has. An oracle can therefore lower regret in two ways: by admitting a better best arm, or by making the rest of the set cheaper to pull. The two controlled comparisons above separate them. mutate-KLxTPE TPE Random TabPFN 0.6 0.8 1.0 
+
+> True quality of arms opened (the pool MOSS exploits)
+> p*
+
+segment  
+
+> mutate-KLxTPE TPE Random TabPFN 0.7 0.8 0.9 p*
+
+credit-g 
+
+> mutate-KLxTPE TPE Random TabPFN 0.6 0.7 0.8
+> p*
+
+numerai28.6   
+
+> mutate-KLxTPE TPE Random TabPFN 0.00 0.02 0.04
+> Avg. regret per pull (= cumulative regret / T)
+> 93% 99% 95% 100%
+> mutate-KLxTPE TPE Random TabPFN 0.000 0.025 0.050 0.075
+> 95% 96% 90% 96%
+> mutate-KLxTPE TPE Random TabPFN 0.00 0.02 0.04
+> 98% 98% 98% 98%
+> best-arm gap cost of the other arms
+
+Figure 13: Oracle ablation on the three discrete random-forest grids (Section 5.4.1). Top: distribution of the true mean rewards of the arms each oracle admits, pooled over 10 seeds (horizontal bar: mean; dashed line: p⋆); this is the pool the allocation rule must exploit. Bottom: average per-pull regret split as in Equation (10) into the best-arm gap (solid) and the cost of the other arms (hatched); the annotation gives the share of the second. On the grids every oracle finds a configuration close to the optimum, so the best-arm gap is negligible and nearly all the regret is what the policy spends on the rest of the set. 
+
+What the comparison shows. All three learned oracles accumulate less regret than uniform admission, on every task. On four of the six tasks almost all the regret is the cost of the other arms: the set nearly always holds a configuration close to the optimum, and what is expensive is everything else the policy pulls along the way. On Fashion-MNIST the two terms are of comparable size, and only on higgs is it the other way round, with no oracle finding a configuration near the optimum. The two local oracles behave similarly: both lower the cost of the other arms below what the global TPE proposal incurs. Neither improves the best-arm gap, and mutate-KL ×PE makes it slightly worse. The two are statistically indistinguishable except on APSFailure , where mutate-KL ×PE wins. 30 mutate-KLxTPE TPE Random TabPFN 0.4 0.6 0.8 
+
+> True quality of arms opened (the pool MOSS exploits)
+> p*
+
+higgs  
+
+> mutate-KLxTPE TPE Random TabPFN 0.8 0.9 1.0 p*
+
+APSFailure 
+
+> mutate-KLxTPE TPE Random TabPFN 0.25 0.50 0.75
+> p*
+
+Fashion-MNIST     
+
+> mutate-KLxTPE TPE Random TabPFN 0.0 0.1 0.2
+> Avg. regret per pull (= cumulative regret / T)
+> 26% 32% 30% 29%
+> mutate-KLxTPE TPE Random TabPFN 0.00 0.01 0.02 0.03
+> 78% 90% 90% 90%
+> mutate-KLxTPE TPE Random TabPFN 0.00 0.05 0.10
+> 50% 64% 59% 49%
+> best-arm gap cost of the other arms
+
+Figure 14: Oracle ablation on the three mixed continuous–discrete LCBench instances (Table 2). Unlike on the grids, the split between the two terms varies widely across instances. On APSFailure , the cost of the other arms again accounts for nearly all the regret, whereas higgs is the one task where the best-arm gap dominates: no oracle reaches the optimum, and only the surrogate narrows that gap. Table 3: Cumulative regret RT at T = 5000 , mean ± std over 10 seeds; lower is better. Bold marks the lowest mean per row, which need not be a significant advantage: the difference between the two local oracles, KL ×PE and TabPFN, is significant only on APSFailure , in favor of KL ×PE. Significance is discussed per comparison in the text. 
+
+Task Uniform TPE KL ×PE TabPFN 
+
+Discrete grids (random forest) 
+
+segment 226 ± 21 171 ± 16 103 ± 37 113 ± 26 
+
+credit-g 348 ± 71 249 ± 24 201 ± 56 235 ± 112 
+
+numerai28.6 216 ± 31 122 ± 21 101 ± 32 83 ± 20 
+
+Mixed spaces (LCBench) 
+
+higgs 1073 ± 124 1023 ± 123 993 ± 159 829 ± 306 
+
+APSFailure 149 ± 13 105 ± 20 79 ± 25 114 ± 17 
+
+Fashion-MNIST 500 ± 45 396 ± 43 371 ± 153 343 ± 113 
+
+Why proposing locally helps. The cost of the other arms factors into two quantities: how often a pull lands somewhere other than the best arm admitted so far, and how much it costs when it does (Table 4). The first quantity is close to one on almost every benchmark, so the policy almost never stays on the best arm, and this is more pronounced for the local oracles, whose sets are packed with arms of nearly equal value that MOSS cannot tell apart within the budget. The separation between oracles is therefore carried by the second quantity. Every arm a local oracle adds is one parameter away from a good configuration found so far, so the policy wanders among arms that are all nearly as good as the best one, and the cost of wandering is small. A global proposal keeps adding arms from all over the space, where the same wandering is expensive. The local oracle does not make the policy a better chooser, but it makes the choice matter less. The same property also reveals the downside of locality: a one-parameter change cannot take the search far from where it already is. On five of the six tasks, this rarely matters, because good configurations are common and one is always close by. On higgs it does: the good region needs several parameters set correctly at once, so one-at-a-time steps never arrive and the best-arm gap stays large however cheap the other arms become. That is the one task where TabPFN, which ranks candidates with a model of the whole reward surface, admits the best arm of the four oracles. 31 Table 4: Where the cost of the other arms comes from. For each task and oracle, the fraction of pulls that do not land on the best arm admitted so far, and the mean amount by which such a pull falls short of it. The policy is off the best arm for the great majority of pulls under every oracle, and most of all under the two local ones, which lose the least when it happens.                                                          
+
+> Pulls not on the best arm Mean loss per such pull
+> Task Unif. TPE KL ×PE TabPFN Unif. TPE KL ×PE TabPFN
+> Discrete grids (random forest)
+> segment 0.91 0.93 0.98 0.96 0.048 0.036 0.020 0.023
+> credit-g 0.71 0.90 0.93 0.97 0.097 0.057 0.042 0.046
+> numerai28.6 0.91 0.97 0.97 0.96 0.048 0.025 0.020 0.017
+> Mixed spaces (LCBench)
+> higgs 0.79 0.84 0.99 0.99 0.088 0.081 0.052 0.052
+> APSFailure 0.97 0.98 0.98 0.98 0.027 0.019 0.013 0.021
+> Fashion-MNIST 0.88 0.90 0.98 0.99 0.069 0.057 0.039 0.034
+
+Practical guidance. We recommend mutating the current best configuration, and resorting to a surrogate only when the optimum is expected to be difficult to reach. On most of our tasks the model-free local oracle matches the transformer-based one while fitting a single one-dimensional density per proposal rather than performing a forward pass through a pretrained network. The surrogate justifies its cost only where good configurations are rare and require several parameters to be set correctly at once. The global TPE proposal needs no metric on the space. It models only the density ratio between promising and unpromising configurations rather than the full reward surface, and proposes over a continuum without a pre-declared grid. Mutating the current best arm instead lowers cumulative regret on every task in Table 3, so the global proposal is best read as the metric-free baseline that the mutation oracle improves on. 
+
+## D Additional Experimental Details 
+
+D.1 HotpotQA: Search Space and Generation Settings 
+
+The hyperparameter search space, including OpenRouter model identifiers, is summarized in Table 5. Retrieval uses dense embedding search with all-MiniLM-L6-v2 over the full corpus. We use three system prompt templates, shown side by side below. few_shot adds examples to the rules; zero_shot keeps the rules but drops the examples; and 
+
+naive keeps only a one-line instruction. At inference time, the selected template is sent as the system message. The user message combines the top-k retrieved passages and the HotpotQA query with the prefixes Context: and Question: , respectively. Each API call specifies 
+
+model and temperature ; all other generation parameters ( max_tokens , top_p , seed , stop ) are left unset and default to the provider’s own settings. No provider is pinned on OpenRouter, so requests are served according to OpenRouter’s default routing and fallback policy for the selected model. Failed calls are retried up to 20 times with random exponential backoff (base 2 s, capped at 300 s) for rate-limit, provider-overload, and service-unavailable errors; calls failing with any other error type are not retried, and the error propagates as a failure. Results for repeated 
+
+(question, configuration) pairs are served from a local cache, so re-running or resuming an experiment does not re-issue identical API calls. 32 Table 5: Hyperparameter search space for the HotpotQA RAG pipeline. Generation models are accessed through OpenRouter. 
+
+Parameter Type Domain OpenRouter ID 
+
+top_k Integer {1, . . . , 10 }
+
+temperature Continuous [0 , 1] 
+
+prompt_template Categorical few_shot zero_shot naive model Categorical Qwen 3.5 Flash qwen/qwen3.5-flash-02-23 
+
+Ling 2.6 Flash inclusionai/ling-2.6-flash 
+
+DeepSeek V4 Flash deepseek/deepseek-v4-flash 
+
+Granite 4.1 8B ibm-granite/granite-4.1-8b 
+
+HY3 Preview tencent/hy3-preview 
+
+Llama 3.2 1B Instruct meta-llama/llama-3.2-1b-instruct few_shot 
+
+You are a precise question answering assistant. Answer using only the provided context: Rules: - Answer in as few words as possible. - Never explain or add context -just the answer. - For yes/no questions answer with only "yes" or "no". - If the context does not contain the answer, output "unknown". Examples: Q: What is the capital of France? Context: The capital of France is Paris. A: Paris Q: What year was the Eiffel Tower built? Context: The Eiffel Tower was built in 1889. A: 1889 Q: Is Berlin the capital of Germany? Context: The capital of Germany is Berlin. A: yes 
+
+zero_shot 
+
+You are a precise question answering assistant. Answer using only the provided context: Rules: - Answer in as few words as possible. - Never explain or add context -just the answer. - For yes/no questions answer with only "yes" or "no". - If the context does not contain the answer, output "unknown". 
+
+naive 
+
+Answer the question using the provided context. 
+
+33

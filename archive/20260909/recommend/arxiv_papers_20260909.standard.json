@@ -1,0 +1,200 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-09T21:51:50.106312+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 11,
+    "deep_divecandidates": 2,
+    "deep_cap": 16,
+    "deep_selected": 2,
+    "quick_candidates": 2,
+    "quick_skim_target": 21,
+    "quick_selected": 2
+  },
+  "deep_dive": [
+    {
+      "id": "2609.01335v2",
+      "source": "arxiv",
+      "title": "Bandits in Prod: Hyperparameter Optimization at Inference Time",
+      "abstract": "Many production systems can assess a configuration only by using it on live requests and observing noisy feedback. Modern agentic systems are a prominent example, with inference-time choices such as model selection, retrieval depth, prompting strategy, and decoding temperature, yet often with no representative validation data. We formalize this setting as Online Hyperparameter Optimization (OHPO) and cast it as an infinitely many-armed bandit over mixed and conditional search spaces. We introduce IMABO, a general framework that combines any bandit policy for choosing among already sampled configurations with any oracle for proposing new ones. We instantiate it with IMOSS, a restart-free anytime policy whose active set grows as $t^β$, and prove an expected cumulative quantile-regret bound of $O(p_ρ^{-1/β} + T^{(1+β)/2})$, where $β\\in(0,1)$ controls active-set growth and $p_ρ$ lower-bounds the probability that a proposed configuration falls in the top-$ρ$ fraction of the search space. We combine IMOSS with three practical oracles: a Tree-structured Parzen Estimator, an incumbent-mutation oracle driven by a per-coordinate bandit, and a pretrained tabular foundation model, all three improving over the uniform random oracle baseline. IMABO outperforms all baselines in terms of regret across diverse OHPO settings, from tuning classical machine-learning models to configuring LLM-based agents. Our implementation is available at https://github.com/Tiime-Software/IMABO.",
+      "authors": [
+        "Louis Abraham",
+        "Tuan-Anh Nguyen",
+        "Nicolas Devatine"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-09-01T14:48:08+00:00",
+      "link": "https://arxiv.org/pdf/2609.01335v2",
+      "tags": [
+        "keyword:GNN-SAT",
+        "keyword:LLM-SAT",
+        "keyword:SAT-RL",
+        "keyword:SAT-formal",
+        "keyword:branching",
+        "keyword:cdcl-sat",
+        "keyword:inproc-sat",
+        "keyword:neuro-cdcl",
+        "keyword:sat-config",
+        "keyword:sat-preproc",
+        "query:GNN-SAT",
+        "query:LLM-SAT",
+        "query:SAT-RL",
+        "query:SAT-formal",
+        "query:branching",
+        "query:cdcl-sat",
+        "query:inproc-sat",
+        "query:neuro-cdcl",
+        "query:sat-config",
+        "query:sat-preproc"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Online hyperparameter optimization formalized as infinitely many-armed bandits; framework reusable for automatic SAT solver parameter configuration",
+      "llm_evidence_cn": "将在线超参数优化建模为无限臂老虎机，其框架可用于SAT求解器参数自动配置",
+      "llm_evidence": "将在线超参数优化建模为无限臂老虎机，其框架可用于SAT求解器参数自动配置",
+      "canonical_evidence": "将在线超参数优化建模为无限臂老虎机，其框架可用于SAT求解器参数自动配置",
+      "llm_tldr_en": "Formalizes configuration tuning without offline validation as online hyperparameter optimization (OHPO) over infinitely many-armed bandits, introducing IMABO to decouple selecting and proposing configurations and IMOSS with growing active set and regret bound. Transferable to automatic SAT solver parameter tuning and online algorithm selection.",
+      "llm_tldr_cn": "许多生产系统无法离线验证参数，只能在线上请求中试错，本文称之为在线超参数优化。作者将它建模为无限臂老虎机，并设计通用框架IMABO，把选择已有配置和提议新配置两种决策解耦。实例化策略IMOSS不需要重启，随t^β扩大活动集，作者证明了累计遗憾上界并给出实验验证。该框架为SAT求解器在运行时的自动参数配置与算法选择提供了可直接借鉴的在线学习方案。",
+      "llm_tldr": "许多生产系统无法离线验证参数，只能在线上请求中试错，本文称之为在线超参数优化。作者将它建模为无限臂老虎机，并设计通用框架IMABO，把选择已有配置和提议新配置两种决策解耦。实例化策略IMOSS不需要重启，随t^β扩大活动集，作者证明了累计遗憾上界并给出实验验证。该框架为SAT求解器在运行时的自动参数配置与算法选择提供了可直接借鉴的在线学习方案。",
+      "llm_tags": [
+        "query:sat-config"
+      ],
+      "matched_query_tag": "query:sat-config",
+      "matched_query_text": "algorithm configuration",
+      "matched_requirement_id": "req-12",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.04686v1",
+      "source": "arxiv",
+      "title": "Small graphs without power-of-two cycles: a lower bound of 24, a correction to a construction of Exoo, and explicit bounds for f(k)",
+      "abstract": "The Erdos-Gyarfas conjecture states that every graph with minimum degree at least 3 contains a cycle whose length is a power of two. We prove by a SAT-based exhaustive search, certified by DRAT proofs, that every graph with minimum degree at least 3 on at most 23 vertices contains a cycle of length 4 or a cycle of length 8; consequently any counterexample has at least 24 vertices, improving the previously published bound of 16, and the smallest graph of minimum degree 3 with no 4-cycle and no 8-cycle has exactly 24 vertices. We show that the lemma underlying Exoo's 450-vertex construction for the bound f(5) at most 450 is false: the Tutte-Coxeter graph contains 8-cycles alternating between outer and chord edges, and the graph as specified contains 32-cycles. We repair the construction and verify the corrected graph, so the bound stands. We also give an exact window calculus for vertex-replacement constructions, prove that f(k) is at most 15 times the order of the smallest known cubic graph of girth 2 to the power (k-2) plus 1 for all k at least 4 (in particular f(6) is at most 32640, the first bound for f(6)), and show that Exoo's 78-vertex witness for f(4) at most 78 is optimal among gadget designs on bases with at most 12 vertices. All graphs, scripts and certificates are archived at doi:10.5281/zenodo.22180583.",
+      "authors": [
+        "Daniel Garcia"
+      ],
+      "primary_category": "math.CO",
+      "categories": [
+        "math.CO"
+      ],
+      "published": "2026-09-04T03:21:36+00:00",
+      "link": "https://arxiv.org/pdf/2609.04686v1",
+      "tags": [
+        "keyword:GNN-SAT",
+        "keyword:sat-proof"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Uses SAT-based exhaustive search and DRAT proof certificates",
+      "llm_evidence_cn": "使用基于SAT的穷举搜索并附带DRAT证明认证",
+      "llm_evidence": "使用基于SAT的穷举搜索并附带DRAT证明认证",
+      "canonical_evidence": "使用基于SAT的穷举搜索并附带DRAT证明认证",
+      "llm_tldr_en": "The paper proves a new lower bound of 24 vertices for counterexamples to the Erdos-Gyarfas conjecture via SAT-based exhaustive search whose results are certified by DRAT proofs, corrects an earlier construction, and gives explicit bounds for f(k).",
+      "llm_tldr_cn": "针对Erdos-Gyarfas猜想，论文用基于SAT的穷举搜索证明所有至多23个顶点的最小度为3的图必含4环或8环，从而将反例下界从16提高到24，并用DRAT证明保证搜索结果的正确性。另外指出Exoo的450顶点构造所依赖的引理不成立，同时给出f(k)的显式上下界。这项工作展示了现代SAT求解器与机器可检验证明在离散数学严格证明中的价值。",
+      "llm_tldr": "针对Erdos-Gyarfas猜想，论文用基于SAT的穷举搜索证明所有至多23个顶点的最小度为3的图必含4环或8环，从而将反例下界从16提高到24，并用DRAT证明保证搜索结果的正确性。另外指出Exoo的450顶点构造所依赖的引理不成立，同时给出f(k)的显式上下界。这项工作展示了现代SAT求解器与机器可检验证明在离散数学严格证明中的价值。",
+      "llm_tags": [
+        "query:sat-proof"
+      ],
+      "matched_query_tag": "query:sat-proof",
+      "matched_query_text": "DRAT proof",
+      "matched_requirement_id": "req-102",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.07456v1",
+      "source": "arxiv",
+      "title": "Graph neural networks and the energetic cavity method for combinatorial optimization",
+      "abstract": "We study the use of graph neural networks (GNNs) for finding approximate ground states of Ising models. Efficiently finding these ground states is of broad significance because many combinatorial optimization problems can be formulated as an Ising model with the appropriate choice of couplings and fields. Exactly solving these problems is hard but there are many good heuristic methods. A lineage of these heuristics build from mean-field approximations: one approach uses the leading eigenvector of an appropriately defined matrix, another is the min-sum algorithm, also known as the energetic cavity method. Without modification, GNNs perform worse than both of these methods. We consider small modifications to the GNN to incorporate these heuristics and find that this considerably improves performance. While the modified approach is competitive against other deep-learning approaches, we still find that simulated annealing is reliably at least as good as deep learning methods for the same computational cost.",
+      "authors": [
+        "Joe Bacchus George",
+        "George T. Cantwell"
+      ],
+      "primary_category": "cond-mat.dis-nn",
+      "categories": [
+        "cond-mat.dis-nn",
+        "cs.LG"
+      ],
+      "published": "2026-09-07T13:07:02+00:00",
+      "link": "https://arxiv.org/pdf/2609.07456v1",
+      "tags": [
+        "keyword:GNN-SAT",
+        "keyword:LLM-SAT",
+        "keyword:SAT-RL",
+        "keyword:SAT-formal",
+        "keyword:branching",
+        "keyword:cdcl-sat",
+        "keyword:neuro-cdcl",
+        "keyword:sat-config",
+        "query:GNN-SAT",
+        "query:LLM-SAT",
+        "query:SAT-RL",
+        "query:branching",
+        "query:cdcl-sat",
+        "query:neuro-cdcl",
+        "query:sat-config",
+        "query:sat-preproc"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "GNNs with energetic cavity/min-sum message-passing priors for Ising combinatorial optimization; transferable to GNN-guided SAT solving",
+      "llm_evidence_cn": "融合能量空腔/最小和信息传递的GNN求解Ising组合优化，可为GNN增强SAT求解提供方法借鉴",
+      "llm_evidence": "融合能量空腔/最小和信息传递的GNN求解Ising组合优化，可为GNN增强SAT求解提供方法借鉴",
+      "canonical_evidence": "融合能量空腔/最小和信息传递的GNN求解Ising组合优化，可为GNN增强SAT求解提供方法借鉴",
+      "llm_tldr_en": "GNNs underperform classic heuristics on Ising ground-state search; injecting energetic cavity / min-sum message-passing priors into the GNN substantially improves accuracy and approaches leading heuristics. Provides a transferable recipe for GNN-guided combinatorial optimization, relevant to SAT.",
+      "llm_tldr_cn": "组合优化问题的求解常依赖Ising模型基态搜索，而纯图神经网络在该任务上弱于经典启发式。本文提出利用能量空腔法/最小和消息传递这一经典启发式来修正GNN，使模型继承领域先验。实验表明，经过小幅修改的GNN性能超过原版GNN，并能接近或媲美基于特征向量与min-sum的启发式方法。该工作为将传统组合优化算法与GNN结合提供了方法论，可启发SAT等约束满足问题的神经求解器设计。",
+      "llm_tldr": "组合优化问题的求解常依赖Ising模型基态搜索，而纯图神经网络在该任务上弱于经典启发式。本文提出利用能量空腔法/最小和消息传递这一经典启发式来修正GNN，使模型继承领域先验。实验表明，经过小幅修改的GNN性能超过原版GNN，并能接近或媲美基于特征向量与min-sum的启发式方法。该工作为将传统组合优化算法与GNN结合提供了方法论，可启发SAT等约束满足问题的神经求解器设计。",
+      "llm_tags": [
+        "query:gnn-sat:composite"
+      ],
+      "matched_query_tag": "query:gnn-sat:composite",
+      "matched_query_text": "Papers central to 请帮我查找图神经网络增强SAT求解器的论文, especially work that connects or combines: message passing SAT; SAT problem representation; graph-based SAT solving; GNN for SAT; graph neural network for boolean satisfiability; neural network based SAT solving methods; Learning SAT representations using graph neural networks; How are graph neural networks used to enhance SAT solvers?; GNN based approach for solving the boolean satisfiability problem; Graph neural network approaches for Boolean satisfiability problems.",
+      "matched_requirement_id": "req-composite-gnn-sat",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.03754v1",
+      "source": "arxiv",
+      "title": "Automated Priority Rule Design for the Resource-Constrained Project Scheduling Problem: A Large Language Model-Guided Population-Based Search",
+      "abstract": "The objective of the resource-constrained project scheduling problem (RCPSP) is to minimize makespan while satisfying precedence and renewable-resource constraints. Priority-rule heuristics construct feasible schedules with low computational cost and explicit decision logic, making them widely used in practice and an attractive alternative to more computationally intensive methods. However, no traditional rule performs consistently well across projects, and researchers have therefore investigated automated priority-rule design. Genetic programming (GP) hyper-heuristics have been the predominant approach to this task, but evolving a high-performing rule may require evaluating many candidate rules on the training projects. Recent advances in large language models (LLMs) make it possible to generate and iteratively revise priority rules using performance feedback.   This paper presents an LLM-guided population-based framework for automated priority-rule design. During the offline search, an LLM generates and revises candidate rules, while schedule quality on training projects determines candidate fitness and guides subsequent revisions. At the end of the search, the best rule is returned and applied directly to unseen projects without further search or LLM calls.   Experiments show that the LLM-designed rules outperform traditional single rules across the test sets and outperform GP-designed rules obtained under comparable search effort, while remaining competitive with rules obtained from a substantially larger GP search. On large projects, selected LLM-designed rules outperform all considered traditional rules and two genetic algorithm configurations on highly parallel projects. An ablation study examines how changes to the main search components affect performance, while rule analyses describe the structure and decision behavior of the LLM-designed rules.",
+      "authors": [
+        "Jingyu Luo",
+        "Mario Vanhoucke",
+        "José Coelho"
+      ],
+      "primary_category": "math.OC",
+      "categories": [
+        "math.OC"
+      ],
+      "published": "2026-09-03T12:24:55+00:00",
+      "link": "https://arxiv.org/pdf/2609.03754v1",
+      "tags": [
+        "keyword:LLM-SAT",
+        "keyword:SAT-RL",
+        "keyword:branching",
+        "keyword:cdcl-sat",
+        "keyword:sat-config",
+        "query:branching",
+        "query:cdcl-sat"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "LLM-guided population-based search for automated heuristic rule design, transferable to LLM-based SAT solver heuristic generation",
+      "llm_evidence_cn": "用大语言模型引导群体搜索自动设计求解启发式规则，方法可迁移到LLM自动调优SAT求解器启发式",
+      "llm_evidence": "用大语言模型引导群体搜索自动设计求解启发式规则，方法可迁移到LLM自动调优SAT求解器启发式",
+      "canonical_evidence": "用大语言模型引导群体搜索自动设计求解启发式规则，方法可迁移到LLM自动调优SAT求解器启发式",
+      "llm_tldr_en": "Automates RCPSP priority-rule design via LLM-guided population search; method is a transferable template for LLM-generated SAT branching heuristics, though no SAT evaluation is included.",
+      "llm_tldr_cn": "该论文面向资源受限项目调度问题，提出用大语言模型引导的群体搜索来自动设计优先级规则。其核心动机是克服传统遗传规划超启发式在进化高性能规则时需要大量评估的瓶颈，并生成显式可解释的规则。所提出的生成-评估循环将LLM的规则构造能力与群体搜索的反馈优化相结合。尽管验证场景是调度而非SAT求解，这一自动生成启发式规则的工作流对基于LLM设计SAT求解器启发式具有直接的方法借鉴价值。",
+      "llm_tldr": "该论文面向资源受限项目调度问题，提出用大语言模型引导的群体搜索来自动设计优先级规则。其核心动机是克服传统遗传规划超启发式在进化高性能规则时需要大量评估的瓶颈，并生成显式可解释的规则。所提出的生成-评估循环将LLM的规则构造能力与群体搜索的反馈优化相结合。尽管验证场景是调度而非SAT求解，这一自动生成启发式规则的工作流对基于LLM设计SAT求解器启发式具有直接的方法借鉴价值。",
+      "llm_tags": [
+        "query:llm-sat:composite"
+      ],
+      "matched_query_tag": "query:llm-sat:composite",
+      "matched_query_text": "Papers central to 请帮我查找大语言模型辅助SAT求解器设计论文，包括LLM自动优化SAT solver代码、LLM生成heuristic、agent-based SAT solver engineering, especially work that connects or combines: using large language models to design SAT solver algorithms; automatic source code generation for SAT solvers; learning to generate heuristics for Boolean SAT solving; multi-agent approaches to SAT solver strategy engineering; large language model for optimizing solver code automatically; automated design of SAT solving algorithms; LLM based automatic optimization of SAT solver code; papers on using large language models to automatically improve SAT solver performance; research on LLM generated heuristics for Boolean satisfiability; agent based frameworks for SAT solver development and tuning.",
+      "matched_requirement_id": "req-composite-llm-sat",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

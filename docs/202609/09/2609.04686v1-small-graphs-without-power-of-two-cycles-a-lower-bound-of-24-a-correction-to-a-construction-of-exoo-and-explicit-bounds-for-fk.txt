@@ -1,0 +1,237 @@
+Title: Small graphs without power-of-two cycles: a lower bound of 24, a correction to a construction of Exoo, and explicit bounds for f(k)
+
+URL Source: https://arxiv.org/pdf/2609.04686v1
+
+Published Time: Mon, 07 Sep 2026 00:27:20 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# Small graphs without power-of-two cycles: a lower bound of 24, a correction to a construction of Exoo, and explicit bounds for f (k)
+
+Daniel Garcia ∗
+
+September 2026 
+
+Abstract 
+
+The Erd˝ os–Gy´ arf´ as conjecture states that every graph with minimum degree at least 3 contains a cycle whose length is a power of two. We prove by a SAT-based exhaustive search that every graph with minimum degree at least 3 on at most 23 vertices contains a cycle of length 4 or a cycle of length 8; consequently any counterexample has at least 24 vertices, improving the previously published bound of 16, and the smallest graph of minimum degree 3 with no 4-cycle and no 8-cycle has exactly 24 vertices. We show that the lemma underlying Exoo’s 450-vertex cubic graph with no cycles of length 4 , 8, 16 , 32 is false—the Tutte–Coxeter graph contains 8-cycles alternating between outer and chord edges—so that the graph as specified contains 32-cycles; we repair the construction and verify the corrected graph, so that f (5) ≤ 450 stands. We introduce an exact “window calculus” for vertex-replacement constructions and use it to prove f (k) ≤ 15 n3(2 k−2 + 1) for all k ≥ 4, where n3(g) is the order of the smallest known cubic graph of girth g; in particular f (6) ≤ 32 640, the first bound for 
+
+f (6). The same calculus shows that Exoo’s 78-vertex witness for f (4) ≤ 78 is optimal among all gadget designs on bases with at most 12 vertices, and yields a counting obstruction that rules out bases of girth at most 13 for the H15 construction. All graphs are provided, and every level of the exhaustive search is certified by a DRAT proof checked with drat-trim .
+
+# 1 Introduction 
+
+For a graph G let C(G) denote its set of cycle lengths. Erd˝ os and Gy´ arf´ as conjectured in 1995 that C(G) ∩ { 4, 8, 16 , . . . }̸ = ∅ for every graph G of minimum degree at least 3 [2]. The conjecture is open; it is listed as Problem 64 on erdosproblems.com . Liu and Montgomery [5] proved that a power-of-two cycle is forced once the average degree exceeds an absolute (uncomputed) constant, which refutes the stronger belief of Erd˝ os and Gy´ arf´ as that no minimum degree suffices. Below that constant, including the cubic case, nothing is known beyond special graph classes and finite searches. Following Exoo [3], let f (k) denote the order of a smallest cubic graph with no cycle of length 2m for any m ≤ k. Then f (2) = 10 (the Petersen graph) and f (3) = 24 (Markstr¨ om [6]); Exoo gave 54 ≤ f (4) ≤ 78, the lower bound being an unpublished computation of Markstr¨ om, and 
+
+> ∗
+
+Independent researcher. Computations were carried out with the assistance of an AI system (Claude); all results were independently re-verified as described in Section 8. 
+
+1arXiv:2609.04686v1 [math.CO] 4 Sep 2026 f (5) ≤ 450. We note the elementary reformulation the conjecture is false ⇐⇒ f (k) ≤ 2k for some k, (1) since a graph on at most 2 k vertices avoiding all 2 m-cycles with m ≤ k avoids every power of two it could contain. On the side of small counterexamples, the published state of the art is that any counterexample has at least 16 vertices, obtained by Royle’s search through 15 vertices reported in [6]; the figure “17” that circulates in secondary sources is not supported by any primary source we could locate. For cubic graphs Markstr¨ om showed that all cubic graphs on at most 28 vertices contain a 4-, 8- or 16-cycle. Recent certified searches in this genre include Tranquilli’s result that every cubic bipartite graph on at most 58 vertices contains a cycle of length 4, 8 or 16 [7], and Carr’s structural results on minimal counterexamples [1]. 
+
+Results. 
+
+• Theorem 2.1. Every graph with minimum degree at least 3 on at most 23 vertices contains a cycle of length 4 or a cycle of length 8. Hence any counterexample to the Erd˝ os–Gy´ arf´ as conjecture has at least 24 vertices, and the smallest graph of minimum degree 3 with no 4-cycle and no 8-cycle has exactly 24 vertices. 
+
+• Proposition 4.1. The Tutte–Coxeter graph contains 8-cycles with no two consecutive outer edges, contradicting the lemma used in [3]; the 450-vertex graph of [3], as specified, contains a 32-cycle. Theorem 4.2. A corrected orientation yields a cubic graph on 450 vertices with no cycle of length 4 , 8, 16 or 32, so f (5) ≤ 450. 
+
+• Theorem 5.1. f (k) ≤ 15 n3(2 k−2 + 1) for all k ≥ 4; in particular f (6) ≤ 32 640. 
+
+• Proposition 6.1. Over all C4-free cubic base graphs on at most 12 vertices and the gadget library {vertex, triangle, H7, H′
+
+> 7
+
+}, the minimum order of a {4, 8, 16 }-free expansion is 78, attained only on Exoo’s base. 
+
+• Lemma 5.2. A counting obstruction for H15 -expansions, which rules out all bases of girth at most 13. 
+
+# 2 The lower bound 
+
+Theorem 2.1. Every graph with minimum degree at least 3 on at most 23 vertices contains a cycle of length 4 or a cycle of length 8.
+
+Corollary 2.2. Every counterexample to the Erd˝ os–Gy´ arf´ as conjecture has at least 24 vertices. The smallest graph with minimum degree at least 3 containing neither a 4-cycle nor an 8-cycle has exactly 24 vertices. Proof of the corollary. A counterexample has no 4-cycle and no 8-cycle, so by the theorem it has at least 24 vertices. Markstr¨ om’s four cubic graphs on 24 vertices [6] have no 4- or 8-cycle, giving the upper bound. 22.1 Method 
+
+For each n we decide by SAT whether a graph on the vertex set {0, . . . , n − 1} with minimum degree at least 3 and no cycle of length 4 or 8 exists. The encoding uses one Boolean variable 
+
+euv per pair u < v and the following clauses: 1. for every vertex v, a cardinality constraint P 
+
+> u̸=v
+
+euv ≥ 3 (sequential-counter encoding); 2. for every 4-subset {a, b, c, d } and each of its three cyclic pairings, the clause ¬epq ∨ ¬ eqr ∨¬ers ∨ ¬ esp forbidding that 4-cycle; 3. symmetry breaking: for each i < n −1, the row of i is lexicographically at least the row of i+1 on the columns other than i, i + 1, encoded with auxiliary variables di,t → (ei,k t ∧ ¬ ei+1 ,k t )and clauses di, 0 ∨ · · · ∨ di,t −1 ∨ ei,k t ∨ ¬ ei+1 ,k t ;4. 8-cycles are excluded lazily: whenever the solver returns a model, up to 400 of its 8-cycles are enumerated and each is blocked by the clause W 
+
+> j
+
+¬exj xj+1 over its eight edges; the solver is then resumed incrementally. The loop terminates either with a model having no 8-cycle (a witness, which is re-verified independently) or with UNSAT. 
+
+Soundness of UNSAT. Every graph in the target class satisfies every clause: (1) and (2) by definition; a blocking clause in (4) states that eight specific edges forming an 8-cycle are not all present, which any 8-cycle-free graph satisfies; and the lex-maximal labelling of any graph satisfies (3), so each isomorphism class retains a satisfying labelling. Hence UNSAT proves the class empty. The solver used is CaDiCaL 1.9.5 through PySAT. The pipeline was validated by reproducing the known answers for n ≤ 15 [6], and every witness produced in other runs (Section 7) was verified by an independent cycle-enumeration routine that was itself cross-checked against brute-force enumeration on graphs with known cycle spectra.                                                      
+
+> nCEGAR rounds 8-cycles blocked time (s)
+> ≤910<0.110 894 <0.111 19 305 <0.112 44 920 0.1 13 96 2 594 0.2 14 179 5 825 1.6 15 338 12 155 3.8 16 612 23 143 4.1 17 1 057 43 760 10.3 18 1 765 74 479 30.4 19 2 852 121 319 83.7 20 4 662 198 519 171 21 7 567 317 103 584 22 12 508 496 446 2 085 23 15 029 770 552 ≈5 850
+
+Table 1: The search of Theorem 2.1: all levels UNSAT. Single core of a consumer desktop. For 
+
+n ≤ 9 the instance is unsatisfiable before any 8-cycle is blocked: no C4-free graph of minimum degree 3 exists on fewer than 10 vertices. 3Remark 2.3 . The theorem is stronger than what the conjecture requires (no condition on 16-cycles is used). The search assumes no minimal-counterexample reductions; the reductions of [6, 1] (vertices of degree at least 4 form an independent set; every vertex is adjacent to a vertex of degree 3) are sound for extending the ladder and are the natural lever for pushing past 24, where the cost, which grows by a factor of roughly 3–4 per vertex, becomes prohibitive for the full 
+
+{4, 8, 16 } decision. 
+
+# 3 The window calculus 
+
+All known small graphs without short power-of-two cycles are obtained by replacing the vertices of a base graph by gadgets. We make the bookkeeping exact. 
+
+Definition 3.1. A vertex gadget is a graph H with three distinguished attachment vertices of degree 2, all other vertices of degree 3. Replacing a vertex x of a cubic graph B by H means deleting x and joining its three former neighbours to the three attachments by a bijection. For attachments p, q let SH (p, q ) be the set of lengths of simple p–q paths in H.
+
+Lemma 3.2 (Window lemma) . Let B be cubic and let G be obtained by replacing every vertex x
+
+of B by a gadget Hx. Then a cycle of G either lies inside a single gadget, or projects onto a cycle 
+
+x1 · · · xℓ of B and has length ℓ + Pℓi=1 si with si ∈ SHxi (pi, q i), where pi, q i are the attachments facing xi−1 and xi+1 . Conversely, every such sum is the length of a cycle of G. In particular G
+
+has a cycle of length T if and only if some gadget has an internal cycle of length T or T − ℓ lies in the Minkowski sum P 
+
+> i
+
+SHxi (pi, q i) for some cycle of B of length ℓ.Proof. A gadget copy is joined to the rest of G by exactly three edges, so a cycle not contained in it uses either zero or two of them, i.e. it visits the copy at most once, along a simple path between two attachments. Contracting each copy maps the cycle onto a closed walk of B in which no vertex repeats, hence a cycle; the length is as stated. Conversely, given a cycle of B
+
+and a choice of internal path for each visited copy, the union is a cycle of G, and the choices are independent because the copies are disjoint. The gadgets used by Exoo are the following. H7 has vertices u, v, w (attachments) and 
+
+a, b, c, d and edges va, ab, bw, cv, wd, ac, cu, ud, db . H15 consists of two copies A, B of H7 and a vertex z with edges vAvB , wAz, zw B ; its attachments are u = z, v = uB , w = uA. By exhaustive enumeration, 
+
+SH7 (u, v ) = SH7 (u, w ) = {2, . . . , 6}, SH7 (v, w ) = {3, . . . , 6}, C(H7) = {3, 5, 6, 7},SH15 (u, v ) = SH15 (u, w ) = {3, . . . , 14 }, SH15 (v, w ) = {5, . . . , 14 },
+
+C(H15 ) = {3, 5, 6, 7, 9, . . . , 15 }.
+
+Both spectra avoid powers of two, and all path sets are intervals, so the Minkowski sums are intervals: a base cycle of length ℓ in which a of the visits are through the attachment u (“ u-type”) contributes exactly the lengths [ ℓ + Σ min , ℓ + Σ max ] with, for H15 , Σ min = 3 a + 5( ℓ − a) = 5 ℓ − 2a
+
+and Σ max = 14 ℓ.4v wua bc d
+
+Figure 1: The gadget H7; the shaded vertices are the attachments. Simple u–v and u–w paths have lengths 2 , . . . , 6; v–w paths have lengths 3 , . . . , 6; the internal cycles have lengths 3 , 5, 6, 7. 
+
+# 4 Exoo’s construction for f (5) 
+
+Let TC be the Tutte–Coxeter graph drawn as in [3]: an outer Hamiltonian cycle 0 , 1, . . . , 29 and the fifteen chords {29 + 6 t, 12 + 6 t}, {28 + 6 t, 7 + 6 t}, {26 + 6 t, 3 + 6 t}, t = 0 , . . . , 4 (indices mod 30). Exoo replaces every vertex by H15 with u facing the chord, obtaining a 450-vertex graph that we denote G450 (it is not named in [3]), and argues that no 32-cycle arises because “any 8-cycle in Tutte–Coxeter contains at least two consecutive edges on the outer Hamiltonian cycle”. 
+
+Proposition 4.1. The vertices 0, 17 , 18 , 5, 6, 23 , 22 , 1 form an 8-cycle of TC whose edges alternate between chords and outer edges. Consequently the graph G450 of [3], with u on every chord, contains a 32 -cycle. Proof. The edges {0, 17 }, {18 , 5}, {6, 23 }, {22 , 1} are the chords with t = 3 , 1, 4, 4 respectively, and {17 , 18 }, {5, 6}, {23 , 22 }, {1, 0} are outer edges; the eight vertices are distinct. The failure does not depend on the drawing: TC has exactly 144 Hamiltonian cycles, and for none of them is it true that every 8-cycle contains two consecutive edges of the Hamiltonian cycle (checked by exhaustive enumeration). In G450 every visit of this cycle enters a copy of H15 through u
+
+(the chord side) and leaves through v or w, and 3 ∈ SH15 (u, v ) = SH15 (u, w ); by Lemma 3.2 the length 8 + 8 · 3 = 32 is attained. (A SAT search on the reconstructed graph produces such a cycle explicitly.) 
+
+Theorem 4.2. There is an orientation of the H15 -replacement of TC that yields a cubic graph 
+
+G′ 
+
+> 450
+
+on 450 vertices with no cycle of length 4, 8, 16 or 32 . Hence f (5) ≤ 450 .Proof. Choose for each vertex of TC which incident edge faces u so that no 8-cycle of TC has all eight of its vertices’ u-edges on the cycle. This is a satisfiable SAT instance with 90 clauses (one per 8-cycle); a solution is listed in the appendix. For the resulting graph, Lemma 3.2 gives: a base 8-cycle has at least one v–w visit, so its expansions have length at least 8 + 7 · 3 + 5 = 34; every other base cycle has ℓ ≥ 10 (TC is bipartite of girth 8) and expands to length at least 10 · (1 + 3) = 40; and C(H15 ) contains no power of two. Thus no cycle of length 4 , 8, 16 or 32 exists. This was confirmed computationally: exhaustive search finds no cycle of length 4, 8 or 16, and a SAT encoding of “a cycle of length exactly 32” is unsatisfiable. 
+
+Remark 4.3 . The same reconstruction confirmed Exoo’s G78 (base: the Petersen graph with one vertex replaced by a triangle, all vertices but one triangle vertex replaced by H7) and G420 (the truncated icosahedron with every vertex replaced by H7, u on the edges bordering two hexagons): both contain no cycle of length 4, 8 or 16. For G78 the orientation is not determined by the 5017 18 5623 22 1  
+
+> chord outer chord outer chord outer chord outer
+> 8 + 8 ·3 = 32
+
+Figure 2: An 8-cycle of the Tutte–Coxeter graph, in the labelling of [3], whose edges alternate between chords and outer edges. With u on every chord, each of its eight gadget crossings can have length 3, producing a 32-cycle in G450 .figure in [3]; a literal reading of the markers yields a graph with a 16-cycle, and an exhaustive search shows that exactly 16 of the 3 11 orientations are valid. 
+
+# 5 Upper bounds for f (k)
+
+Let n3(g) denote the order of the smallest known cubic graph of girth g (values are tabulated in [4]; n3(17) = 2176). 
+
+Theorem 5.1. For every k ≥ 4, f (k) ≤ 15 n3(2 k−2 + 1) . In particular f (6) ≤ 15 · 2176 = 32 640 .Proof. Let B be cubic of girth g > 2k−2 and replace every vertex by H15 (any orientation). By Lemma 3.2 a cycle of the expansion either lies in a copy of H15 , whose spectrum contains no power of two, or projects onto a base cycle of length ℓ ≥ g and has length at least ℓ + 3 ℓ = 4 ℓ ≥ 4g > 2k.Hence no cycle of length 2 m with m ≤ k exists, and the expansion has 15 |B| vertices. Previously the only route to a finite bound on f (k) was a cubic graph of girth exceeding 2 k,of order about 2 (3 /4)2 k
+
+with the best known explicit families; Theorem 5.1 divides the exponent by four. By (1) the conjecture is equivalent to f (k) > 2k for all k; the bounds here are far from that threshold. Below girth 17 the short base cycles must be handled by the orientation. For the target 64, a base ℓ-cycle with a u -type visits expands to lengths at least 6 ℓ − 2a, so it avoids 64 iff a ≤ 3ℓ − 33: at most 6 , 9, 12 , 15 u-type visits on cycles of length 13 , 14 , 15 , 16, and no condition for ℓ ≥ 17. 
+
+Lemma 5.2 (Counting obstruction) . Let B be cubic and, for a vertex v and ℓ ∈ { 13 , . . . , 16 },let cℓ
+
+> min
+
+(v) be the minimum over the three edges at v of the number of ℓ-cycles of B containing that edge. If P 
+
+> v
+
+cℓ
+
+> min
+
+(v) > (3 ℓ − 33) Nℓ(B) for some ℓ, where Nℓ is the number of ℓ-cycles, then no orientation of the H15 -replacement of B avoids 64 -cycles. Proof. P 
+
+> C
+
+a(C) = P 
+
+> v
+
+#{ℓ-cycles through the u-edge of v} ≥ P 
+
+> v
+
+cℓ
+
+> min
+
+(v), while avoiding 64 requires a(C) ≤ 3ℓ − 33 for every ℓ-cycle C.6The Tutte 12-cage is edge-transitive with 1008 twelve-cycles, so each edge lies on 64 of them and P 
+
+> v
+
+cmin = 126 · 64 = 8064 > 3 · 1008; the Balaban 11-cage fails likewise (3 ℓ − 33 = 0 for 
+
+ℓ = 11). For girth 13, Hoare’s 272-vertex Cayley graph of AGL(1 , 17) [4]—which we reconstructed by searching all generating pairs {t, g, g −1}, t an involution; 544 pairs give girth 13—has 544 thirteen-cycles and every edge lies on at least 16 of them, so P 
+
+> v
+
+cmin ≥ 4352 > 6 · 544 = 3264. The corresponding SAT instances are unsatisfiable, as they must be. The same search over AGL(1 , p ) for p = 23 , 29 , 31 , 37 produced girth-14 Cayley graphs on 506 , 812 , 930 , 1332 vertices; the first fails Lemma 5.2 narrowly (16 192 > 15 939), the others pass it, and their orientation instances (which would give f (6) ≤ 12 180 and 13 950) were undecided after several CPU-hours. We leave them open. 
+
+# 6 Optimality of 78 and gadget censuses 
+
+Let the gadget library consist of: leaving a vertex unreplaced (path sets {0}), replacing it by a triangle (each pair of attachments joined by paths of lengths {1, 2}), H7 in its three orientations, and the symmetric 7-vertex gadget H′ 
+
+> 7
+
+with all three path sets {2, . . . , 6}.
+
+Proposition 6.1. Among all designs on C4-free cubic base graphs with at most 12 vertices using this library, the minimum order of an expansion with no cycle of length 4, 8 or 16 is 78 ; it is attained only on Exoo’s 12 -vertex base. Proof. A base 4-cycle is fatal for every assignment (its window always contains 8 or 16), so bases may be taken C4-free; there are 3 such cubic graphs on 10 vertices and 8 on 12 (enumerated by SAT, matching the count of three C4-free cubic graphs on 10 vertices in [3]). For each base, a backtracking search over assignments with exact Minkowski windows (Lemma 3.2) against 
+
+{4, 8, 16 } finds the minimum; the minimal design was rebuilt explicitly and verified by exhaustive cycle search. 
+
+Proposition 6.2. 1. There is no vertex gadget on 5 or 9 vertices without 4- or 8-cycles; on 7
+
+vertices there are exactly two, H7 and H′
+
+> 7
+
+; on 11 vertices there is none whose attachments are pairwise at distance at least 3.2. Among two-attachment gadgets (spliced into edges) on 4, 6, 8 vertices there are 1, 4, 19 up to isomorphism, none without a 4- or 8-cycle; on 10 vertices there is none with attachments at distance at least 3.
+
+The second statement bears on a natural route to a counterexample: a two-attachment gadget whose path-length set S satisfies max S < 2 min S (for instance S = {5, 7}), spliced into every edge of a base whose even cycle lengths avoid certain intervals, would give a graph with no power-of-two cycle at all. Every such gadget found so far contains a 4- or 8-cycle. We conjecture that a two-attachment gadget without internal power-of-two cycles always has max S ≥ 2 min S.
+
+# 7 Further closed routes 
+
+Proposition 7.1. Every graph with minimum degree at least 3 on at most 19 vertices contains a cycle of length 4, 6, 10 or 12 .
+
+7This is the same search as Theorem 2.1 with 6-, 10- and 12-cycles blocked lazily; each level is unsatisfiable within seconds. It shows that a base for the {5, 7}-gadget route above would need at least 20 vertices. 
+
+Remark 7.2 (Congruence obstructions) . No graph of minimum degree at least 3 has all cycle lengths divisible by an integer m ≥ 3. Indeed, take a deepest vertex v of a depth-first search tree; its two non-tree neighbours x, y are ancestors, and with A = d(x, v ), B = d(x, y ) along the tree one finds cycles of lengths A + 1, A + B + 1, B + 2. If m divides the first two it divides B, and then it does not divide B + 2. This folklore argument rules out the “all lengths ≡ 0 (mod m)” family of would-be counterexamples for every m.
+
+# 8 Data and verification 
+
+All graphs are provided in graph6 format: the corrected G′
+
+> 450
+
+, the reconstructed G78 and G420 ,Hoare’s girth-13 graph, and the girth-14 Cayley graphs. Cycle-length claims were checked by two independent methods: a rooted depth-first search with distance pruning (exhaustive; used for lengths up to 16), and a SAT encoding of “there is a cycle of length exactly L” (used for lengths 32 and above; unsatisfiability certifies absence). The depth-first routine was validated against brute-force enumeration on graphs with known spectra (Petersen, Heawood, dodecahedron, random cubic graphs). Every level n = 4 , . . . , 23 of Theorem 2.1 was additionally certified independently of the incremental search and of the Python wrapper: the static formula consisting of the base encoding together with all blocked 8-cycles of that level was solved once by a standalone CaDiCaL 2.1.3 with DRAT proof logging, and the proof was checked with drat-trim .All twenty proofs were accepted ( s VERIFIED ); the largest, for n = 23, has 800 757 clauses and a 3.1 GB proof, checked in 74 minutes. All SAT instances of Section 7 can be re-run from the accompanying scripts; the ladder produces a checkpoint file of blocked cycles from which any level’s certificate is regenerated. 
+
+# A The repaired orientation of G′
+
+> 450
+
+With TC labelled as in Section 4, the following table gives, for each vertex x, the neighbour y
+
+such that the edge xy is attached to u of the copy of H15 replacing x; the other two edges are attached to v and w in either order (the two choices give isomorphic graphs, since H15 has an automorphism exchanging v and w).                                                                   
+
+> xyxyxyxyxyxy
+> 015410 915 820 19 25 16 106511 10 16 15 21 14 26 3217612 11 17 022 127 20 328713 418 19 23 628 7439214 13 19 20 24 11 29 28
+
+Twelve of the thirty u-edges are chords and eighteen are outer edges; every one of the 90 eight-cycles of TC contains a vertex whose u-edge is off the cycle. 8Acknowledgments 
+
+The author thanks Geoffrey Exoo for his encouraging correspondence about the correction in Section 4. The data and certificates accompanying this paper are archived at https://doi.org/ 10.5281/zenodo.22180583 .
+
+# References 
+
+[1] A. Carr, Every minimal counterexample to the Erd˝ os–Gy´ arf´ as conjecture is predominantly cubic, arXiv:2605.22844 (2026). [2] P. Erd˝ os, Some old and new problems in various branches of combinatorics, Discrete Math. 
+
+165/166 (1997) 227–231. [3] G. Exoo, Three graphs and the Erd˝ os–Gy´ arf´ as conjecture, arXiv:1403.5636 (2013). [4] G. Exoo and R. Jajcay, Dynamic cage survey, Electron. J. Combin. DS16 (2013). [5] H. Liu and R. Montgomery, A solution to Erd˝ os and Hajnal’s odd cycle problem, J. Amer. Math. Soc. 36 (2023) 1191–1234. [6] K. Markstr¨ om, Extremal graphs for some problems on cycles in graphs, Congr. Numer. 171 (2004) 179–192. [7] J. Tranquilli, Every cubic bipartite graph on at most 58 vertices contains a cycle of length 4, 8 or 16, arXiv:2608.02675 (2026). 9

@@ -1,0 +1,706 @@
+Title: Graph neural networks and the energetic cavity method for combinatorial optimization
+
+URL Source: https://arxiv.org/pdf/2609.07456v1
+
+Published Time: Wed, 09 Sep 2026 02:18:04 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# Graph neural networks and the energetic cavity method for combinatorial optimization 
+
+Joe Bacchus George ∗ and George T. Cantwell †
+
+Department of Engineering, University of Cambridge, CB2 1PZ, United Kingdom 
+
+We study the use of graph neural networks (GNNs) for finding approximate ground states of Ising models. Efficiently finding these ground states is of broad significance because many combinatorial optimization problems can be formulated as an Ising model with the appropriate choice of couplings and fields. Exactly solving these problems is hard but there are many good heuristic methods. A lineage of these heuristics build from mean-field approximations: one approach uses the leading eigenvector of an appropriately defined matrix, another is the min-sum algorithm, also known as the energetic cavity method. Without modification, GNNs perform worse than both of these methods. We consider small modifications to the GNN to incorporate these heuristics and find that this considerably improves performance. While the modified approach is competitive against other deep learning approaches, we still find that simulated annealing is reliably at least as good as deep learning methods for the same computational cost. 
+
+I. INTRODUCTION 
+
+Combinatorial optimization problems seek a best solu-tion from a finite set of options. They occur across vir-tually all areas of science and industry [1]. Perhaps sur-prisingly, a finite domain does not make these problems any easier, so the development of practical algorithms for these problems is an important and active field of re-search. Often, combinatorial optimization can be recast as finding the ground state of an appropriately defined Ising model [1–3]. It is unlikely that any efficient and general purpose al-gorithm can truly solve combinatorial problems at least as rich as the Ising model. However, efficient heuristics that find good (but not optimal) solutions certainly do exist and often provide powerful approximations to these problems, e.g., Refs. [4–6]. Heuristic methods build on the intuitions of researchers and often on physical analo-gies. Statistical physics has proved particularly relevant for optimization [1]. Neural networks have been applied to combinatorial optimization tasks [7–12]. The efficacy of these ap-proaches remains unclear: neural network methods may find worse solutions than very simple conventional meth-ods and often require considerably more computing re-sources to achieve this [13–15]. Nothing fundamental places conventional methods in opposition to neural networks or deep learning. In-deed, to improve the latter may require thinking care-fully about how to incorporate the strengths of the for-mer. For example, the development of convolutional neu-ral networks follows this pattern—the approach built on the understanding that images should be analyzed with local filters, but replaced pre-specified filters with more flexible neural networks [16].   
+
+> ∗jbg39@cam.ac.uk
+> †gtc31@cam.ac.uk
+
+In this work we incorporate graph neural networks into the min-sum algorithm [17–19]. The min-sum algorithm—also known as the energetic cavity method— is an effective heuristic for combinatorial optimization. We construct a neural network so that before training it implements the min-sum algorithm. Starting from this initialization the training procedure should only improve performance. There is considerable precedent for this approach. Most relevant are prior studies that incorporated neu-ral networks into the belief propagation (BP) algorithm, which is very closely related to min-sum: where min-sum attempts to find minima, belief propagation attempts to find marginals in a probabilistic model. (In the statis-tical physics setting one can think of the min-sum algo-rithm as the zero-temperature limit of the belief propaga-tion algorithm, where all probability mass moves to the ground states.) Several prior studies have considered hy-brid neural-network and belief propagation approaches. At one end of the spectrum, belief propagation is a structural motivation but the equations are entirely re-placed by neural networks [20, 21]. At the other end, belief propagation equations are largely unchanged but a neural network dictates how the between-round updates are computed [22]. Somewhere in the middle, and most similar to our own approach, the belief propagation equa-tions are retained but augmented with a graph neural network operating on the factor graph [23]. We follow a similar philosophy, although we build from the min-sum algorithm for optimization and we study problems larger by orders of magnitude. We draw two conclusions from this work. First, in-corporating well-understood heuristics into the neural network architecture considerably improves their perfor-mance. The combined min-sum neural network method is effective on some optimization problems and handily better than the already effective heuristic from which it was built. Second, despite this improvement Monte Carlo methods are reliably better even for very large problems. While Monte Carlo algorithms may have a reputation for arXiv:2609.07456v1 [cond-mat.dis-nn] 7 Sep 2026 2scaling poorly, we find that even fairly aggressive limits on their runtime, e.g., O(n log n), lead to better solutions than neural networks find.  
+
+> II. PROBLEM AND MODEL SETUP
+
+We consider optimization problems of the form arg min 
+
+> σ∈{− 1,+1 }n
+
+n
+
+− 12
+
+> n
+
+X
+
+> i=1
+> n
+
+X
+
+> j=1
+
+Jij σiσj −
+
+> n
+
+X
+
+> i=1
+
+hiσi
+
+o
+
+, (1) or equivalently, finding ground states of an Ising model with Hamiltonian 
+
+H(σ) = − 12
+
+X
+
+> i,j
+
+Jij σiσj − X
+
+> i
+
+hiσi. (2) This class of problems is sufficiently rich to be of broad interest and is arguably the simplest class of non-trivial optimization problems on graphs; it is also NP-hard [3, 24]. A majority of our experiments consider the MaxCut problem. Namely, given a graph, we attempt to sort the nodes into two groups so that the largest possible number of edges fall between nodes in different groups. Finding the maximum cut of graph G is equivalent to minimizing 
+
+X
+
+> i<j
+
+Aij σiσj (3) where A is the adjacency matrix so that the sum is equal to the number of edges within groups minus the number of edges between the two groups. The MaxCut prob-lem corresponds to an Ising model where all hi = 0 and 
+
+Jij = −Aij , i.e., an anti-ferromagnet in the absence of an external field.  
+
+> A. Graph neural networks
+
+Minimizing Eq. (2) is difficult. At the same time, neu-ral networks have proven themselves capable for many non-trivial problems. Graph neural networks (GNNs) are the leading paradigm for applying neural networks to graphs [25–27] and, unsurprisingly, attempts have been made to use GNNs to solve Ising-like combinatorial prob-lems [7–11]. Graph neural networks generate hidden embeddings for nodes in a graph. A T layer GNN of width d com-putes embeddings y(1)  
+
+> i
+
+, . . . , y(T ) 
+
+> i
+
+∈ Rd for each node i,starting with an initial condition, e.g., y(0)  
+
+> i
+
+= [1 .0], and performing updates according to 
+
+y(t+1)  
+
+> i
+
+= f
+
+
+
+b(t) + W (t)1 y(t) 
+
+> i
+
++ W (t)2
+
+M 
+
+> j
+
+Jij y(t)
+
+> j
+
+
+
+(4) where f is an element-wise non-linear function, L 
+
+> j
+
+is an aggregation over nodes, and the quantities with over-lines ( b(t), W (t)1 , W (t)2 ) are the free parameters that are “learned”. To apply this to the Ising problem of Eq. (2) we set 
+
+y(0)  
+
+> i
+
+to be normally distributed random noise and then sequentially perform updates 
+
+y(t+1)  
+
+> i
+
+= tanh 
+
+
+
+b(t) + W (t)1 y(t) 
+
+> i
+
++ W (t)2 mean 
+
+> j∈∂i
+
+n
+
+Jij y(t)
+
+> j
+
+o 
+
+(5) where ∂i is the set of nodes adjacent to i. An assignment to spins is extracted at the final layer by 
+
+σi = sign 
+
+
+
+w3 · y(T )
+
+> i
+
+
+
+(6) where again, the overline on w3 indicates a vector of free parameters. For a GNN to be useful we must be able to train the weights, i.e., fit the free parameters. Standard methods to achieve this require a differentiable loss function. To maintain differentiability we replace σi, which are binary and therefore non-differentiable, with the relaxation 
+
+zi = tanh 
+
+
+
+w3 · y(T )
+
+> i
+
+
+
+. (7) We can then insert these relaxed values zi into our en-ergy function, H(z), and differentiate with respect to the neural network weights. Different classes of problem cor-respond to different distributions of J and h. Once these distributions are specified we attempt to minimize 
+
+L(θ) = EJ, h[H(zθ (J, h))] , (8) where zθ (J, h) is the output of the GNN with parame-ters θ on problem J, h. For example, when we consider MaxCut on a random 3-regular graph, we set h = 0 and 
+
+J = −A, where A is the adjacency matrix of a random 3-regular graph. The expectation in Eq. (8) is intractable but we can still minimize it using stochastic methods. To approx-imate the gradient we sample a set of N problems 
+
+{(Jα, hα)}Nα=1 from the appropriate distribution and then approximate the gradient by dL
+
+dθ ≃ 1
+
+N
+
+> N
+
+X
+
+> α=1
+
+dH(zθ (Jα, hα)) dθ . (9) Across all experiments, we use the training procedure of Appendix A. The approach is unsupervised, i.e., does not rely on solved instances for training. This is impor-tant precisely because the optimization is difficult: we can easily generate new problems but we cannot easily generate their solutions. If one could already generate a large enough set of solutions to train a neural network then, presumably, one does not need the neural network to solve the problem in the first place.  
+
+> III. GNN EXPERIMENTS
+
+To explore the suitability of GNNs for optimization let us initially restrict ourselves to MaxCut on random 3graphs. Maximum cut for the random k-regular graph has been carefully studied, both numerically and theo-retically, and so this provides a useful testing ground for GNNs [18, 28–30]. Prior studies found mixed to poor results when GNNs are used for optimization. Some architectures even ap-pear to be worse than the most basic greedy algorithms [13–15]. Because of this, and ahead of reporting any GNN-based results, we first consider an appropriate base-line for comparison.  
+
+> A. Laplacian cut as a baseline
+
+A simple heuristic for MaxCut uses the graph Lapla-cian [4, 31]. Intuitively, the eigenvectors of the Laplacian with the largest eigenvalues correspond to signals that are oscillating most rapidly. Define the normalized Laplacian as 
+
+L = I − D−1A (10) where I is the identity and D is the diagonal matrix of node degrees. Then, let vmax (L) be an eigenvector cor-responding to the largest eigenvalue of L. The Laplacian heuristic finds a cut by assigning 
+
+σi = sign ( vmax  
+
+> i
+
+(L)) . (11) This method is simple to implement and is free of pa-rameters or further optimizations. At the very least, any method of practical interest should consistently outper-form this elementary heuristic. To find the leading eigenvector of L one can apply the power iteration method. Namely, begin by initializing a vector x(0) at random. Then, repeatedly multiply by the Laplacian to get x(t+1) = Lx(t). After a sufficiently large number of iterations T the vector x(T ) will be very close to the largest eigenvector of L. Writing out the matrix multiplication explicitly we have 
+
+x(t+1)  
+
+> i
+
+= x(t) 
+
+> i
+
+− mean 
+
+> j∈∂i
+
+n
+
+x(t)
+
+> j
+
+o
+
+(12) and comparing to Eq. (5) one sees a clear similarity. In fact, if we add an element-wise non-linearity we recover the mean-field approximation 
+
+x(t+1)  
+
+> i
+
+= tanh 
+
+
+
+x(t) 
+
+> i
+
+− mean 
+
+> j∈∂i
+
+n
+
+x(t)
+
+> j
+
+o  
+
+(13) which is precisely a GNN of width d = 1 and parameters 
+
+b(t) = 0; W (t)1 = −W (t)2 = 1; w3 = 1 . (14) Hence, the Laplacian heuristic essentially is a GNN of unit width and no free parameters. It is consequently trivial that there exists a GNN which performs at least as well as the Laplacian on maximum cut. The question then becomes whether or not the GNN can make any improvement on this baseline.  
+
+> B. GNN depth and weight initialization
+
+Graph neural networks update node representations from y(0)  
+
+> i
+
+to y(T ) 
+
+> i
+
+through T layers. Folk wisdom ad-vocates that T should be relatively small and typical GNN architectures tend to be no deeper than 8 layers. The justification is that, in practice, training seems to fail for deep GNNs as node representations suffer from “oversmoothing”. That is, information repeatedly dif-fuses between nodes so that their embeddings become almost identical [32, 33]. A shallow GNN only allows nodes to share informa-tion with others that are nearby. While shallow GNNs might be the preferred method of practice, the physics of a problem such as MaxCut pushes against this. In sparse graphs we typically expect the diameter to grow logarithmically in n [34] and local methods are unlikely to find optimal solutions [35, 36]. For information to propagate across macroscopic distances in sparse graphs, the physical intuition remains that we need deep rather than shallow networks, presumably growing in depth at least as fast as log( n). Our first numerical experiment, in Fig. 1, shows the results of training a standard GNN for MaxCut on ran-dom 3-regular graphs, and on Watts-Strogatz graphs [37], with n = 8192 nodes for both cases. At shallow depths—typical for standard GNN architectures—the GNN is unable to beat the Laplacian baseline. At least for this task the shallow GNN frame-work appears to be worse than useless: it introduces con-siderable computation cost, and for that price it consid-erably reduces performance. This is concordant with the findings of Refs. [10, 13, 14]. As the depth is increased, GNN performance initially improves and by 16 layers the GNN starts to appear com-petitive against the trivial baseline. Unfortunately, per-formance then falls off a cliff. For truly deep architec-tures, which the physics of the problem necessitates if we want strong performance on very large graphs, the GNN performance collapses back to chance. However, the failure of the deep GNN to perform at least as well as the Laplacian must be due to a poor choice of weights—it is a failure of learning. This must be true because the Laplacian method is equivalent to a very deep GNN with no free parameters. The Laplacian argument shows that we already know a set of weights that perform well, even before training. Defining e1 to be the first standard basis vector and P =
+
+I − e1e⊤ 
+
+> 1
+
+, we reinitialize the GNN weights as 
+
+b(t) ← P b(t)
+
+W (t)1 ← P W (t)1 P + e1e⊤
+
+> 1
+
+W (t)2 ← P W (t)2 P − e1e⊤
+
+> 1
+
+w3 ← e1
+
+(15) and the effect of these initializations is that, before train-ing, the GNN is equivalent to the iterative implementa-41 2 4 8 16 32 64 128 256           
+
+> depth, T
+> 0.50 0.75 1.00 1.25
+> −H(σ)/n
+> random 3-regular
+> 124816 32 64 128 256
+> depth, T
+> 0.50 0.75 1.00 1.25
+> Watts-Strogatz
+> algorithm
+> GNN spectral GNN spectral optimal (Monte Carlo est.)
+
+FIG. 1. Performance of GNNs with different numbers of layers: their depth. We train GNNs to solve MaxCut on random 3-regular graphs and on Watts-Strogatz graphs ( k = 4 and p = 1 /10) of size 8192. Results are obtained by computing the average solution on 100 graph samples of size n = 8192 for each depth considered, taking the best solution out of 10 attempts for every method. We show performance of two GNN methods, one initialized with standard weights (GNN) and one initialized so that it performs a Laplacian cut before training (spectral GNN). With an informed choice for initialization, deep models with 256 layers are able to considerably outperform a standard Laplacian spectral cut. 
+
+tion of the Laplacian cut in Eq. (13). That is to say, we begin with a model whose performance is at least no worse than a reasonable baseline. The question remains as to whether this GNN can learn anything beyond the Laplacian heuristic we give it at initialization. Our experiments answer this in the affir-mative: when the GNN is initialized so that it performs Laplacian MaxCut it is capable of considerable further improvement. In Fig. 1 we see that the GNN initialized by Eq. (15), denoted as spectral GNN, improves over the baseline method at depth 256. To estimate the quality of a method we average over 100 problem instances and on each instance we use the best of 10 trials. So far no changes have been proposed to the neural architecture—only the weight initialization was modified for the spectral GNN. The fact that these deep networks improve on the original method is noteworthy, namely, it emphasizes the importance of incorporating heuristic knowledge into the GNN model design. In the next sec-tion we consider a more significant change to the archi-tecture. Specifically, we attempt to improve the min-sum algorithm which is a considerably more competitive method than the Laplacian approach on locally tree-like graphs. 
+
+IV. MIN-SUM EXPERIMENTS 
+
+The min-sum algorithm, also known as the energetic cavity method [18, 19], is well-established for finding ap-proximate ground states in Ising-like models. To derive the equations of the min-sum algorithm, de-note by Ei(±) the minimum energy of Hamiltonian (2) when σi = ±1, 
+
+Ei(+) = min  
+
+> σ:σi=+1
+
+H(σ), (16) 
+
+Ei(−) = min  
+
+> σ:σi=−1
+
+H(σ). (17) If we knew the values of Ei(±), then the optimal solution 
+
+σ could be found by taking 
+
+σi = sign  Ei(−) − Ei(+) . (18) The problem, of course, is that we don’t know Ei(±). To make further progress let us consider a modified problem in which node i is removed. In this modified problem, define Ei←j (±) to be the minimum energy achievable when σj = ±1. If the graph were a tree (i.e., contained no cycles) we could write 
+
+Ei(+) = −hi + X
+
+> j∈∂i
+
+min  Ei←j (+) − Jij , E i←j (−) + Jij 
+
+
+
+Ei(−) = + hi + X
+
+> j∈∂i
+
+min  Ei←j (+) + Jij , E i←j (−) − Jij 
+
+
+
+(19) which, after some algebra, can be compactly written as 
+
+νi = 12 (Ei(−) − Ei(+)) = hi + X
+
+> j∈∂i
+
+sign( Jij νi←j ) min( |Jij |, |νi←j |) (20) with νi←j = ( Ei←j (−) − Ei←j (+)) /2. At a first glance it might not be clear why Eq. (20) is helpful because we again do not know the values νi←j .The insight is that, on a tree, these can likewise be writ-ten as 
+
+νi←j = hj + X 
+
+> k∈∂j\i
+
+sign( Jjk νj←k) min( |Jjk |, |νj←k|),
+
+(21) and since this defines a set of closed equations, it can be solved by an iterative method. Namely, we can initialize all the variables νi←j at random and update them iter-atively with Eq. (21). At convergence, we have a set of equations that give the exact ground state on a tree. This protocol, which amounts to iteratively solving Eq. (21) and Eq. (20), is the min-sum algorithm. 5
+
+Algorithm 1: min-sum algorithm ( MS )
+
+Input: graph G = ( V, E ), couplings J, fields h,iterations T
+
+Output: cavity fields ν 
+
+> 1
+
+Define f (a, b ) = sign( ab ) min( |a|, |b|) 
+
+> 2
+
+initialize ν(0)  
+
+> i←j
+
+∼ N (0 , 1), ∀i ∈ V, j ∈ ∂i 
+
+> 3
+
+for t = 0 to T − 1 do  
+
+> 4
+
+foreach i ∈ V, j ∈ ∂i do  
+
+> 5
+
+ν(t+1)  
+
+> i←j
+
+← 12
+
+
+
+ν(t) 
+
+> i←j
+
++ hj + X
+
+> k∈∂j \i
+
+f (Jjk , ν (t) 
+
+> j←k
+
+)
+
+ 
+
+> 6
+
+foreach i ∈ V do  
+
+> 7
+
+νi ← hi + X
+
+> j∈∂i
+
+f (Jij , ν (T ) 
+
+> i←j
+
+) 
+
+> 8
+
+return ν
+
+While the equations are only strictly correct on a tree, in practice they can give good solutions on other topolo-gies, particularly locally tree-like graphs. One caveat is that updating by Eq. (21) can cause oscillations so one typically introduces damping to the equations, which we set to 1 /2 in all of our experiments, as shown in Algo-rithm 1. The min-sum algorithm with damping, Algorithm 1, estimates the differences between the lowest energies achieved when σi = ±1. To extract a prediction for the best solution σ, we take σi = sign( νi). On graphs with cycles, where the min-sum algorithm makes mistakes, it is usually better to extract answers via decimation: sequentially fix a proportion of spins af-ter each round, and then re-run the algorithm with these spins fixed [6]. Decimation and the min-sum algorithm generally do not find true minima but are a competi-tive heuristic. Looking ahead, to Fig. 2, we see that the min-sum algorithm considerably outperforms the spec-tral GNN on random regular graphs; it also outperforms several other deep learning-based methods. The min-sum algorithm is derived from an incorrect assumption that the graph is a tree. For this reason, on locally tree-like graphs decimated min-sum is expected to find solutions reasonably close to optimal. Whereas, on graphs that are rich with short cycles the procedure is expected to be considerably less good. How to sys-tematically correct for this shortcoming is an interesting question in its own right [38–40]. The particular question we ask now is whether a GNN can build from min-sum to make improvements that correct for its shortcomings. 
+
+A. Min-Sum GNN 
+
+The message passing formalism of the min-sum algo-rithm naturally lends itself to a GNN-like construction. To this end, in addition to the min-sum messages of Eq. (21) we append an additional d-dimensional feature. Every node at each iteration is then associated with the vector 
+
+τ (t) 
+
+> i←j
+
+=
+
+"
+
+ν(t)
+
+> i←j
+
+y(t)
+
+> i←j
+
+#
+
+∈ Rd+1 . (22) These embeddings, which one can interpret as augmented min-sum messages, are updated as 
+
+τ (t+1)  
+
+> i←j
+
+=
+
+"
+
+ν(t+1) 
+
+> i←j
+
+y(t+1) 
+
+> i←j
+
+#
+
+= M (t)
+
+
+
+> 12
+
+
+
+ν(t) 
+
+> i←j
+
++ hj + P 
+
+> k∈∂j\i
+
+sign( Jjk ν(t)
+
+> j←k
+
+) min( |Jjk |, |ν(t)
+
+> j←k
+
+|)
+
+
+
+tanh 
+
+
+
+b(t) + W (t)1 y(t) 
+
+> i←j
+
++ W (t)2 mean  
+
+> k∈∂j\i
+
+n
+
+Jjk y(t)
+
+> j←k
+
+o  (23) so that the first element of τ (t) 
+
+> i←j
+
+is updated by the stan-dard min-sum rule, and the remaining d elements are updated by a GNN rule. The matrix M (t) allows for an exchange of information between the min-sum updates and the GNN style updates (again, the overline indicates that this ( d + 1) × (d + 1) matrix is a free parameter of the model that is fit by optimization). We project each edge feature onto a single dimension by taking 
+
+ν(out)  
+
+> i←j
+
+= w3 · τ (T ) 
+
+> i←j
+
+. (24) Equation (24) defines a variable for both directions of each edge. To extract an answer for the sign σi we com-pute 
+
+νi = hi + X
+
+> j∈∂i
+
+sign( Jij ν(out)  
+
+> i←j
+
+) min( |Jij |, |ν(out)  
+
+> i←j
+
+|), (25) in accordance with the equivalent equation for the min-sum algorithm (21). We initialize the parameters M (t)
+
+and w3 to pass through the min-sum calculation unal-tered. In this way, before any training, the GNN sim-ply performs the min-sum algorithm with T iterations. Again, the question arises as to whether a GNN can im-prove on min-sum alone. 6128 256 512 1024 2048 4096 8192      
+
+> graph size, n
+> 1.10 1.15 1.20 1.25
+> −H(σ)/n  algorithm
+> spectral GNN MS-GNN MS MS (decimated)
+> FIG. 2. Solution quality for MaxCut on random 3-regular graphs. The min-sum-GNN performs better at all tested sizes than min-sum alone (with or without decimation). The stan-dard GNN architecture is systematically worse than the min-sum with decimation. Both GNN methods were trained at
+> n= 512; the tests demonstrate that the GNNs are able to extrapolate to unseen sizes.
+> B. MaxCut on random regular graphs
+
+In Fig. 2 we compare the min-sum-GNN to the best GNN model, and to the standard min-sum itself on ran-dom 3-regular graphs. Three things are worthy of note. First, the decimated min-sum algorithm outperforms the deep GNN methods considered previously. This again illustrates how GNNs are not a panacea and, with-out adjustment, underperform sensible traditional algo-rithms. Second, the min-sum-GNN outperforms all other methods so far considered, including the original min-sum algorithm. We believe that for this task the min-sum-GNN is a genuinely competitive heuristic for perfor-mance. Third, these methods were all trained on graphs with 
+
+n = 512 nodes, but appear to generalize well to con-siderably larger graphs. The min-sum algorithm is well-suited to the random regular graphs because these graphs have vanishing densities of short cycles, that is, they are locally tree-like. Still, Fig. 2 demonstrates that with-out decimation the min-sum algorithm is performing less well on larger graphs. Whereas, with decimation the per-formance of min-sum appears roughly consistent across different graph sizes. The min-sum-GNN is built atop the standard min-sum algorithm (without decimation). Therefore, it is clear from Fig. 2 that the GNN part of the min-sum-GNN is learning something significant. Not only does it correct for the failure of the non-decimated min-sum approach, but it even outperforms decimation. To explore how competitive the min-sum-GNN is, we now compare it to simulated annealing—one of the best general purpose methods for optimization problems [5]. How does this deep learning model actually compete against a veteran heuristic? The question is somewhat poorly posed because one can always increase the run-time of simulated annealing to increase the quality of solutions. In order to conduct a fair comparison between the min-512 1024 2048 4096 8192        
+
+> graph size, n
+> 1.2575 1.2600 1.2625 1.2650
+> −H(σ)/n  algorithm
+> SA (linear) SA (log-linear) MS-GNN
+> FIG. 3. Average solution quality for MaxCut on random 3-regular graphs with differing numbers of nodes. The min-sum-GNN performs comparably to simulated annealing with a linear run time. When simulated annealing is allowed to run in log-linear time, O(nlog n), it finds better solutions.
+
+sum-GNN and simulated annealing, we must fix the run time of the latter approach. To do so, we run simu-lated annealing for cn steps, where c is chosen so that its performance is comparable to the min-sum-GNN when 
+
+n = 512. In Fig. 3, we show how the performance of the min-sum-GNN and simulated annealing run for cn steps change as we increase the number of nodes, n. Interest-ingly, we find relatively similar scalings in performance. That is to say, min-sum-GNN—which runs in linear time on this class of graphs—performs comparably to simu-lated annealing with the same resources. We also test min-sum-GNN against simulated anneal-ing with O(n log n) steps. The results in Fig. 3 show that simulated annealing with runtime growing as n log n
+
+saturates at a considerably higher level than linear time simulated annealing or the min-sum-GNN. In contrast, comparing to other deep learning ap-proaches the min-sum-GNN emerges favorably. Figure 4 compares against GFlowNets [12], S2V-DQN [7], and ANYCSP [11]; our implementations are adapted from Ref. [15], which reviewed performance of many different GNN methods. GFlowNets and S2V-DQN considerably under-perform in solution quality while also taking more than 1000 times longer to run. They are simply not competitive. ANYCSP finds good solutions. Unlike the other GNN methods ANYCSP takes a search based approach, sim-ilar to simulated annealing. Where simulated annealing proposes small moves at random, ANYCSP learns to pro-pose good moves, i.e., moves that both change a large number of spins and improve the objective considerably. The solutions found by ANYCSP are competitive with both min-sum-GNN and simulated annealing but these solutions are found more than 500 times slower than sim-ulated annealing. All GNNs have additional training expenses and un-predictable performance on out-of-distribution problems. Simulated annealing has no equivalent issues and remains the most reliable heuristic for this task. In summary, on random regular graphs, the min-sum-GNN appears competitive against simple heuristics and 71.11 1.14 1.17 1.20 1.23 1.26    
+
+> −H(σ)/n n= 512 n= 8192
+> GFlow S2V-DQN spectral GNN MS (decimated) MS-GNN ANYCSP SA
+> 10 −2
+> 10 −1
+> 10 0
+> 10 1
+> 10 2
+> runtime (s)
+> GFlow S2V-DQN spectral GNN MS (decimated) MS-GNN ANYCSP SA
+
+hardware 
+
+> CPU: M1 Max GPU: RTX PRO 6K
+
+FIG. 4. Performance of heuristics on MaxCut for random 3-regular graphs. We report run times in seconds on a CPU (Macbook Pro M1 Max) and GPU (Nvidia Blackwell RTX Pro 6000). Results are averaged over 100 problem instances; for the random methods we use the best of 10 trials on each instance. ANYCSP and simulated annealing are search-based methods and both find good solutions, though simulated annealing is much faster. All GNN methods except for min-sum-GNN find significantly worse solutions than simulated annealing or even the min-sum algorithm. GFlowNets and S2V-DQN are also slower than simulated annealing. 
+
+other learned methods. In fact, it appears competitive even against simulated annealing, if that method only gets a runtime scaling linearly in n. The min-sum-GNN appears to have learned something and corrects for some weaknesses in the min-sum heuristic. Random regular graphs are locally tree-like and so min-sum style algo-rithms are expected to do fairly well. If a GNN can in principle correct problems inherent to the min-sum algo-rithm, can it correct one of the major problems, namely, can it learn to correctly account for the cycles in the graph? 
+
+C. MaxCut on Watts-Strogatz graphs 
+
+The Watts-Strogatz model provides a comparable set of graphs to the random regular experiments but, cru-cially, the graphs are not locally tree-like [37]. The model starts with a 1-dimensional lattice where each node is connected to its k nearest nodes. Then, for each edge (i, j ), the endpoint is randomly reassigned from j to a different node, with probability p. When p = 0 we obtain a perfectly ordered lattice with lots of short cycles; when 
+
+p = 1 we have a locally tree-like graph with a logarithmic diameter. For intermediate re-wiring probabilities, e.g., 
+
+p = 1 /10, the generated graphs contain lots of triangles while also having logarithmic diameters. The rewiring probability p controls how locally tree-like the networks are—larger p means fewer short cycles. Figure 5 displays the MaxCut results for different methods against the rewiring probability, p. Both vari-ants of the min-sum algorithm perform poorly compared to simulated annealing across a wide range of p. This is unsurprising because for any p < 1 the graphs are not 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0  
+
+> rewiring probability, p
+> 0.81.01.21.4
+> −H(σ)/n  algorithm
+> SA (linear) MS-GNN MS MS (decimated)
+
+FIG. 5. MaxCut solution quality for each algorithm as a function of the rewiring probability, p, in the Watts-Strogatz graph with n = 8192 and k = 4. The min-sum algorithm has weaker performance across a wide range of p < 1. The min-sum-GNN considerably outperforms traditional min-sum algorithms, but still underperforms simulated annealing. 
+
+locally tree-like and so the methodological premise of the min-sum algorithm is broken. In contrast to the standard min-sum algorithms, the min-sum-GNN performs fairly well over the whole range of p. At the same time, the min-sum-GNN still noticeably underperforms simulated annealing. The implication is that, while the neural networks are able to improve on the baseline heuristics they incorporate, they are still some-what constrained by their shortcomings. 
+
+D. Further tasks 
+
+Having looked at MaxCut for two different topologies we now consider several more tasks and topologies. In ad-dition to the random regular and Watts-Strogatz graphs, we look at random recursive trees and Barabasi-Albert 8graphs [41]. On these topologies we study four different problems: (i) Maximum cut (MaxCut), where Jij = −Aij and 
+
+hi = 0. (ii) Binary spin glass (BinSG), where each Jij = ±Aij 
+
+with the sign chosen independently with probability 1/2, and hi = 0. (iii) Edwards-Anderson (EA), where each Jij = Aij εij 
+
+with εij drawn independently from a standard nor-mal distribution, and hi = 0. (iv) Random field Ising model (RFIM) with Jij = Aij 
+
+and hi drawn independently from a standard nor-mal distribution. Results for all 16 combinations of problems and topolo-gies are shown in Table I. The pattern of results is consistent across the first three problems—MaxCut, BinSG, EA. On trees the min-sum algorithm is exact; no method can surpass it. On other topologies simulated annealing outperforms min-sum and the min-sum-GNN closes 90% of the gap on average. The failure of the min-sum on locally tree-like graphs must be due to a failure to correctly account for the long cycles. The min-sum-GNN appears to be doing something to correct for this. The random field Ising model provides an interesting comparison study. With ferromagnetic bonds, finding the RFIM ground state is a minimum cut problem, which is computationally easy. Min-sum might make mistakes but on locally tree-like graphs these are expected to be asymptotically small. We find that min-sum is as good or better than annealing on locally tree-like graphs. How-ever, Watts-Strogatz graphs are not locally tree-like; the min-sum-GNN improvement over the min-sum is presum-ably a result of correcting for short cycles rather than the long ones. Overall, the min-sum-GNN is an effective method. It finds solutions of considerably better quality than the GNNs that fail to beat simple methods. At the same time, the learned method still falls short of simulated annealing. For this reason we still do not believe it is a reliable tool in practice.  
+
+> V. DISCUSSION
+
+As noted in Refs. [13, 14], naive applications of GNNs to combinatorial optimization do not appear to be use-ful. However, carefully constructing a model can sig-nificantly improve performance. Incorporating domain knowledge—ideas from the physics of random graphs— leads to relatively simple adjustments that considerably improve performance. While GNNs are typically shallow, deep models are re-quired for competitive optimization performance. By in-corporating the Laplacian mean-field approximation into the weight initialization, deep GNNs do not exhibit over-smoothing. By mimicking the energetic cavity argument to improve the message passing architecture, we find GNNs that are much closer to simulated annealing in performance. Good neural network construction builds atop traditional methods. Despite our best efforts none of the neural networks systematically outperformed simulated annealing. The min-sum-GNN improved over the base method and could match simulated annealing constrained to a short run time. However, simulated annealing makes many fewer assumptions and one can easily improve performance by increasing the runtime. Additionally, neural network approaches are “learned”, i.e., they contain many free parameters that must be fit for a particular objective. This process is a considerable upfront expense—one that we have not accounted for in our experiments. Worse, even if we could amortize train-ing costs we would face out-of-distribution issues: when-ever an instance is substantially different to the training set, performance can be badly degraded. Simulated an-nealing has no equivalent shortcoming; it can readily be applied to arbitrary problems and topologies. In principle learned optimization methods might be useful for finding solutions to a guaranteed fixed distribu-tion of problems, under strict time constraint, and with access to GPUs. When run on a GPU our best neural network method returns results slightly faster than sim-ulated annealing on a CPU and returns results that are close in quality. This is a very narrow use case. For now, we do not see a compelling reason to deploy GNNs for these combinatorial optimization tasks. If and when that changes we suspect it will be due to a new architecture that successfully leverages heuristic intuition. 
+
+> DATA AVAILABILITY
+
+Code implementing our methods is freely available at https://github.com/joebacchus/GNN-cavity-opt. 
+
+> ACKNOWLEDGMENTS
+
+GTC thanks Luana Ruiz for valuable conversations which helped to shape this project, and the hospitality of the Simons Institute for the Theory of Computing during the program Graph Limits and Processes on Networks: From Epidemics to Misinformation . JBG acknowledges funding from the Engineering and Physical Sciences Re-search Council through studentship 2926881. 
+
+> Appendix A: Experimental procedure
+
+The GNNs are trained by generating new random instances of the given problem. These instances are grouped into batches of size 2 15 /n . Training takes place 9
+
+Algorithm • SA • MS • MS-GNN GNN improvement 
+
+MaxCut 
+
+RT 0.992 ± 0.001 1.000 ± 0.000 1.000 ± 0.000 ∗
+
+RR 1.261 ± 0.001 1.102 ± 0.028 1.266 ± 0.001 103 .3% BA 1.345 ± 0.003 1.133 ± 0.054 1.325 ± 0.004 90 .9% WS 1.127 ± 0.003 0.807 ± 0.006 1.073 ± 0.004 83 .0% 
+
+BinSG 
+
+RT 0.992 ± 0.001 1.000 ± 0.000 0.997 ± 0.001 ∗
+
+RR 1.262 ± 0.001 1.098 ± 0.023 1.260 ± 0.002 99 .0% BA 1.346 ± 0.003 1.149 ± 0.057 1.337 ± 0.006 95 .5% WS 1.369 ± 0.005 1.092 ± 0.012 1.324 ± 0.007 83 .9% 
+
+EA 
+
+RT 0.780 ± 0.006 0.798 ± 0.007 0.783 ± 0.008 ∗
+
+RR 1.090 ± 0.007 0.988 ± 0.020 1.086 ± 0.009 95 .6% BA 1.259 ± 0.008 1.110 ± 0.068 1.230 ± 0.010 80 .3% WS 1.259 ± 0.007 1.014 ± 0.013 1.222 ± 0.009 84 .7% 
+
+RFIM 
+
+RT 1.296 ± 0.006 1.298 ± 0.006 1.288 ± 0.007 ∗
+
+RR 1.527 ± 0.007 1.530 ± 0.006 1.500 ± 0.011 ∗
+
+BA 2.020 ± 0.007 2.019 ± 0.007 2.018 ± 0.007 ∗
+
+WS 2.024 ± 0.009 1.990 ± 0.008 2.003 ± 0.008 38 .2% TABLE I. Results for four different problems: maximum cut (MaxCut), binary spin glass (BinSG), Edwards-Anderson (EA) and random field Ising model (RFIM). Each problem is studied on four different topologies: random recursive trees (RT), random 3-regular graphs (RR), Barabasi-Albert graphs with m = 2 (BA), and Watts-Strogatz graphs with k = 4 , p = 0 .1(WS). All graphs have n = 8192 nodes. We report the solution quality from run-time constrained simulated annealing (SA), the min-sum algorithm (MS), and the min-sum-GNN (MS-GNN). To estimate the quality of a method we average over 100 problem instances and on each instance we use the best of 10 trials. The min-sum algorithm systematically performs worse than simulated annealing, except on trees where it is exact, or RFIM on locally tree-like graphs where it is asymptotically correct. The min-sum-GNN improves over min-sum in all cases where min-sum is not approximately correct, closing more than 80% of the gap between min-sum and simulated annealing in all cases except the RFIM-WS. 
+
+over 500 epochs using the Adam optimizer [42]. The learning rate at epoch t is set ηt = 0 .001 × 0.99 t. GNNs run at depth T = 256 and width d = 32, unless other-wise stated, and use the default initialization parameters of the PyTorch Geometric library [43]. After training, to estimate the quality of a method we average over 100 problem instances. If the method is probabilistic then on each instance we use the best of 10 trials. 
+
+[1] A. K. Hartmann and M. Weigt, Phase Transitions in Combinatorial Optimization Problems . John Wiley &Sons, Ltd (2005). [2] C. Moore and S. Mertens, The Nature of Computation .Oxford University Press, Oxford, UK (2011). [3] F. Barahona, On the computational complexity of Ising spin glass models. Journal of Physics A: Mathematical and General 15 (10), 3241–3253 (1982), URL https://iopscience.iop.org/article/10.1088/ 0305-4470/15/10/028 .[4] M. Fiedler, Algebraic connectivity of graphs. Czechoslo-vak Mathematical Journal 23 (2), 298–305 (1973), URL 
+
+https://dml.cz/handle/10338.dmlcz/101168 .[5] S. Kirkpatrick, C. D. Gelatt, and M. P. Vecchi, Optimiza-tion by simulated annealing. Science 220 (4598), 671–680 (1983), URL https://www.science.org/doi/10.1126/ science.220.4598.671 .[6] A. Montanari, F. Ricci-Tersenghi, and G. Semerjian, Solving constraint satisfaction problems through belief propagation-guided decimation (2007), URL https:// arxiv.org/abs/0709.1667 .[7] E. Khalil, H. Dai, Y. Zhang, B. Dilkina, and L. Song, Learning combinatorial optimization algorithms over graphs. In Advances in Neural Information Processing Systems (2017). [8] N. Karalias and A. Loukas, Erdos goes neural: an unsu-pervised learning framework for combinatorial optimiza-tion on graphs (2020), URL https://arxiv.org/abs/ 2006.10643 .[9] Q. Cappart, D. Ch´ etelat, E. B. Khalil, A. Lodi, C. Mor-ris, and P. Veliˇ ckovi´ c, Combinatorial optimization and reasoning with graph neural networks. Journal of Ma-chine Learning Research 24 (130), 1–61 (2023), URL 
+
+http://jmlr.org/papers/v24/21-0449.html .[10] M. J. A. Schuetz, J. K. Brubaker, and H. G. Katzgraber, Combinatorial optimization with physics-inspired graph neural networks. Nature Machine Intelligence 4(4), 367– 377 (2022), URL https://www.nature.com/articles/ s42256-022-00468-6 .[11] J. T¨ onshoff, B. Kisin, J. Lindner, and M. Grohe, One 10 
+
+model, any CSP: Graph neural networks as fast global search heuristics for constraint satisfaction (2022), URL 
+
+http://arxiv.org/abs/2208.10227 .[12] D. Zhang, H. Dai, N. Malkin, A. Courville, Y. Bengio, and L. Pan, Let the flows tell: Solving graph com-binatorial problems with GFlowNets. In Advances in Neural Information Processing Systems , volume 36, pp. 11952–11969 (2023), URL https://proceedings. neurips.cc/paper_files/paper/2023/file/ 27571b74d6cd650b8eb6cf1837953ae8-Paper-Conference. pdf .[13] S. Boettcher, Inability of a graph neural network heuris-tic to outperform greedy algorithms in solving combi-natorial optimization problems. Nature Machine Intel-ligence 5(1), 24–25 (2022), URL https://www.nature. com/articles/s42256-022-00587-0 .[14] M. C. Angelini and F. Ricci-Tersenghi, Modern graph neural networks do worse than classical greedy algo-rithms in solving combinatorial optimization problems like maximum independent set. Nature Machine Intel-ligence 5(1), 29–31 (2022), URL https://www.nature. com/articles/s42256-022-00589-y .[15] A. Nath and A. Kuhnle, A benchmark for Maximum Cut: Towards standardization of the evaluation of learned heuristics for combinatorial optimization (2024), URL 
+
+https://arxiv.org/abs/2406.11897 .[16] K. Fukushima, Neocognitron: A self-organizing neural network model for a mechanism of pattern recognition unaffected by shift in position. Biological Cybernetics 
+
+36 (4), 193–202 (1980). [17] M. M´ ezard and G. Parisi, Mean-field theory of ran-domly frustrated systems with finite connectivity. Eu-rophysics Letters (EPL) 3(10), 1067–1074 (1987), URL https://iopscience.iop.org/article/10.1209/ 0295-5075/3/10/002 .[18] M. M´ ezard and G. Parisi, The cavity method at zero temperature. Journal of Statistical Physics 111 (1/2), 1– 34 (2003), URL http://link.springer.com/10.1023/ A:1022221005097 .[19] M. M´ ezard and A. Montanari, Information, Physics, and Computation . Oxford University Press, Oxford, UK (2009), URL https://academic.oup.com/book/6337 .[20] K. Yoon, R. Liao, Y. Xiong, L. Zhang, E. Fetaya, R. Ur-tasun, R. Zemel, and X. Pitkow, Inference in probabilistic graphical models by graph neural networks (2018), URL 
+
+https://arxiv.org/abs/1803.07710 .[21] Z. Zhang, F. Wu, and W. S. Lee, Factor graph neural networks. In Advances in Neural Information Processing Systems , volume 33, pp. 8577–8587 (2020), URL https: //proceedings.neurips.cc/paper_files/paper/2020/ file/61c66a2f4e6e10dc9c16ddf9d19745d6-Paper.pdf .[22] J. Kuck, S. Chakraborty, H. Tang, R. Luo, J. Song, A. Sabharwal, and S. Ermon, Belief propagation neural networks (2020), URL https://arxiv.org/abs/2007. 00295 .[23] V. G. Satorras and M. Welling, Neural enhanced belief propagation on factor graphs. In Proceedings of The 24th International Conference on Artificial Intelligence and Statistics , volume 130, pp. 685–693, PMLR (2021). [24] R. M. Karp, Reducibility among Combinatorial Prob-lems , pp. 85–103. Springer US, Boston, MA (1972), URL 
+
+https://doi.org/10.1007/978-1-4684-2001-2_9 .[25] F. Scarselli, M. Gori, Ah Chung Tsoi, M. Hagenbuchner, and G. Monfardini, The graph neural network model. 
+
+IEEE Transactions on Neural Networks 20 (1), 61–80 (2009), URL http://ieeexplore.ieee.org/document/ 4700287/ .[26] T. N. Kipf and M. Welling, Semi-supervised classification with graph convolutional networks (2016), URL https: //arxiv.org/abs/1609.02907 .[27] W. Hamilton, Z. Ying, and J. Leskovec, In-ductive representation learning on large graphs. In Advances in Neural Information Process-ing Systems , volume 30 (2017), URL https: //proceedings.neurips.cc/paper_files/paper/2017/ file/5dd9db5e033da9c6fb5ba83c7a7ebea9-Paper.pdf .[28] S. Boettcher, Numerical results for ground states of spin glasses on Bethe lattices. The European Physical Journal B - Condensed Matter 31 (1), 29–39 (2003), URL http: //link.springer.com/10.1140/epjb/e2003-00005-y .[29] L. Zdeborov´ a and S. Boettcher, A conjecture on the maximum cut and bisection width in ran-dom regular graphs. Journal of Statistical Mechan-ics: Theory and Experiment 2010 (02), P02020 (2010), URL https://iopscience.iop.org/article/10.1088/ 1742-5468/2010/02/P02020 .[30] A. Dembo, A. Montanari, and S. Sen, Extremal cuts of sparse random graphs. The Annals of Prob-ability 45 (2) (2017), URL https://projecteuclid. org/journals/annals-of-probability/volume-45/ issue-2/Extremal-cuts-of-sparse-random-graphs/ 10.1214/15-AOP1084.full .[31] L. Trevisan, Max Cut and the smallest eigenvalue. SIAM Journal on Computing 41 (6), 1769–1786 (2012), URL 
+
+http://epubs.siam.org/doi/10.1137/090773714 .[32] Q. Li, Z. Han, and X.-m. Wu, Deeper insights into graph convolutional networks for semi-supervised learn-ing. Proceedings of the AAAI Conference on Artificial Intelligence 32 (1) (2018), URL https://ojs.aaai.org/ index.php/AAAI/article/view/11604 .[33] T. K. Rusch, M. M. Bronstein, and S. Mishra, A survey on oversmoothing in graph neural networks (2023), URL 
+
+https://arxiv.org/abs/2303.10993 .[34] M. E. J. Newman, Networks . Oxford University Press, Oxford, UK, 2nd edition (2018). [35] W.-K. Chen, D. Gamarnik, D. Panchenko, and M. Rah-man, Suboptimality of local algorithms for a class of max-cut problems. The Annals of Probability 47 (3) (2019). [36] D. Gamarnik, Barriers for the performance of graph neural networks in discrete random structures. Pro-ceedings of the National Academy of Sciences 120 (46), e2314092120 (2023), URL https://pnas.org/doi/10. 1073/pnas.2314092120 .[37] D. J. Watts and S. H. Strogatz, Collective dynam-ics of small-world networks. Nature 393 (6684), 440–442 (1998). [38] J. Yedidia, W. Freeman, and Y. Weiss, Constructing free-energy approximations and generalized belief propaga-tion algorithms. IEEE Transactions on Information The-ory 51 (7), 2282–2312 (2005), URL http://ieeexplore. ieee.org/document/1459044/ .[39] M. Chertkov and V. Y. Chernyak, Loop calculus in statistical physics and information science. Phys. Rev. E 73 , 065102(R) (2006), URL https://link.aps.org/ doi/10.1103/PhysRevE.73.065102 .[40] G. T. Cantwell and M. E. J. Newman, Message passing on networks with loops. Proceedings of the National Academy of Sciences 116 (47), 23398–23403 11 
+
+(2019), URL https://pnas.org/doi/full/10.1073/ pnas.1914893116 .[41] A.-L. Barab´ asi and R. Albert, Emergence of scaling in random networks. Science 286 (5439), 509–512 (1999). [42] D. P. Kingma and J. Ba, Adam: A method for stochastic optimization. In International Conference on Learning Representations (ICLR) (2015). [43] M. Fey and J. E. Lenssen, Fast graph representation learning with PyTorch Geometric. In ICLR Workshop on Representation Learning on Graphs and Manifolds 
+
+(2019).
