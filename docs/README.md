@@ -18,22 +18,28 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-10
-- 运行时间：2026-09-10 22:16:00 UTC
+- 最新运行日期：2026-09-11
+- 运行时间：2026-09-11 22:12:22 UTC
 - 运行状态：成功
-- 本次总论文数：0
+- 本次总论文数：1
 - 精读区：0
-- 速读区：0
+- 速读区：1
 
 ### 今日简报（AI）
-> 今日无新推荐，系统未产出可展示论文。
-- 详情：[/202609/10/README](/202609/10/README)
+今日速读1篇、精读0篇，聚焦SMT求解前沿，唯一入选的是《Extending SMT Solving with Non-Ground Clause Learning》（7.0/10）。
+
+该文值得关注的方向是把"非基子句学习"引入SMT求解，可能为提升求解器在复杂约束下的推理能力提供新思路。
+
+普通读者若对自动定理证明或SMT求解器感兴趣，可先读这篇速读笔记；若想深入，建议后续将其列入精读并追踪同类工作。
+- 详情：[/202609/11/README](/202609/11/README)
 
 ### 精读区论文标签
 - 本次无精读推荐。
 
 ### 速读区论文标签
-- 本次无速读推荐。
+1. [Extending SMT Solving with Non-Ground Clause Learning](/202609/11/2609.11509v1-extending-smt-solving-with-non-ground-clause-learning)  
+   标签：评分：7.0/10、query:cdcl-sat
+   evidence：CDCL(T)风格SMT求解中的非基冲突分析与子句学习
 
 
 <div class="dpr-home-promo-card dpr-home-panel">

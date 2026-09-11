@@ -1,0 +1,24 @@
+{
+  "label": "2026-09-11",
+  "date": "2026-09-11",
+  "generated_at": "2026-09-11T22:12:26",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202609/11/2609.11509v1-extending-smt-solving-with-non-ground-clause-learning",
+      "section": "quick",
+      "title_en": "Extending SMT Solving with Non-Ground Clause Learning",
+      "authors": "Yasmine Briefs, Christoph Weidenbach",
+      "date": "2026-09-10",
+      "pdf": "https://arxiv.org/pdf/2609.11509v1",
+      "score": "7.0",
+      "evidence": "CDCL(T)风格SMT求解中的非基冲突分析与子句学习",
+      "tldr": "非ground SMT求解目前主要依靠量词实例化：求解器先产生ground实例，再用CDCL(T)风格推理求解，但冲突分析只学习ground子句，即使冲突实际来自非ground子句的实例。本文提出一种演算，把ground实例化、CDCL(T)规则和非ground冲突分析统一起来：求解仍在ground实例上进行，冲突分析的分辨步骤却直接作用于原始非ground子句。这样学到的子句通常比ground冲突更一般，在合适策略下甚至非冗余，并且能够加入时序回溯。该演算为CDCL(T)式SMT、多种实例化过程和非ground子句学习提供共同框架，并可模拟CDCL、SCL(FOL)、SCL(T)乃至Resolution。",
+      "tags": "query:cdcl-sat",
+      "abstract_en": "Quantifier instantiation is currently the main approach to non-ground SMT solving: solvers generate ground instances and solve the resulting ground SMT problems with CDCL(T)-style reasoning. When a conflict is found, conflict analysis learns only a ground clause, even though the conflict comes from instances of non-ground clauses. Yet non-ground reasoning can give exponentially shorter proofs than purely ground reasoning. We propose a calculus that consists of ground instantiations, CDCL(T)-style rules, and non-ground conflict analysis. The solver reasons on ground instances, but the resolution steps of conflict analysis are performed on their original non-ground clauses. This produces learned clauses that are typically more general than the ground conflict. With a suitable strategy, the learned clauses are even non-redundant. We also show how chronological backtracking can be included in SMT solving. Our calculus gives a common setting for CDCL(T)-style SMT solving, a range of instantiation-based procedures, and non-ground clause learning, and we prove that it simulates CDCL, SCL(FOL), SCL(T), and even Resolution.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
