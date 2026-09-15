@@ -1,0 +1,24 @@
+{
+  "label": "2026-09-15",
+  "date": "2026-09-15",
+  "generated_at": "2026-09-15T22:54:23",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202609/15/2609.14836v1-the-case-for-automated-hyperspecialization-evidence-from-sat",
+      "section": "deep",
+      "title_en": "The Case for Automated Hyperspecialization: Evidence from SAT",
+      "authors": "Harrison Green, Claire Le Goues, Fraser Brown",
+      "date": "2026-09-13",
+      "pdf": "https://arxiv.org/pdf/2609.14836v1",
+      "score": "9.0",
+      "evidence": "用编码智能体自动合成面向工作负载的 SAT 求解器",
+      "tldr": "软件现状常用一个通用系统处理多种输入，本文提出“超专业化”：为单一输入类生成专用软件。手动实现昂贵甚至不可行，作者认为编码智能体可让其在性能可测、输出可查的问题上变得廉价、有效且安全。以SAT求解为例，自动合成数百个负载专用求解器，平均成本约37美元；专用器平均比竞赛级通用器快5倍，四分之一基准族快超10倍。由百余原型超专用器构建的通用求解器赢得2026 SAT竞赛SAT赛道。",
+      "tags": "query:llm-sat",
+      "abstract_en": "The software status quo is to use one system to process many different kinds of inputs. In contrast, we propose hyperspecialization: creating new software that is optimized for a single class of inputs. Hyperspecializing manually is anywhere from expensive to impossible. We conjecture that coding agents make automated hyperspecialization cheap, effective, and safe for problems with measurable performance and checkable output. This paper explores one such problem, SAT solving, by synthesizing hundreds of workload-specific SAT solvers at an average cost of \\$37 each. Our specialists outperform their competition-winning, general-purpose cousins by 5$\\times$ on average, and by over $10\\times$ on a quarter of benchmark families. A general-purpose solver constructed from over a hundred of our prototype hyperspecialists won the SAT track at the 2026 SAT Competition.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
