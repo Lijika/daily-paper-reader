@@ -1,0 +1,876 @@
+Title: Partition Scores Are Not System Scores: Deployment-Fidelity Gaps in Decomposed Algorithm Selection
+
+URL Source: https://arxiv.org/pdf/2609.13785v1
+
+Published Time: Tue, 15 Sep 2026 00:35:13 GMT
+
+Number of Pages: 28
+
+Markdown Content:
+# Partition Scores Are Not System Scores: Deployment-Fidelity Gaps in Decomposed Algorithm Selection 
+
+Jiachen Zhang ∗
+
+Department of Computer Science University of Oregon 
+
+Yu Tang 
+
+Huazhong University of Science and Technology 
+
+Li Zhu 
+
+City University of Hong Kong 
+
+## Abstract 
+
+Oracle-style quantities, including virtual best solvers, selected-portfolio VBS, virtual-best encodings, and best-in-family summaries, are widely reported as upper bounds on what a deployable selector could achieve. In decomposed algorithm selection, an analogous partition-level score grants an oracle choice of the best algorithm within the selected family; once the family selector is fixed, the deploy-able system must replace that within-family oracle with a learned within-family selector. We define the deployment-fidelity gap G(R) as the difference between partition-level and deployable end-to-end utility and derive two accounting consequences: a per-instance margin–regret stability condition that tells us when a partition-time family choice is deployment-optimal, and a sharp partition-only identification interval that, when it strictly crosses zero, prevents the partition-level report from certifying the deployable winner. Across five public algorithm-selection benchmarks spanning tabular AutoML and combinatorial CSP/SAT, every decomposed pipeline has positive G(R), ranging from 0.012 on TabZilla to 0.13 on PROTEUS-2014. Four of ten decomposed-versus-flat decisions have sign-changing point estimates; on PROTEUS-2014, a 
+
+33 -point partition advantage shrinks to a 20 -point end-to-end advantage. A training-side validation gap-correction diagnostic recovers the point-estimate deployable sign on all four sign-changing cells; it is a reporting aid, not a substitute for direct end-to-end evaluation. Partition and end-to-end scores should be reported side by side. 
+
+## 1 Introduction 
+
+Algorithm selection (AS) systems increasingly use decomposed decisions: rather than selecting directly from a large portfolio, they first select an algorithm family and then a concrete algorithm within it [Kerschke et al., 2019, Bischl et al., 2016]. Decomposition reduces a hard multiclass problem and exposes interpretable structure, but its evaluation can differ from its deployment. A common partition-level evaluation asks whether the selected family contains a strong algorithm and then grants the best member of that family. This upper-bounds the partition, but it is not an end-to-end system: deployment must use a learned within-family selector. We call the discrepancy  
+
+> ∗Corresponding author: jiaz@uoregon.edu
+> Preprint. arXiv:2609.13785v1 [cs.AI] 12 Sep 2026
+
+the deployment-fidelity gap :
+
+G(R) = Spart (R) − Se2e (R), (1) where Spart uses the within-family oracle and Se2e uses the deployable selector. G(R) is the utility lost when the oracle is replaced by the available within-family selector. Across five public AS benchmarks (B1: TabZilla, B2: TabRepo, B3: TALENT, B4: MAXSAT-PMS-2016, B5: PROTEUS-2014) spanning tabular AutoML [McElfresh et al., 2023, Salinas and Erickson, 2024, Ye et al., 2024] and combinatorial search [Bischl et al., 2016, Hurley et al., 2014], all decomposed pipelines show positive deployment-fidelity gaps, from 1.2 points on TabZilla to 13 
+
+points on PROTEUS-2014. The gap changes conclusions: on TabRepo and MAXSAT-PMS-2016, partition-level evaluation favours decomposition over flat selection but end-to-end point estimates change sign, with one B2 cell and both B4 cells having small end-to-end margins; on TabZilla the advantage is almost absorbed but remains positive end-to-end; on PROTEUS-2014 a 33 -point partition advantage shrinks to 20 points end-to-end ( ρ ≈ 0.41 ). Overall, the safety condition fails in 4/10 decomp-vs-flat deployment decisions, whereas all 5 pairwise-vs-multiclass outer-selector comparisons are low-signal. The dominant risk is therefore whether the within-family deployment step is included, not which outer selector is used. Prior work uses oracle baselines such as virtual best solvers (VBS) as upper bounds [Xu et al., 2008, Bischl et al., 2016, Cameron et al., 2016], and recent work studies split- and scale-induced benchmarking pitfalls [Petelin and Cenikj, 2025]. We study a different, nested oracle: the within-family oracle introduced after a family selector has already acted. The novelty is not that oracle scores are optimistic, but that a common decomposition score can replace one deployable stage with an oracle and change comparisons through G(R1) − G(R2).
+
+Contributions. 
+
+1. Formal. We define G(R) and identify partition score as an oracle-assisted upper bound rather than a system score. Two accounting lemmas (Lemmas 1, 2) support a per-instance margin–regret stability theorem (Theorem 1) and a sharp partition-only identification theo-rem (Theorem 2) showing when partition reports cannot certify the deployable winner. 2. Empirical. On five public AS benchmarks we separate decomp-vs-flat deployment deci-sions, where the safety condition fails in 4/10 comparisons and B2/B4 have sign-changing point estimates, from decomp-vs-decomp outer-selector comparisons, where pairwise and multiclass are nearly indistinguishable ( |Apart | < 5 × 10 −3). Margin–regret violation rates (0.23 –0.56 ) and identification intervals (all 15 pairs cross zero) corroborate the theorems. 3. Practical. A training-side gap-correction diagnostic recovers the point-estimate deployable sign on all four sign-changing cells; a deployment-aware family selector shrinks G(R) on every benchmark and improves Se2e on B1–B4, with a small PROTEUS trade-off. We give a checklist requiring Spart , Se2e , G(R), the safety condition, and the identification interval to be reported together (§6). 
+
+## 2 Related Work 
+
+Oracle baselines and VBS. Algorithm selection has long used oracle baselines such as the Virtual Best Solver (VBS) as an upper bound on portfolio performance [Xu et al., 2008]. Frameworks such as AutoFolio [Lindauer et al., 2015] and standardised AS scenarios in ASlib [Bischl et al., 2016] explicitly compare deployable selectors to this VBS, and the AS competitions normalise scores by the SBS–VBS interval [Lindauer et al., 2019]. Cameron et al. [2016] further document that VBS evaluation itself can be optimistically biased when solvers are randomised. Oracle-style scores beyond the full-portfolio VBS are also routinely reported. Selected-portfolio VBS appears in 
+
+k-portfolio studies [Bach et al., 2022] and in portfolio selection for automated algorithm selection [Kostovska et al., 2023]; subportfolio virtual-best scores are reported alongside the deployable system in hierarchical solver portfolios such as Proteus [Hurley et al., 2014], whose four families correspond to a CSP-native solver branch and three SAT encodings of the input. Encoding-level selection has its own virtual-best encoding as a standard upper bound [Stojadinovi´ c and Mari´ c, 2014, Ulrich-Oltean et al., 2022, 2023], and tabular benchmarking literature reports best-in-family summaries – best deep model versus best gradient boosting model – as the primary comparison object [McElfresh et al., 2023, Shmuel et al., 2025]. A literature audit of twelve such reporting objects, the claim each 2row supports, and the strength of that support is given in Appendix R; Shmuel et al. [2025] is a representative tabular instance in which the best-of-DL versus best-of-TE comparison is the headline conclusion and no within-family deployable selector is specified. Closest in spirit, Tornede et al. [2023] define an AS-oracle over algorithm selectors and show that lifting the oracle to that meta level can degrade oracle performance; our setting differs in that the hidden oracle is over algorithms inside an already-chosen family rather than over complete selectors, so the relevant loss is the within-family deployment-fidelity gap G(R).
+
+Methodological critiques. Petelin and Cenikj [2025] identify two pitfalls in feature-based AS benchmarking — leave-instance-out (LIO) splits and scale-sensitive performance targets — both orthogonal to our concern: LIO controls which test instances are held out and scale sensitivity controls the numeric target , whereas the deployment-fidelity gap concerns which system is evaluated. Unlike split or target-scale effects, the deployment-fidelity gap changes the evaluated object itself: an oracle-assisted partition score replaces one stage of the deployable selector. 
+
+Decomposition in algorithm selection and classification. Pairwise classification [Sun and Pfahringer, 2013, Galar et al., 2011], multiclass selectors, and family-level decompositions are well-studied as training strategies, often analysed within the error-correcting-output-code framework [Allwein et al., 2000]. We study how such decompositions are evaluated once an inner within-family decision is left to a learned selector at deployment time. 
+
+## 3 Setup 
+
+Let x ∈ X denote a problem instance (e.g. a dataset or a SAT formula), A a finite algorithm pool, and 
+
+Π = {F1, . . . , F K } a partition of A into algorithm families ( Fi ∩ Fj = ∅ for i̸ = j and S 
+
+> k
+
+Fk = A). Let u(x, a ) ∈ R denote the utility of algorithm a on instance x; higher is better. Throughout the paper we use a utility convention for both score and advantage. Benchmarks whose native metric is a regret or a runtime are mapped to utilities by a per-instance monotone transformation (Appendix A), which preserves the within-instance ordering of algorithms; all reported magnitudes and advantages are therefore interpreted on the resulting normalised utility scale. A decomposed selector R consists of a family-level selector hR : X → { 1, . . . , K } and, for each family k, a within-family selector gR,k : X → Fk. Let ˆkR(x) = hR(x) denote the predicted family, and define the family-k oracle-best algorithm 
+
+a∗
+
+> k
+
+(x) = arg max 
+
+> a∈Fk
+
+u(x, a ). (2) 
+
+Partition score. The partition-level evaluation grants an oracle choice within the predicted family: 
+
+Spart (R) = Ex
+
+ u x, a ∗
+
+> ˆkR(x)
+
+(x)  . (3) 
+
+End-to-end score. The end-to-end evaluation deploys the within-family selector that is actually available: 
+
+Se2e (R) = Ex
+
+ u x, g R, ˆkR(x)(x)  . (4) 
+
+Deployment-fidelity gap. G(R) := Spart (R) − Se2e (R) measures how much partition-level evaluation overstates the deployable system. For two pipelines R1, R 2 evaluated on the same test distribution, the partition and end-to-end advantages are Apart := Spart (R1) − Spart (R2) and 
+
+Ae2e := Se2e (R1) − Se2e (R2).
+
+## 4 From Partition Scores to Deployment Stability 
+
+This section relates the four estimands of §3 in three steps. §4.1 records two accounting lemmas: 
+
+G(R) equals within-family regret, and advantage absorption equals the difference of gaps. §4.2 states a margin–regret stability theorem characterising, instance by instance, when the family chosen at partition time is also deployment-optimal. §4.3 shows that even with selected-family utility ranges added to a partition-level report, the deployable advantage between two pipelines is identifiable only within an interval, and that when the interval strictly crosses zero the report cannot certify a deployable winner. 34.1 Accounting lemmas Lemma 1 (Gap identity) . For any decomposed selector R,
+
+G(R) = Ex
+
+h
+
+u x, a ∗
+
+> ˆkR(x)
+
+(x) − u x, g R, ˆkR(x)(x) i
+
+≥ 0, (5) 
+
+with equality if and only if the within-family selector chooses an oracle-optimal algorithm inside the predicted family almost surely. Proof sketch. Substitute (3), (4) into G(R) and use nonnegativity of u(x, a ∗
+
+> ˆkR(x)
+
+(x)) −
+
+u(x, g R, ˆkR(x)(x)) on each instance. Full proof in Appendix F. 
+
+Lemma 2 (Advantage absorption) . For any two decomposed selectors R1, R 2,
+
+Ae2e = Apart −  G(R1) − G(R2) , (6) 
+
+or equivalently Apart − Ae2e = G(R1) − G(R2).Proof sketch. Se2e (R) = Spart (R) − G(R) by definition; expand Ae2e = Se2e (R1) − Se2e (R2).Full proof in Appendix F. The lemmas have two immediate consequences we use throughout the paper. First (Corollary 1), 
+
+G(R) measures within-family suboptimality: it is zero exactly when the within-family selector is family-oracle, regardless of whether ˆkR(x) is the globally optimal family. Second (Corollary 2), the partition-level claim “ R beats F ” transfers to end-to-end evaluation iff Apart (R, F ) > ∆G(R, F ),where ∆G := G(R) − G(F ); for an ideal flat baseline ( G(F ) = 0 ) this reduces to Apart > G (R).
+
+Corollary 1 (Family error vs. within-family error) . G(R) depends on ˆkR(x), but not on whether 
+
+ˆkR(x) is globally optimal: even if R chooses the wrong family, the gap is zero whenever the within-family selector picks an oracle-best algorithm in that wrong family; conversely, even with the globally optimal family selected, G(R) > 0 whenever the within-family selector deviates from a∗
+
+> ˆkR(x)
+
+(x).
+
+Corollary 2 (General deployment-safety condition) . For any two decomposed selectors R and F (the latter typically a flat baseline), the partition-level conclusion “ R beats F ” transfers to end-to-end evaluation if and only if Apart (R, F ) > ∆G(R, F ), where ∆G := G(R) − G(F ). When G(F ) = 0 
+
+this reduces to Apart > G (R).Proof sketch. Apply Lemma 2: Ae2e > 0 ⇐⇒ Apart > ∆G.Corollary 2 turns the apparently tautological identity ( G(F ) = 0 for ideal flat baselines) into a falsifiable empirical safety condition; §5 documents how often it fails. The general ∆G form is kept because it covers arbitrary reference systems, while our singleton flat controls enforce the invariant 
+
+G(F ) = 0 by applying the same missing-value fallback to partition and end-to-end singleton scores. 
+
+4.2 Margin–regret stability of family selection 
+
+The lemmas describe aggregate accounting. To say when partition conclusions transfer at the level of an individual instance, we decompose deployable utility into an oracle family margin and a within-family regret, then read off when the family selected at partition time is deployment-optimal. 
+
+Per-family quantities. For each instance x and each family k define 
+
+mk(x) = max 
+
+> a∈Fk
+
+u(x, a ), vk(x) = u(x, g R,k (x)) , rk(x) = mk(x) − vk(x), (7) so vk(x) = mk(x) − rk(x). Here mk(x) is family k’s oracle utility on x, vk(x) is the deployable utility realised by R’s within-family selector gR,k inside family k, and rk(x) ≥ 0 is the within-family regret. Writing s = ˆkR(x) for the family that the partition-time selector actually chooses, the deployable utility of R at x is exactly vs(x).4Theorem 1 (Margin–regret deployment stability) . Fix an instance x and a family selector ˆkR, and write s = ˆkR(x). The deployment regret of selecting family s relative to the best deployable family on x is 
+
+Reg dep (ˆkR; x) = max  
+
+> q∈[K]
+
+vq (x) − vs(x) = max 
+
+> q∈[K]
+
+ (mq (x) − ms(x)) − (rq (x) − rs(x)) . (8) 
+
+In particular, s is deployment-optimal at x if and only if 
+
+ms(x) − mq (x) ≥ rs(x) − rq (x) for every competing family q ∈ [K]. (9) 
+
+Proof sketch. Substitute vk = mk − rk and maximise over q; non-negativity of regret yields (9). Full proof in Appendix F. 
+
+Reading the theorem. The decomposition makes explicit what the aggregate identity Ae2e =
+
+Apart − ∆G hides. Deployment failure of family s relative to family q is controlled by a differential 
+
+within-family regret rs − rq measured against an oracle family margin ms − mq : s stays deployment-optimal as long as it has a larger oracle margin than the gap between its within-family selector and family q’s. Two practical consequences. First, the partition-optimal family p(x) ∈ arg max k mk(x)
+
+remains deployment-optimal at x iff mp − mq ≥ rp − rq for every q̸ = p; otherwise the partition-time choice p(x) is dominated in deployment by some competitor with smaller oracle margin but smaller within-family regret too. Second, the Bayes-optimal deployable outer target is vk(x) = 
+
+mk(x) − rk(x), not mk(x). Training a family selector against mk optimises family oracle potential; training against (a cross-fitted estimator of) vk optimises the quantity that determines deployment-optimal family choice. §6 returns to this in describing our deployment-aware family selector. A synthetic toy example with two singleton-conflicting decompositions illustrates the general deployment-safety condition of Corollary 2: Apart ≈ +0 .20 but Ae2e ≈ − 0.24 because the differen-tial gap exceeds the partition advantage ( ρ ≈ 2.2). The per-instance margin–regret condition explains the within-pipeline mechanism; the cross-pipeline sign change itself is governed by Corollary 2 (Appendix C). 
+
+4.3 Why partition-level reports cannot certify deployable winners 
+
+Theorem 1 characterises one pipeline’s deployment stability. We now turn to comparisons of two pipelines R1, R 2 and ask: from a partition-level report, can the reader certify the deployable winner? The answer is negative; even with selected-family utility ranges added to the report, the deployable advantage Ae2e is identifiable only within an interval that may cross zero. 
+
+Selector classes and gap envelopes. For pipeline R with fixed family selector ˆkR, let GR denote a class of admissible within-family selectors g, each producing a gap Gg (R) ≥ 0 via Lemma 1. Define the lower and upper gap envelopes 
+
+G(R) := inf 
+
+> g∈G R
+
+Gg (R), G(R) := sup 
+
+> g∈G R
+
+Gg (R). (10) The unrestricted family-respecting class (every measurable g with g(x) ∈ FˆkR(x)) gives G(R) = 0 
+
+(oracle within-family) and G(R) = WR := Ex
+
+ max a∈FˆkR(x) u(x, a )−min a∈FˆkR(x) u(x, a )  (worst within-family choice attainable as a measurable selector). 
+
+Theorem 2 (Partition-only identification) . Let R1, R 2 be two decomposed selectors and let GRi be admissible within-family selector classes. Suppose only Spart (R1), Spart (R2), and the envelopes 
+
+G(Ri), G (Ri) are reported. Then 
+
+Ae2e ∈  Apart − G(R1) + G(R2), Apart − G(R1) + G(R2) , (11) 
+
+and if the gap envelopes G(Ri), G (Ri) are attained by admissible selectors, the interval is sharp; otherwise the endpoints are approached arbitrarily closely by some choice of within-family selectors 
+
+g1 ∈ G R1 , g 2 ∈ G R2 . Under the unrestricted family-respecting class, the envelopes are attained by the within-family oracle and the within-family worst-case selector, so the interval [Apart − WR1 , A part +
+
+WR2 ] is sharp without further assumption. 
+
+5Proof sketch. Apply Lemma 2 to (g1, g 2) and vary independently over GRi . Under the unrestricted class, G = 0 is attained by the within-family oracle and G = WR by the pointwise within-family worst-case selector. Full proof in Appendix F. 
+
+Corollary 3 (No partition-only sign certificate) . If the interval in (11) strictly crosses zero, then the partition-level report (with envelopes) does not certify the sign of Ae2e : there exist admissible 
+
+(g1, g 2) and (g′
+
+> 1
+
+, g ′
+
+> 2
+
+) realising the same partition-level scores and envelopes but Ae2e (g1, g 2) and 
+
+Ae2e (g′
+
+> 1
+
+, g ′
+
+> 2
+
+) of opposite sign. Conversely, if the interval is strictly positive (resp. strictly negative), then Ae2e has the same sign as the interval for every admissible (g1, g 2).
+
+Scope qualifier. Theorem 2 is a statement about partition-level reports , not about the underlying benchmark. It does not say the deployable winner is unknowable: once a concrete within-family selector is fixed and evaluated, Ae2e is just a number. What it does say is that the partition-level report, even augmented with selected-family utility ranges, is insufficient as a system-performance certificate when its identification interval strictly crosses zero. Equivalently: full transfer of the partition conclusion requires either (i) reporting Se2e directly, which collapses the interval to a point, or (ii) demonstrating empirically (e.g. via the margin–regret diagnostic of Theorem 1 and §5.4) that within-family regret is small relative to the oracle margin on the relevant instances. 
+
+Reversal taxonomy. Define the absorption ratio ρ := 1 − Ae2e /A part = ( G(R1) − G(R2)) /A part ,well-defined when |Apart | > 0. We label transfer ( ρ ≈ 0), partial absorption ( 0 < ρ < 1), extreme absorption ( ρ ≈ 1), reversal ( ρ > 1, Apart > 0), and opposite reversal ( Apart < 0, Ae2e > 0); the full taxonomy table is in Appendix D. 
+
+Implication for empirical studies. The lemmas turn “ does within-family suboptimality explain the gap? ” and “ is partition advantage equal to deployable advantage? ” from statistical hypotheses into definitional identities. The two theorems turn the questions “ when is partition-optimal family choice deployment-stable? ” and “ can a deployable winner be certified from partition reports? ” into testable per-instance and per-pair conditions. §5.4 reports two diagnostics that operationalise these conditions: a per-instance margin–regret violation rate (Theorem 1) and a partition-only identification interval together with its crosses-zero count (Theorem 2). Pointwise computation requires a common valid-instance set per comparison; the empirical residual of Lemma 2 is below 10 −15 on every benchmark (Appendix G). 
+
+## 5 Empirical Results 
+
+5.1 Benchmarks and protocol 
+
+Table 1 summarises the five benchmarks: three tabular AutoML AS scenarios (B1–B3) and two ASlib combinatorial-search scenarios (B4–B5). We use fixed matrix-style resources because our estimands require paired algorithm-by-instance utilities under a stable protocol; living benchmarks such as TabArena [Erickson et al., 2025] are complementary. Family selectors are multiclass RF, pairwise one-vs-one RF with soft voting, or a synthetic singleton-family flat baseline. The default within-family selector is a per-algorithm gradient-boosted regressor; §5.5 sweeps three more classes. We run 5 seeds × 5-fold stratified CV and convert performance to per-instance utilities in [0 , 1] 
+
+(Appendix A). B4–B5 family mappings follow solver-competition reports [Li and Manyà, 2009, Hurley et al., 2014] and appear verbatim in Appendix B. PROTEUS-2014 is partitioned semantically into CSP-native solvers plus three SAT encoding families; its primary feature policy exposes only the ASlib csp step ( 36 features), with an all-feature sensitivity in Appendix L. All diagnostics and CIs use the test instance as the unit: repeated seed/fold predictions are aggregated per instance before instance-cluster bootstrap (Appendix G). 
+
+5.2 RQ1: Do partition scores overstate deployable performance? 
+
+Figure 1 plots G(R) across all 15 cells. Flat baselines are controls; the main claim concerns pairwise and multiclass decomposed pipelines, all with positive gaps and CIs excluding zero. Gaps range from 
+
+0.012 on TabZilla (B1) to approximately 0.13 on PROTEUS-2014 (B5). Paired Wilcoxon tests yield 
+
+p < 10 −15 on every decomposed cell; full p-values are in Appendix O. 6Table 1: Benchmark registry. Native metrics are converted to per-instance utility (App. A). B5 retains the common valid-instance set after dropping all-timeout rows from 4021 raw PROTEUS-2014 instances. 
+
+ID Benchmark #inst. #alg. #fam. Domain Native metric B1 TabZilla 133 22 4 tabular ML accuracy B2 TabRepo (cls.) 202 11 4 tabular ML 1−error rate B3 TALENT (cls.) 200 34 4 tabular ML accuracy B4 MAXSAT-PMS-2016 556 19 4 combinatorial search PAR10 B5 PROTEUS-2014 3565 22 4 combinatorial CSP/SAT runtime 0.00 0.02 0.04 0.06 0.08 0.10 0.12 0.14 Deployment-fidelity gap G(R) = Spart − Se2e 
+
+> B1 · pairwise B1 · multiclass B1 · flat B2 · pairwise B2 · multiclass B2 · flat B3 · pairwise B3 · multiclass B3 · flat B4 · pairwise B4 · multiclass B4 · flat B5 · pairwise B5 · multiclass B5 · flat
+
+Figure 1: Deployment-fidelity gap G(R) = Spart − Se2e for every (benchmark, decomposition) cell. Bars show 95% percentile-bootstrap confidence intervals on the per-instance gap. All decomposed pipelines exhibit positive gaps; flat baselines are included as controls. The singleton-flat invariant enforces G(F ) = 0 for every flat baseline by using identical missing-value fallback on partition and end-to-end singleton scores. 
+
+5.3 RQ2: When do partition-level conclusions transfer? 
+
+For each benchmark we compare pairwise OVO vs. flat, multiclass softmax vs. flat, and pairwise vs. multiclass. The 15 pairs split into decomp-vs-flat deployment decisions (should we decompose?) and 
+
+decomp-vs-decomp outer-selector comparisons; the regimes behave differently, so we report them separately. 
+
+5.3.1 Decomp-vs-flat: is decomposition deployment-safe? 
+
+Among the 10 decomp-vs-flat comparisons in Table 2, 4 have sign-changing point estimates: B2 and B4 fail the safety condition Apart > ∆G (equal to Apart > G (R) here because every flat baseline has G(F ) = 0 ), so partition scores prefer decomposition while end-to-end point estimates prefer flat selection. One B2 cell and the two B4 cells have small end-to-end margins (B2 pw: −0.0037 ;B4: −0.0047 and −0.0031 ), so we treat them as small-margin sign changes rather than large-margin reversals. B1 is a high-absorption case: the partition advantage remains positive end-to-end but shrinks to 1–2 utility points ( ρ ≈ 0.84 –0.91 ). B3 and PROTEUS-2014 (B5) are partially absorbed; B5’s 33 pp partition advantage shrinks to 20 pp end-to-end ( ρ ≈ 0.41 ). Supporting plots are in Appendix O. 
+
+5.3.2 Decomp-vs-decomp: do outer selectors differ? 
+
+The remaining 5 pairs (pairwise vs. multiclass) all have |Apart | < 5 × 10 −3 (Appendix O); the outer-selector choice is empirically secondary to whether the score includes the deployable within-family selector. 
+
+B5 robustness checks. Because PROTEUS-2014 gives the largest gap, we test two design choices. First, giving the selector all 198 features (including encoding-conditional features unavailable before choosing an encoding) improves deployment but leaves G > 0: pairwise 0.134 → 0.100 , multiclass 
+
+0.135 → 0.098 . Second, shortening the runtime cutoff from 3600 s to 1800 s leaves the gap essentially 7Table 2: Decomp-vs-flat advantage transfer. “pw” = pairwise OVO, “mc” = multiclass softmax. ρ > 1
+
+marks sign change relative to the partition-level advantage; small end-to-end margins should be read as point estimates rather than large-margin reversals. All quantities are recomputed on the four-way intersection of finite values for the specific pair, so the gap values in this table need not match the per-cell marginal gaps in Table 12; on each pair, Apart − Ae2e = G(R1) − G(R2) holds exactly (Lemma 2). Pairwise vs. multiclass comparisons all have |Apart | < 5 × 10 −3 and are reported in Appendix O (Table 13).                                                                              
+
+> ID Pair Apart Ae2e G(R1)G(R2)ρRegime B1 mc vs flat +0 .0145 +0 .0024 0.0121 0.0000 0.835 high absorption B1 pw vs flat +0 .0143 +0 .0013 0.0130 0.0000 0.912 high absorption B2 mc vs flat +0 .0446 −0.0077 0.0523 0.0000 1.172 sign change
+> B2 pw vs flat +0 .0471 −0.0037 0.0507 0.0000 1.078 small sign change
+> B3 mc vs flat +0 .1069 +0 .0316 0.0752 0.0000 0.704 partial absorption B3 pw vs flat +0 .1079 +0 .0372 0.0707 0.0000 0.655 partial absorption B4 mc vs flat +0 .0202 −0.0047 0.0248 0.0000 1.231 small sign change
+> B4 pw vs flat +0 .0216 −0.0031 0.0247 0.0000 1.142 small sign change
+> B5 mc vs flat +0 .3285 +0 .1919 0.1365 0.0000 0.416 partial absorption B5 pw vs flat +0 .3333 +0 .1973 0.1360 0.0000 0.408 partial absorption
+
+unchanged (pairwise 0.134 → 0.134 , multiclass 0.135 → 0.136 ). Thus the B5 headline effect is not an artefact of feature availability or timeout convention; full numbers are in Appendix L. 
+
+5.4 RQ3: Theorem 1/2 diagnostics 
+
+Lemma 1/2 residuals are at machine precision (Appendix G), so we focus on the diagnostics induced by Theorems 1 and 2. 
+
+Theorem 1 diagnostic: per-instance margin–regret stability. For each instance x we form 
+
+viol( x) = 1{∃ q̸ = s : rs(x) − rq (x) > m s(x) − mq (x)} for the selected family s = ˆkR(x). A violation means a competitor has higher deployable utility because its lower oracle margin is offset by lower within-family regret. The existential rate ranges 0.23 –0.56 for pairwise and multiclass pipelines (Table 11); flat-baseline rates are larger ( 0.49 –0.67 ) because they count any singleton beating the single-best-on-train algorithm. 
+
+Theorem 2 diagnostic: partition-only identification interval. For each comparison we report 
+
+[Apart − WR1 , A part + WR2 ], with WR the average selected-family utility range. All 15 intervals strictly cross zero, including B5 ( Apart = +0 .33 , WR ≈ 0.75 ), so partition reports plus family ranges do not certify the deployable winner. This interval is a conservative certificate, not a predictor; direct Se2e reporting remains necessary (Table 10, Appendix O). 
+
+5.5 RQ4: Robustness to within-family selector class 
+
+Across within-family selector classes, G(R) varies 1.28 × to 2.23 × by benchmark, while family-selector class changes Spart and G negligibly. In the main B4–B5 sweep, the largest PROTEUS-2014 gap is G = 0 .211 , and even the best class leaves positive B4–B5 gaps (Appendix N); reports must specify the within-family selector. 
+
+Inner-selector stress test. Sweeping RF, XGBoost, LightGBM, MLP, and tuned GBDT within-family regressors does not collapse G(R): the best realistic selector preserves 87 –100% of the default on four of five benchmarks (RF on B1 is the lone sub-80% outlier). A targeted rerun on B2/B4 with RF and LightGBM within-family selectors keeps G(R) positive in every cell ( 0.046 –0.049 on B2 and 0.024 –0.027 on B4). The strict sign of the small B2/B4 end-to-end margins is selector-sensitive, but no stronger selector produces a reliable positive decomp-vs-flat advantage. B1 remains a high-absorption case, and a B5 rerun with RF keeps PROTEUS-2014 at ρ ≈ 0.41 (Appendix S). The gap is not a weak-inner-selector artifact, although exhaustive HPO or task-specific meta-learners could still reduce it and must be evaluated end-to-end. 86 Correction and Practical Guidance 
+
+Gap-corrected reporting. Estimate G on held-out folds and correct partition advantage by the gap difference, bAcorr = bAtest part − [ bGval (R1) − bGval (R2)] . Using validation folds drawn only from the outer training split, bAcorr reduces MAE by 25 –88% on B2–B5 decomp-vs-flat cells and recovers the point-estimate deployable sign on all four sign-changing cells (B2/B4). On B1, where the true end-to-end advantage is small but positive, correction can over-subtract and add variance. Split-sensitivity reruns on B2/B4 with 3, 5, and 10 training-side validation folds, and two additional validation split seeds at the 5-fold setting, recover the same four point-estimate signs; MAE reduction is weaker on the most granular validation split, especially for B4 (Appendix I). The diagnostic also assumes the training-side validation split is representative of the outer test distribution; under covariate or task-distribution shift it may under- or over-correct. It does not replace direct end-to-end evaluation. 
+
+Deployment-aware family selector. Training the outer selector on cross-fitted deployable utility instead of max a∈Fk u shrinks G(R) on every benchmark and improves Se2e on B1–B4; on B5 it shrinks G by 0.008 with a small Se2e trade-off ( −0.005 , Appendix K). 
+
+Reporting checklist. A decomposed-AS report should pair Spart , S e2e , G (R) with Apart , A e2e , ρ 
+
+and the identification interval, and document the within-family selector, family mapping, feature policy, and common valid-instance set (Appendix E). 
+
+## 7 Limitations and Conclusion 
+
+G(R) is mapping-dependent (Appendix J) and pipeline-specific; B5’s headline effect survives the feature-policy and cutoff sensitivities of §5.3.1. Continuous black-box optimisation [Petelin and Cenikj, 2025] is out of scope. Stronger within-family models can move small end-to-end margins (Appendix S), and exhaustive HPO or domain-specific meta-learners may shrink G(R) further; such improvements must still be reported end-to-end. The validation gap-correction diagnostic assumes training-side validation is representative of the test distribution and is not evaluated under explicit covariate shift. Partition scores upper-bound family quality but are not system scores: the safety con-dition fails on 4/10 cells and every identification interval strictly crosses zero, so Spart , S e2e , G (R),and the interval should be reported together. Broader impact. This evaluation-methodology study (no human-subject data, no new deployed system) reduces misleading AS/AutoML reporting that can overstate deployable performance; its main negative impact is over-certification — our diagnostics flag when end-to-end evaluation is needed, not deployment-safety guarantees, and should accompany 
+
+Se2e and task-specific risk assessment. 9References 
+
+Erin L. Allwein, Robert E. Schapire, and Yoram Singer. Reducing multiclass to binary: A unifying approach for margin classifiers. Journal of Machine Learning Research , 1:113–141, 2000. Jakob Bach, Markus Iser, and Klemens Böhm. A comprehensive study of k-portfolios of recent SAT solvers. In 25th International Conference on Theory and Applications of Satisfiability Testing (SAT 2022) , LIPIcs, 2022. Bernd Bischl, Pascal Kerschke, Lars Kotthoff, Marius Lindauer, Yuri Malitsky, Alexandre Fréchette, Holger H. Hoos, Frank Hutter, Kevin Leyton-Brown, Kevin Tierney, and Joaquin Vanschoren. ASlib: A benchmark library for algorithm selection. Artificial Intelligence , 237:41–58, 2016. Chris Cameron, Holger H. Hoos, and Kevin Leyton-Brown. Bias in algorithm portfolio performance evaluation. In Proceedings of the 25th International Joint Conference on Artificial Intelligence (IJCAI) , pages 712–719, 2016. Nick Erickson, Lennart Purucker, Andrej Tschalzev, David Holzmüller, Prateek Mutalik Desai, David Salinas, and Frank Hutter. TabArena: A living benchmark for machine learning on tabular data. In 
+
+Advances in Neural Information Processing Systems (NeurIPS) – Datasets and Benchmarks Track ,2025. Spotlight. Mikel Galar, Alberto Fernández, Edurne Barrenechea, Humberto Bustince, and Francisco Herrera. An overview of ensemble methods for binary classifiers in multi-class problems: Experimental study on one-vs-one and one-vs-all schemes. Pattern Recognition , 44(8):1761–1776, 2011. Barry Hurley, Lars Kotthoff, Yuri Malitsky, and Barry O’Sullivan. Proteus: A hierarchical portfolio of solvers and transformations. In Integration of AI and OR Techniques in Constraint Programming – 11th International Conference (CPAIOR) , pages 301–317. Springer, 2014. Pascal Kerschke, Holger H. Hoos, Frank Neumann, and Heike Trautmann. Automated algorithm selection: Survey and perspectives. Evolutionary Computation , 27(1):3–45, 2019. Ana Kostovska, Anja Jankovi´ c, Diederick Vermetten, Sašo Džeroski, Tome Eftimov, and Carola Doerr. PS-AAS: Portfolio selection for automated algorithm selection in black-box optimization. In AutoML Conference 2023 – Main Track , 2023. URL https://openreview.net/forum?id= j5IKxqbpE2w .Chu Min Li and Felip Manyà. MaxSAT, hard and soft constraints. In Armin Biere, Marijn Heule, Hans van Maaren, and Toby Walsh, editors, Handbook of Satisfiability , pages 613–631. IOS Press, 2009. Marius Lindauer, Holger H. Hoos, Frank Hutter, and Torsten Schaub. AutoFolio: An automatically configured algorithm selector. Journal of Artificial Intelligence Research , 53:745–778, 2015. Marius Lindauer, Jan N. van Rijn, and Lars Kotthoff. The algorithm selection competitions 2015 and 2017. Artificial Intelligence , 272:86–100, 2019. doi: 10.1016/j.artint.2018.10.004. Duncan McElfresh, Sujay Khandagale, Jonathan Valverde, Vishak Prasad C., Benjamin Feuer, Chinmay Hegde, Ganesh Ramakrishnan, Micah Goldblum, and Colin White. When do neural nets outperform boosted trees on tabular data? In Advances in Neural Information Processing Systems (NeurIPS) – Datasets and Benchmarks Track , 2023. Gašper Petelin and Gjorgjina Cenikj. The pitfalls of benchmarking in algorithm selection: What we are getting wrong, 2025. URL https://arxiv.org/abs/2505.07750 .David Salinas and Nick Erickson. TabRepo: A large scale repository of tabular model evaluations and its AutoML applications, 2024. URL https://arxiv.org/abs/2311.02971 .Assaf Shmuel, Oren Glickman, and Teddy Lazebnik. A comprehensive benchmark of machine and deep learning models on structured data for regression and classification. Neurocomputing , 2025. doi: 10.1016/j.neucom.2025.131337. Article number 131337. Mirko Stojadinovi´ c and Filip Mari´ c. meSAT: multiple encodings of CSP to SAT. Constraints , 19(4): 380–403, 2014. doi: 10.1007/s10601-014-9165-7. 10 Quan Sun and Bernhard Pfahringer. Pairwise meta-rules for better meta-learning-based algorithm ranking. Machine Learning , 93(1):141–161, 2013. Alexander Tornede, Lukas Gehring, Tanja Tornede, Marcel Wever, and Eyke Hüllermeier. Algorithm selection on a meta level. Machine Learning , 112(4):1253–1286, 2023. Felix Ulrich-Oltean, Peter Nightingale, and James Alfred Walker. Selecting SAT encodings for pseudo-Boolean and linear integer constraints. In 28th International Conference on Principles and Practice of Constraint Programming (CP 2022) , LIPIcs, 2022. Felix Ulrich-Oltean, Peter Nightingale, and James Alfred Walker. Learning to select SAT encodings for pseudo-Boolean and linear integer constraints. Constraints , 28:397–426, 2023. doi: 10.1007/ s10601-023-09364-1. Lin Xu, Frank Hutter, Holger H. Hoos, and Kevin Leyton-Brown. SATzilla: Portfolio-based algorithm selection for SAT. Journal of Artificial Intelligence Research , 32:565–606, 2008. Han-Jia Ye, Si-Yang Liu, Hao-Run Cai, Qi-Le Zhou, and De-Chuan Zhan. A closer look at deep learning methods on tabular datasets, 2024. URL https://arxiv.org/abs/2407.00956 .11 Appendix 
+
+The appendix contains: (A) the per-instance utility transform; (B) full algorithm-family mappings for all five benchmarks; (C) the synthetic toy example used in §4; (D) the reversal taxonomy table; (E) the full reporting checklist and decision framework; (F) full proofs of Lemmas 1–2 and Theorems 1–2; (G) common-instance evaluation and identity-residual analysis; (H) pseudocode for the decomposed pipeline evaluator; (I) gap-corrected reporting; (J) family-mapping sensitivity (B4 only; B5 reports the primary semantic partition); (K) deployment-aware family selector; (L) PROTEUS-2014 feature-policy and cutoff sensitivities; (M) metric-transform sensitivity on B4–B5; (N) the within-family selector robustness sweep with both the per-benchmark figure and the full 24 -row B1–B3 table; (O) full numerical tables for the gap and advantage-transfer analyses; (P) statistical methodology; (Q) compute resources and reproducibility instructions; (R) a literature audit of oracle-style reporting in algorithm selection, solver portfolios, encoding selection, and tabular benchmarking; (S) full per-cell results of the inner-selector stress test of §5.5. 
+
+## A Utility transformation 
+
+For B1–B3 the native metric is an accuracy-like value already in [0 , 1] and higher-is-better; we use it directly as utility. For B4 (PAR10) and B5 (runtime; PAR10 reconstructed from runstatus ), we apply a per-instance min-max transformation 
+
+u(x, a ) = 1 − clip 
+
+ p(x, a ) − pmin (x)
+
+pmax (x) − pmin (x) , 0, 1
+
+
+
+, (12) where p(x, a ) is the native lower-is-better measurement (PAR10 in seconds). Instances on which all algorithms tie at the timeout penalty are dropped (these carry no AS signal). More generally, the transform is applied only when pmax (x) > p min (x); if pmax (x) = pmin (x), the row has zero within-instance range and is mapped to all-NaN before the common valid-instance filter. After dropping degenerate rows, B4 retains 556 of 601 instances and B5 retains 3565 of the 4021 raw PROTEUS-2014 instances. Per-instance min-max preserves rankings and is the standard convention adopted by ASlib analyses; under this convention any instance with at least one strictly-better-than-worst algorithm contributes a non-degenerate utility range. For B5, where runstatus ̸ = ok (timeout, memout, crash) or where ok runtime exceeds the cutoff, we apply the standard PAR10 penalty p(x, a ) := 10 · pcutoff before the per-instance transform. The cutoff pcutoff = 3600 s is taken from the scenario’s description.txt (algorithm_cutoff_time: 3600 ); the 1800 s cutoff sensitivity is reported in Appendix L and is not used for headline claims. 
+
+## B Algorithm-family mappings 
+
+B1 TabZilla [McElfresh et al., 2023]. TREE ENSEMBLE : CatBoost, LightGBM, XGBoost, Ran-domForest. C LASSIC : LinearModel, SVM, KNN, DecisionTree. P RETRAINED : TabPFN. D EEP :MLP, rtdl_MLP, rtdl_ResNet, rtdl_FTTransformer, SAINT, TabTransformer, NAM, NODE, STG, TabNet, VIME, DANet, DeepFM. 
+
+B2 TabRepo [Salinas and Erickson, 2024]. TREE ENSEMBLE : CAT, GBM, XGB, RF, XT. C LAS -
+
+> SIC
+
+: KNN, LR. D EEP : FASTAI, FT_TRANSFORMER, NN_TORCH. P RETRAINED : TABPFN. 
+
+B3 TALENT [Ye et al., 2024]. TREE ENSEMBLE : catboost, lightgbm, RandomForest, xgboost. CLASSIC : knn, LogReg, NCM, NaiveBayes, svm. P RETRAINED : tabpfn, tabpfn_v2, tabpfn_v2_5, tabicl_v2. D EEP : autoint, danets, dcn2, excelformer, ftt, grownet, mlp, mlp_plr, modernNCA, node, ptarl, ptaul, realmlp, resnet, snn, switchtab, tabcaps, tabnet, tabr, tabtransformer, tangos. The dataset’s constant-reference baseline column is family-skipped (assigned to no family; unreachable through the decomposed pipeline). 
+
+B4 ASlib MAXSAT-PMS-2016 [Li and Manyà, 2009]. BNB (branch-and-bound): WMaxSatz09, WMaxSatz+, ahms-1.70. C ORE GUIDED (SAT-based core extraction; OLL-style): Open-WBO15, Open-WBO16, mscg2015a, mscg2015b, maxino16-c10, maxino16-dis, Naps-1.02-ms, Optiriss6, QMaxSAT14, QMaxSAT16UC, WPM3-2015-co. IHS (implicit hitting set; hybrid SAT +MIP): 12 maxhs-b, LMHS-2016. SLS (stochastic local search; incl. SLS +BnB hybrids): CCEHC2akms, CCLS2akms, ahms-ls-1.70. 
+
+B5 ASlib PROTEUS-2014 [Hurley et al., 2014]. The PROTEUS portfolio decides between solving a CSP instance natively or transforming it via one of three CSP-to-SAT encodings (direct, support, direct-order) and dispatching to a SAT solver. The four semantic families on the 22 algorithms are: CSP-NATIVE : abscon, choco, gecode, mistral_nj. SAT-DIRECT : claspcnf_direct, crypto-minisat_direct, glucose_direct, lingeling_direct, minisat22_direct, riss3g_direct. SAT-SUPPORT :claspcnf_support, cryptominisat_support, glucose_support, lingeling_support, minisat22_support, riss3g_support. SAT-DIRECT -ORDER : claspcnf_directorder, cryptominisat_directorder, glu-cose_directorder, lingeling_directorder, minisat22_directorder, riss3g_directorder. The mapping is deterministic from the algorithm string suffix and matches the original Proteus paper’s hierarchy: CSP-native solvers appear as one family, and the SAT-side 3 × 6 grid of encodings × SAT solvers becomes three families of six. 
+
+## C Synthetic toy example 
+
+The toy used in §4 consists of n = 100 synthetic instances split evenly into two halves indexed by 
+
+h ∈ { 0, 1}. Algorithm utilities are 
+
+u(x | h = 0) = [1 .0, 0.0, 0.5, 0.4] + ε, u(x | h = 1) = [0 .0, 1.0, 0.4, 0.5] + ε, 
+
+with ε ∼ N (0 , 0.01 2)4 i.i.d. across instances and algorithms. Pipeline R1 uses the partition Π1 =
+
+{{ a0, a 1}, {a2, a 3}} with an oracle family selector ( ˆkR1 (x) always equals the family containing the optimal algorithm) but a within-family selector that flips with probability τ1 = 0 .5 between the two members of the chosen family. Pipeline R2 uses Π2 = {{ a0, a 2}, {a1, a 3}} with family-selector error rate 0.4 and a nearly clean within-family selector (flip rate τ2 = 0 .05 ). The toy construction yields Spart (R1) ≈ 0.996 , Spart (R2) ≈ 0.792 , Se2e (R1) ≈ 0.520 , Se2e (R2) ≈
+
+0.765 , hence Apart ≈ +0 .20 , Ae2e ≈ − 0.24 , and ρ ≈ 2.20 . The identity residual |Apart − Ae2e −
+
+(G(R1) − G(R2)) | is below 10 −15 for any seed, illustrating Lemma 2 numerically. This construction is also the toy invoked at the end of §4.2: R1 has the larger oracle margin but a strictly larger within-family regret on the conflicted instances. This is the mechanism behind the failure, but the formal cross-pipeline sign change is the deployment-safety failure in Corollary 2: Apart < G (R1) − G(R2),hence Ae2e < 0.
+
+## D Reversal taxonomy 
+
+The full qualitative taxonomy of how a partition-level conclusion transfers end-to-end, derived from (6):                                 
+
+> Regime Algebraic condition Practical reading Full transfer G(R1)−G(R2)≈0partition conclusion preserved Amplification ρ < 0advantage grows and sign holds Partial absorption 0< ρ < 1advantage shrinks but sign holds Extreme absorption ρ≈1advantage almost erased Reversal ρ > 1,Apart >0partition winner becomes e2e loser Opposite reversal Apart <0,Ae2e >0partition loser becomes e2e winner
+
+Reversal and opposite reversal are the two sign-reversal regimes; our empirical study observes standard-reversal point estimates on two benchmarks but does not observe opposite reversals once 
+
+Spart /Se2e /G are reported on a common instance set. Amplification is mathematically possible when the partition-level winner has a smaller deployment-fidelity gap than its comparator; it is not needed for the headline empirical claims. 13 Table 3: Metric-reporting decision framework grounded in our findings. 
+
+Research question Metric Why Is the family partition useful in principle? 
+
+Spart + VBS upper bound measures whether the selected family contains strong algorithms Is the system deployable? Se2e deployment uses a learned within-family selector, not an oracle Does method R1 beat R2? both Apart and 
+
+Ae2e 
+
+B2/B4 show sign-changing point estimates; B1/B5 show strong absorption Is the within-family selector adequate? G(R) with CI Lemma 1: G equals within-family regret Is partition advantage reliable? ρ quantifies absorption / reversal 
+
+## E Reporting checklist and decision framework 
+
+Decision framework. Table 3 maps research questions to recommended metrics. Partition score is appropriate when the question is about the family partition itself; it is insufficient when the question is about a deployable system or about comparing two decomposed methods. 
+
+Full reporting checklist. A decomposed-AS report should include: (i) Spart and Se2e side by side; (ii) G(R) with bootstrap CI; (iii) for comparisons, Apart , A e2e , ρ , with ρ marked unstable when 
+
+|Apart | < 5 × 10 −3; (iv) the within-family selector class and any oracle used; (v) the family mapping 
+
+and the partition’s semantic basis — paradigm, encoding, lineage, random, or cluster — so that readers can judge whether the partition matches the deployment hierarchy; (vi) the feature availability policy — whether the family selector uses features that are only computable after a representation or encoding choice has been made; (vii) for runtime scenarios, the timeout, PAR10 convention, and missing-value handling; (viii) the common valid-instance set used per comparison and the empirical residuals of Lemmas 1–2 as a consistency check; (ix) for every method comparison, the partition-only identification interval [Apart − WR1 , A part + WR2 ] from Theorem 2 and whether it strictly crosses zero — the partition-level report does not certify a deployable winner unless the interval is strictly signed. 
+
+## F Proofs 
+
+Lemma 1 (gap identity). Substituting (3) and (4) into the definition of G(R) and using linearity of expectation gives the first equality. For each x, a∗
+
+> ˆkR(x)
+
+(x) is by definition the maximiser of u(x, ·)
+
+over FˆkR(x), and gR, ˆkR(x)(x) ∈ FˆkR(x), so the pointwise difference is nonnegative. Equality in expectation forces equality almost surely. 
+
+Lemma 2 (advantage absorption). By definition Se2e (R) = Spart (R) − G(R). Substituting into 
+
+Ae2e = Se2e (R1) − Se2e (R2) and rearranging yields (6). 
+
+Corollary 2 (general deployment-safety). By Lemma 2, Ae2e = Apart − [G(R) − G(F )] = 
+
+Apart − ∆G, so Ae2e > 0 ⇐⇒ Apart > ∆G. Setting G(F ) = 0 recovers the canonical form. 
+
+Theorem 1 (margin–regret stability). vq (x) = mq (x) − rq (x) for every family q, so vq (x) −
+
+vs(x) = ( mq − ms) − (rq − rs). Maximising over q gives the regret expression; non-negativity of regret yields the equivalence in (9). 
+
+Theorem 2 (partition-only identification). By Lemma 2 applied to any (g1, g 2), Ae2e (g1, g 2) = 
+
+Apart − (Gg1 (R1) − Gg2 (R2)) . Independently varying g1, g 2 over GRi bounds Ggi (Ri) by 
+
+[G(Ri), G (Ri)] , so Ae2e is bounded by the interval in (11); attainability of each envelope yields sharpness, otherwise the bound is approached but not attained. Under the unrestricted family-respecting class, G(R) = 0 is attained by the within-family oracle selector g(x) ∈
+
+14 0.00 0.02 0.04 0.06 0.08 0.10 mean within-family regret (per instance) 0.00 0.02 0.04 0.06 0.08 0.10     
+
+> G(R) =  Spart  − Se2e
+> B1 B2 B3 B4
+> y = x (gap identity) pairwise multiclass −0.010 −0.008 −0.006 −0.004 −0.002 0.000 0.002 0.004
+> Apart −Ae2e
+> −0.010 −0.008 −0.006 −0.004 −0.002 0.000 0.002 0.004
+> G(R1) −  G(R2)
+> B1 B2 B3 B4 B5
+
+Figure 2: Left: per-benchmark within-family regret on the predicted family against G(R) (Lemma 1). 
+
+Right: Apart − Ae2e versus G(R1) − G(R2) for the pairwise-vs-multiclass comparison on every benchmark (Lemma 2; residuals ≤ 5 × 10 −16 ). 
+
+arg max a∈FˆkR(x) u(x, a ) and G(R) = WR is attained by the pointwise within-family worst-case selector g(x) ∈ arg min a∈FˆkR(x) u(x, a ); both are measurable on a finite algorithm pool. 
+
+## G Common-instance evaluation and identity residuals 
+
+The identities in Lemmas 1–2 hold pointwise. For each (benchmark, pair) we therefore compute 
+
+Spart (R1), Se2e (R1), Spart (R2), Se2e (R2) on the four-way intersection of finite values, i.e. the test instances on which both pipelines have a finite partition oracle and a finite end-to-end utility; the resulting empirical residuals |Apart − Ae2e − (G(R1) − G(R2)) | are at machine precision (≤ 5 × 10 −16 ) on all five benchmarks. Figure 2 visualises the two identities as a sanity check. The left panel plots within-family regret on the predicted family against G(R): by Lemma 1 the two are equal in expectation, so all benchmarks lie on y = x. The right panel plots Apart − Ae2e versus G(R1) − G(R2) for the pairwise-vs-multiclass comparison on every benchmark; by Lemma 2 all points lie on the diagonal (residuals ≤ 5 × 10 −16 ). These plots are not statistical fits but empirical realisations of the lemmas on per-benchmark estimates. This common-instance protocol is essential: without it, marginal means would average over different row sets whenever a pipeline’s partition oracle is undefined on some test instances while the deploy-able selector falls back to a penalty value, and apparent apparent sign changes can be induced by aggregation alone. For TALENT (B3), using independent valid masks can create marginal artefacts. We therefore compute each comparison on a common finite utility mask and treat common-instance evaluation as part of the reporting checklist (§6). Flat baselines are singleton-family controls. For these controls the evaluator enforces the row-wise invariant upart (x) = ue2e (x) after missing-value fallback: the same selected algorithm and the same per-instance penalty are used for both scores. Consequently all flat rows have G(F ) = 0 , including TALENT (B3); any nonzero singleton-flat gap would indicate asymmetric NaN handling rather than a within-family oracle effect. 
+
+## H Decomposed pipeline pseudocode 
+
+The protocol used to compute Spart , Se2e , and G(R) in §5 is summarised below. Stratification keys are the per-instance argmax over A, with rare classes collapsed to a synthetic __other__ class to avoid singleton folds. The within-family selector is fit per family using the family-restricted columns of M on the training rows. 15 Algorithm: Decomposed pipeline evaluator (one seed pass; the outer driver iterates this over 5 seeds and averages). Input. Utility matrix M ∈ Rn×A, feature matrix Z ∈ Rn×d, family partition Π = 
+
+{F1, . . . , F K }, Kcv -fold splits {(tr t, te t)}Kcv  
+
+> t=1
+
+.
+
+Output. Per-instance utility vectors upart , u e2e ∈ Rn.1. Initialise upart ← 0n, ue2e ← 0n.2. For each fold t = 1 , . . . , K cv :(a) Fit family selector hR on (Z[tr t], M [tr t], Π) .(b) For each family k: fit within-family selector gR,k on (Z[tr t], M [tr t, F k ]) .(c) For each i ∈ te t: set ˆk ← hR(Z[i]) , ˆa ← gR, ˆk (Z[i]) , upart [i] ←
+
+max a∈Fˆk M [i, a ] (penalty fallback if no member is finite), and ue2e [i] ← M [i, ˆa]
+
+(the same per-instance penalty if missing). For singleton flat baselines, tie the two assignments after fallback so upart [i] = ue2e [i].3. Return (upart , u e2e ).
+
+The evaluation runs the algorithm above for each of 5 seeds, averages per-instance utilities across seeds, and reports Spart = mean( upart ), Se2e = mean( ue2e ), and G = mean( upart − ue2e ) along with 95% percentile bootstrap CIs over per-instance differences. 
+
+## I Gap-corrected reporting 
+
+We evaluate the gap-correction proposed in §6 via training-side validation. For each outer fold, the outer test fold is kept untouched. We split the outer training fold into validation folds, fit the two candidate pipelines on the inner training portion, estimate bGval (R1) − bGval (R2) on the held-out validation portion, and then correct bAtest part on the original outer test fold. The correction therefore uses only training-side data for the gap estimate. Figure 3 reports the result. On the four current decomp-vs-flat sign-changing cells (B2/B4), correction recovers the point-estimate end-to-end sign and reduces MAE by 25 –65% ; the fold-level corrected sign accuracy is 0.68 –0.80 on B2 and 0.56 –0.60 on B4. A split-sensitivity check on these four cells keeps the point-estimate sign correct for validation-fold counts 3, 5, and 10 , and for two additional 
+
+5-fold validation split seeds; MAE reduction ranges from 37 –65% on B2 and 9–31% on B4. On non-sign-changing but strongly absorbed cells, it reduces MAE by 60 –65% on B3 and 87 –88% on B5, while B1 is the cautionary case: the true Ae2e is only 0.001 –0.002 , and correction over-subtracts on the point estimate. We therefore use correction as a diagnostic and still require direct Se2e reporting; we do not test robustness under explicit covariate or task-distribution shift. 0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35 measured Ae2e   
+
+> 0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35 estimated advantage (a) partition and gap-corrected estimates
+> partition Apart
+> gap-corrected Acorr
+> identity line
+> B1 mc/flat B1 pw/flat B2 mc/flat B2 pw/flat B3 mc/flat B3 pw/flat B4 mc/flat B4 pw/flat B5 mc/flat B5 pw/flat
+> −20 020 40 60 80 MAE reduction (%) (b) MAE reduction on decomp-vs-flat
+
+Figure 3: Gap-corrected vs. raw partition advantage on all 15 pairwise comparisons. (a) crosses are raw Apart , filled circles are corrected bAcorr ; corrected points are closer to the y = x identity than the raw partition estimates. (b) MAE reduction (%) for each decomp-vs-flat comparison; gain is positive on B2–B5 and negative on the B1 high-absorption cells, where the deployable advantage is close to zero and validation-side gap estimates can over-correct. 16 J Family-mapping sensitivity 
+
+For B4 we re-evaluate the deployment-fidelity gap and the decomp-vs-flat advantage transfer under three alternative family partitions in addition to the default semantic taxonomy: (P2) a coarse two-family collapse, (P3) a performance-cluster partition with K = 4 obtained by k-means on per-algorithm utility profiles, and (P4) a random balanced K = 4 placebo averaged over five seeds. Figure 4 plots G(R), Apart , and Ae2e side-by-side per partition for B4; Table 4 reports the numbers and the safety-condition flag. For B5 (PROTEUS-2014) we report only the primary semantic partition 
+
+ΠP1 here; coarser K-sensitivity for B5 is in the companion reproducibility package. The primary result is that the positive deployment-fidelity gap and the failure of the flat-deployment safety condition on B4 are robust to the choice of family taxonomy: every partition we test on B4 produces G(R)
+
+exceeding Apart .P1 default P2 coarse P3 cluster P4 random mean 
+
+> −0.005 0.000 0.005 0.010 0.015 0.020 0.025 0.030 value (utility scale) B4 (MAXSAT-PMS-2016)
+> G(R)
+> Apart
+> Ae2e
+
+Figure 4: Family-mapping sensitivity on B4. Bars are G(R), Apart , and Ae2e per partition kind. B4 fails the decomp-vs-flat safety condition Apart > G (R) for every partition tested, showing that the gap magnitude is not driven solely by the default taxonomy. B5 mapping sensitivity beyond the primary semantic PROTEUS partition is not used for paper claims. Table 4: Family-mapping sensitivity. Each row is one (benchmark, partition) cell with the resulting gap and decomp-vs-flat advantages. “safe” = general safety condition Apart > ∆G where ∆G =
+
+G(R) − G(F ). P4 (random) is averaged over five seeds. B4 fails the safety condition under every partition we test (default, coarse, performance-cluster, random placebo); B5 (PROTEUS-2014) reports the primary semantic partition ΠP1 only — coarser K-sensitivity for B5 is in the companion reproducibility package. Family mapping changes the gap magnitude but does not remove it. 
+
+ID Partition K Apart Ae2e G(R) safe? B4 P1 default 4 +0 .0202 −0.0047 0.0248 no B4 P2 coarse 2 +0 .0254 −0.0038 0.0291 no B4 P3 performance-cluster 4 +0 .0216 −0.0047 0.0262 no B4 P4 random placebo (mean of 5) 4 +0 .0163 −0.0042 0.0205 no B5 P1 semantic (CSP-native + 3 SAT enc.) 4 +0 .3333 +0 .1973 0.1360 yes 
+
+## K Deployment-aware family selector 
+
+We compare the default oracle-trained family selector ( arg max k max a∈Fk u(x, a ) on the training set) against a deployment-aware family selector that targets the cross-fitted deployable family utility 
+
+vk(x) = u(x, ˆg(−m) 
+
+> k
+
+(x)) , where ˆg(−m) 
+
+> k
+
+is the within-family selector trained on the inner training fold not containing x. Both pipelines share the PerAlgRegressionWithin within-family selector. Per-benchmark headline numbers appear in Table 5. 17 Table 5: Deployment-aware family selector (DA) vs. oracle-trained family selector (O), with both sharing PerAlgRegressionWithin . ∆X = XDA − XO. DA shrinks G(R) on every benchmark; it improves Se2e on B1–B4 and trades off slightly on B5 PROTEUS-2014, where the within-family utility range is large enough that targeting deployable utility moves family decisions toward families with smaller oracle margin. Sign-changing point estimates relative to flat persist on B2 and B4 — the safety condition remains the primary diagnostic. 
+
+ID SOe2e SDA e2e ∆Se2e GO GDA ∆G Sign chg. O / DA B1 0.9165 0.9174 +0 .0009 0.0121 0.0114 −0.0006 no / no B2 0.8961 0.9007 +0 .0046 0.0523 0.0504 −0.0019 yes / yes B3 0.7605 0.7658 +0 .0053 0.0752 0.0723 −0.0029 no / no B4 0.9700 0.9710 +0 .0011 0.0248 0.0240 −0.0008 yes / yes B5 0.8129 0.8085 −0.0045 0.1365 0.1286 −0.0079 no / no 
+
+## L PROTEUS-2014 feature-policy and cutoff sensitivity 
+
+The PROTEUS-2014 ASlib scenario provides four feature steps with 36 , 54 , 54 , and 54 features respectively for a total of 198 features. The csp step contains features computable on the original CSP instance; direct , support , and directorder contain features that are only well-defined after the corresponding CSP-to-SAT encoding has been applied. Our primary analysis uses the csp 
+
+step alone so that the family selector makes its CSP-or-SAT-and-encoding decision on information available before any encoding is fixed. For the all-feature sensitivity, we re-run the B5 main pipeline with all 198 features supplied to the family selector and the same within-family selector class. Headline numbers under both feature policies appear in Table 6. The all-feature setting is a stronger-information setting that gives the family selector access to encoding-conditional features it would not have at deployment time; we therefore interpret the csp -step configuration as the primary deployment model and the all-feature setting as a sensitivity check. The PROTEUS-2014 ASlib scenario reports algorithm runtimes censored at the scenario cutoff of 3600 s and we use this cutoff for the primary analysis. We additionally re-run B5 with the cutoff set to 1800 s: any ok run whose runtime exceeds 1800 s is re-classified as a timeout under the new (shorter) cutoff and penalised at PAR10 = 18000 s. We do not extrapolate beyond the scenario cutoff (e.g. to 7200 s) because uncensored raw run logs are not available. Table 7 reports 
+
+Spart , S e2e , G (R), A part , A e2e , ρ under both cutoffs; the direction of every conclusion is preserved. Table 6: PROTEUS-2014 feature-policy sensitivity. Headline pipeline quantities under (a) the primary csp feature step ( 36 features) and (b) the all-feature ( 198 ) sensitivity. The csp setting is the deployment model (encoding-conditional features are not visible to the family selector); the all-feature setting is a stronger-information setting that shows what would happen if the family selector could see encoding features computable only after an encoding has been chosen. 
+
+Feature policy Pipeline Spart Se2e G
+
+csp ( 36 ) primary pairwise 0.954 0.820 0.134 
+
+csp ( 36 ) primary multiclass 0.951 0.816 0.135 
+
+csp ( 36 ) primary flat 0.622 0.622 0.000 
+
+all ( 198 ) sensit. pairwise 0.945 0.845 0.100 
+
+all ( 198 ) sensit. multiclass 0.938 0.840 0.098 
+
+all ( 198 ) sensit. flat 0.669 0.669 0.000                   
+
+> This sensitivity is exploratory and is not used for headline claims. Directional conclusions are unchanged under both feature policies: G > 0on both decomposed pipelines, and the all-feature setting reduces Gby roughly 25% (0.135 →0.098 on multiclass, 0.134 →0.100 on pairwise) via improvement in Se2e rather than reduction in Spart — the within-family selector benefits more from extra features than the family oracle does. Full outputs are included in the companion reproducibility package.
+
+18 Table 7: PROTEUS-2014 cutoff sensitivity. Headline pipeline quantities under the 3600 s scenario cutoff (primary) and a 1800 s sensitivity in which any ok run exceeding 1800 s is re-classified as a timeout and penalised at PAR10. We do not extrapolate beyond the scenario cutoff because uncensored raw run logs are not available. 
+
+Cutoff Pipeline Spart Se2e G
+
+3600 s (primary) pairwise 0.954 0.820 0.134 3600 s (primary) multiclass 0.951 0.816 0.135 3600 s (primary) flat 0.622 0.622 0.000 1800 s sensitivity pairwise 0.953 0.819 0.134 1800 s sensitivity multiclass 0.948 0.812 0.136 1800 s sensitivity flat 0.616 0.616 0.000             
+
+> This sensitivity is exploratory and is not used for headline claims. Directional conclusions are unchanged: G(R)is essentially invariant under the cutoff shortening (pairwise gap 0.134 →0.134 , multiclass 0.135 →0.136 ); halving the cutoff drops 14
+> all-timeout instances ( n: 3565 →3551 ) and pulls the flat baseline’s PAR10 slightly downward without changing the conclusion. Full outputs are included in the companion reproducibility package.
+
+## M Metric-transform sensitivity on B4–B5 
+
+This appendix checks whether the B4 sign-change and B5 absorption conclusions are artefacts of the per-instance min–max utility transform of §5.1. The substantive sensitivity check is decomp-vs-flat advantage transfer under a second common [0 , 1] transform, per-instance rank utility. Appendix A defines the primary utility from raw PAR10/runtime before row-normalisation, but the downstream prediction-cache diagnostic used for this sensitivity stores normalised utilities and predictions rather than a reusable raw-cost matrix aligned to every recomputed comparison mask. The “native” column in the released diagnostic therefore falls back to a monotone − utility proxy and is reported only as an implementation sanity check, not as independent raw-second evidence. We consequently avoid using the pointwise non-negativity of a partition-oracle cost gap as robustness evidence. Table 8: Metric-transform sensitivity for decomp-vs-flat advantage transfer on B4–B5. Positive advantages favour decomposition. Min–max is the headline utility; rank utility maps the best algorithm on an instance to 1 and the worst to 0. Rank utility confirms the B4 sign change and the strong B5 absorption pattern, although B5’s multiclass rank end-to-end margin is effectively zero. 
+
+ID Pair Amm part Amm e2e Arank part Arank e2e 
+
+B4 mc vs flat +0 .020 −0.0047 +0 .086 −0.162 
+
+B4 pw vs flat +0 .022 −0.0031 +0 .087 −0.160 
+
+B5 mc vs flat +0 .328 +0 .192 +0 .237 −0.0004 
+
+B5 pw vs flat +0 .333 +0 .197 +0 .243 +0 .0047  
+
+> Full long-form outputs, including the native proxy sanity check, are in results/exp10_native_metric . Because the proxy is monotone-equivalent to the headline utility, it is not used as separate robustness evidence.
+
+## N Within-family selector robustness sweep 
+
+§5.5 summarises the within-family selector sensitivity sweep, visualised in Figure 5. On B1–B3 we sweep four classes (per-algorithm GBDT, multiclass, pairwise OVO, single-best-on-train); on B4–B5 we sweep three (pairwise-within-family is omitted because its O(|F |2) cost on the larger ASlib pools is prohibitive). G(R) ranges [0 .025 , 0.031] on B4 (spread 1.28 ×) and [0 .128 , 0.211] 
+
+on B5 (spread 1.65 ×). Even the best within-family selector in this sweep produces a substantial gap on both benchmarks; the largest main-sweep PROTEUS-2014 value is G = 0 .211 under the single-best-on-train selector. The deployment-fidelity gap is therefore not a property of any single weak within-family selector. Table 9 reports the full 24 -row robustness sweep on B1–B3 (2 family selectors × 4 within-family selectors × 3 benchmarks; the pairwise-within-family configuration is omitted on B4–B5 due to its O(|F |2) cost). Family-selector class changes Spart negligibly (the row pairs comparing PW-family vs MC-family at fixed within-class agree to ≤ 5 × 10 −3 on every benchmark), while 19 B1 B2 B3 B4 B5 Benchmark 0.000 0.025 0.050 0.075 0.100 0.125 0.150 0.175 0.200 Deployment-fidelity gap  G(R)
+
+> per-algorithm regression multiclass classifier pairwise OVO classifier single-best on train
+
+Figure 5: G(R) averaged over family-selector choice, by within-family selector class. B1–B3 sweep four classes (per-algorithm GBDT, multiclass, pairwise OVO, single-best); B4–B5 sweep three (pairwise OVO is omitted on ASlib due to its O(|F |2) solver-pair cost). Family-selector class changes Spart negligibly (within 5 × 10 −3), while within-family selector class shifts G by up to 2.2×
+
+on TALENT (B3) and produces a 0.21 gap on B5 under the main-sweep single-best-on-train selector. within-family selector class shifts G by up to 1.44 × on B1 and B2 and by 2.23 × on B3 (TALENT, 
+
+G ∈ [0 .041 , 0.092] ). Table 9: Within-family selector robustness sweep on B1–B3. Abbreviations: family selectors PW = pairwise OVO, MC = multiclass softmax; within-family selectors GBDT = per-algorithm gradient-boosted regressor, MC = multiclass classifier, PW = pairwise OVO classifier, SB = single-best-on-train. Each row is computed on its row-specific common valid-instance mask; G = Spart − Se2e holds before rounding. 
+
+ID Fam. / Within Spart Se2e G
+
+B1 PW / GBDT 0.9284 0.9154 0.0130 
+
+B1 PW / MC 0.9284 0.9141 0.0143 
+
+B1 PW / PW 0.9284 0.9180 0.0104 
+
+B1 PW / SB 0.9284 0.9169 0.0115 
+
+B1 MC / GBDT 0.9286 0.9165 0.0121 
+
+B1 MC / MC 0.9286 0.9143 0.0143 
+
+B1 MC / PW 0.9286 0.9187 0.0099 
+
+B1 MC / SB 0.9286 0.9171 0.0115 
+
+B2 PW / GBDT 0.9508 0.9001 0.0507 
+
+B2 PW / MC 0.9508 0.9119 0.0389 
+
+B2 PW / PW 0.9508 0.9138 0.0370 
+
+B2 PW / SB 0.9508 0.9145 0.0363 
+
+B2 MC / GBDT 0.9484 0.8961 0.0523 
+
+B2 MC / MC 0.9484 0.9090 0.0393 
+
+B2 MC / PW 0.9484 0.9120 0.0364 
+
+B2 MC / SB 0.9484 0.9111 0.0373 
+
+B3 PW / GBDT 0.8361 0.7654 0.0707 
+
+B3 PW / MC 0.8361 0.7951 0.0410 
+
+B3 PW / PW 0.8361 0.7511 0.0850 
+
+B3 PW / SB 0.8361 0.7501 0.0860 
+
+B3 MC / GBDT 0.8357 0.7605 0.0752 
+
+B3 MC / MC 0.8357 0.7917 0.0440 
+
+B3 MC / PW 0.8357 0.7460 0.0897 
+
+B3 MC / SB 0.8357 0.7442 0.0915 
+
+## O Full numerical tables for gap and advantage-transfer analyses 
+
+Table 12 reports per-cell (Spart , S e2e , G ) with 95% CIs and paired Wilcoxon p-values for all 15 
+
+(benchmark, decomposition) cells (Figure 1). Table 13 reports the full 15 -pair advantage transfer table including the pairwise-vs-multiclass cells omitted from Table 2 for space. Figure 7 visualises the same 15 comparisons in (Apart , A e2e ) space. Figure 6 plots the deployment-safety condition for 20 0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35          
+
+> Apart (R,F)—partition advantage of decomp over flat 0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35 ΔG = G(R) −  G(F)
+> B1 B1 B2 B2 B3 B3 B4 B4 B5 B5
+> unsafe: Δ G>Apart (reversal) safe: Δ G<Apart (transfers)
+
+Figure 6: Deployment-safety plot for the 10 decomp-vs-flat comparisons. By Corollary 2 (general form), the partition-level advantage transfers iff Apart > ∆G, where ∆G = G(R) − G(F ), i.e. below the dashed y = x line. B1, B2, B4 occupy distinct absorption regimes: B2 and B4 lie in the unsafe (red) region and have sign-changing point estimates; B1 remains deployment-safe but is almost erased. B3 and B5 (PROTEUS-2014) are deployment-safe but partially absorbed; B5’s 
+
+33 -point partition advantage shrinks to a 20 -point end-to-end advantage, ρ ≈ 0.41 . All flat controls have G(F ) = 0 .the 10 decomp-vs-flat comparisons referenced in §5.3.1, and Table 10 summarises the partition-only identification intervals (Theorem 2) referenced in §5.4. Table 10: Partition-only identification intervals (Theorem 2) summary. “Crosses 0” counts the fraction of pairs whose interval strictly crosses zero, i.e. the fraction of comparisons on which the partition-level report alone (with selected-family range information) does not certify a deployable winner. Median interval width ¯W = ( WR1 + WR2 )/2 is the half-interval that the partition-level report cannot resolve. 
+
+ID Pairs Crosses 0 Median ¯W Mean |Apart |
+
+B1 3 3 0.363 0.010 
+
+B2 3 3 0.102 0.031 
+
+B3 3 3 0.233 0.066 
+
+B4 3 3 0.134 0.014 
+
+B5 3 3 0.378 0.221 
+
+Table 11: Per-instance margin–regret diagnostic rates for decomposed pipelines. The reported quantity is the selected-family existential violation rate from Theorem 1; bootstrap intervals are omitted here for space and are included in results/exp9_margin_regret .
+
+ID n pairwise multiclass B1 133 0.248 0.263 
+
+B2 202 0.391 0.371 
+
+B3 192 /191 0.557 0.545 
+
+B4 556 0.228 0.234 
+
+B5 3565 0.381 0.387 
+
+Pairwise-vs-multiclass entries with |Apart | < 5 × 10 −3 are marked NA for ρ per the reporting threshold in §6. 21 0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35              
+
+> Apart =Spart (R1) − Spart (R2)0.00 0.05 0.10 0.15 0.20
+> Ae2e  = Se2e (R1) −  Se2e (R2)(a) full range
+> full transfer (y=x) B1 B2 B3 B4 B5 pairwise vs multiclass multiclass vs flat pairwise vs flat reversal
+> −0.02 −0.01 0.00 0.01 0.02 0.03 0.04 0.05
+> Apart =Spart (R1) − Spart (R2)−0.01 0.00 0.01 0.02 0.03 0.04 (b) zoom on central region
+
+Figure 7: Partition-level advantage Apart against end-to-end advantage Ae2e across all 15 pairwise method comparisons (color by benchmark, shape by pair type). The dashed diagonal is full transfer (Apart = Ae2e ); points near the horizontal axis indicate absorption; points in opposite quadrants indicate sign changes. These cells are outlined in red. (a) full range showing B5’s outlier position; 
+
+(b) zoom on the central region containing the four sign-changing cells (decomp-vs-flat on B2 and B4 — all in the lower-right quadrant, where partition prefers decomposition but e2e prefers flat), the high-absorption B1 cells, and the near-origin pairwise-vs-multiclass comparisons. Table 12: Full deployment-fidelity-gap table by (benchmark, decomposition). G = Spart − Se2e ;CI is a 95% percentile-bootstrap interval over per-instance gaps; p is the paired Wilcoxon p-value comparing upart vs ue2e on the same instances. 
+
+ID Decomposition Spart Se2e G 95% CI p n
+
+B1 pairwise 0.9284 0.9154 0.0130 [0 .0091 , 0.0176] 8.15 ×10 −17 133 
+
+B1 multiclass 0.9286 0.9165 0.0121 [0 .0087 , 0.0162] 5.57 ×10 −17 133 
+
+B1 flat 0.9141 0.9141 0.0000 [0 .0000 , 0.0000] 1 133 
+
+B2 pairwise 0.9508 0.9001 0.0507 [0 .0401 , 0.0625] 1.96 ×10 −30 202 
+
+B2 multiclass 0.9484 0.8961 0.0523 [0 .0414 , 0.0645] 4.37 ×10 −30 202 
+
+B2 flat 0.9037 0.9037 0.0000 [0 .0000 , 0.0000] 1 202 
+
+B3 pairwise 0.8361 0.7654 0.0707 [0 .0522 , 0.0905] 1.72 ×10 −31 194 
+
+B3 multiclass 0.8357 0.7605 0.0752 [0 .0564 , 0.0958] 3.43 ×10 −31 193 
+
+B3 flat 0.7247 0.7247 0.0000 [0 .0000 , 0.0000] 1 200 
+
+B4 pairwise 0.9962 0.9716 0.0247 [0 .0153 , 0.0348] 3.90 ×10 −91 556 
+
+B4 multiclass 0.9948 0.9700 0.0248 [0 .0155 , 0.0350] 2.68 ×10 −91 556 
+
+B4 flat 0.9746 0.9746 0.0000 [0 .0000 , 0.0000] 1 556 
+
+B5 pairwise 0.9543 0.8183 0.1360 [0 .1257 , 0.1467] < 10 −300 3565 
+
+B5 multiclass 0.9495 0.8129 0.1365 [0 .1262 , 0.1472] < 10 −300 3565 
+
+B5 flat 0.6210 0.6210 0.0000 [0 .0000 , 0.0000] 1 3565 
+
+22 Table 13: Full advantage-transfer table: all 15 (benchmark, pair) comparisons. “pw” = pairwise OVO, “mc” = multiclass softmax. ρ = ( G(R1) − G(R2)) /A part marked NA when |Apart | < 5 × 10 −3.The final column marks sign-changing point estimates, not a large-margin decision threshold.                                                                                                                 
+
+> ID Pair Apart Ae2e G(R1)G(R2)ρSign chg. B1 pw vs mc −0.0002 −0.0011 0.0130 0.0121 NA no B1 mc vs flat +0 .0145 +0 .0024 0.0121 0.0000 +0 .835 no B1 pw vs flat +0 .0143 +0 .0013 0.0130 0.0000 +0 .912 no B2 pw vs mc +0 .0024 +0 .0040 0.0507 0.0523 NA no B2 mc vs flat +0 .0446 −0.0077 0.0523 0.0000 +1 .172 yes
+> B2 pw vs flat +0 .0471 −0.0037 0.0507 0.0000 +1 .078 yes
+> B3 pw vs mc +0 .0000 +0 .0054 0.0698 0.0752 NA no B3 mc vs flat +0 .1069 +0 .0316 0.0752 0.0000 +0 .704 no B3 pw vs flat +0 .1079 +0 .0372 0.0707 0.0000 +0 .655 no B4 pw vs mc +0 .0014 +0 .0016 0.0247 0.0248 NA no B4 mc vs flat +0 .0202 −0.0047 0.0248 0.0000 +1 .231 yes
+> B4 pw vs flat +0 .0216 −0.0031 0.0247 0.0000 +1 .142 yes
+> B5 pw vs mc +0 .0048 +0 .0054 0.1360 0.1365 NA no B5 mc vs flat +0 .3285 +0 .1919 0.1365 0.0000 +0 .416 no B5 pw vs flat +0 .3333 +0 .1973 0.1360 0.0000 +0 .408 no
+
+## P Statistical methodology 
+
+Pairing unit. The pairing unit for all paired tests is the test instance , not the (seed, instance) pair: seeds for the same instance share folds and are not i.i.d. We average per-instance utilities across seeds first, then perform paired tests on the per-instance means. 
+
+Paired Wilcoxon tests. For each (benchmark, decomposition) cell we run a two-sided Wilcoxon signed-rank test on the per-instance gap vector upart − ue2e . Reported p-values are exact when ties allow, otherwise asymptotic. Across 15 cells the Holm-Bonferroni adjusted p-values remain < 10 −15 
+
+for all decomposed cells. 
+
+Bootstrap confidence intervals. Confidence intervals on G(R) are computed by sampling B =10 000 bootstrap replicates of the per-instance gap vector with replacement and reporting the 2.5th and 
+
+97 .5th percentiles of the bootstrap mean distribution. The same convention is applied to Apart , A e2e 
+
+when reported with intervals. 
+
+Effect size. For pairwise method comparisons we report ρ as the primary effect-size summary; ρ is dimensionless and combines the magnitude of Apart with the signed gap-difference G(R1) − G(R2).We do not report Cliff’s δ in the main paper because ρ has a direct algebraic interpretation in terms of absorption. 
+
+## Q Compute resources and reproducibility 
+
+Hardware. All experiments run on a single 8-core CPU workstation; no GPU is required. Sklearn’s 
+
+n_jobs=-1 is used for random-forest training. Memory footprint stays below 4 GB across all benchmarks. 
+
+Wall-clock time. A full reproduction of the reported analyses across all five benchmarks takes approximately 3–4 hours of total wall-clock time on the reference workstation. The most expensive configuration is the pairwise-within-family configuration on TALENT (B3), which trains O(|F |2 ·
+
+Kcv · seeds ) binary random forests per fit; the largest TALENT family contains 25 algorithms. 
+
+Determinism. Splits and selectors are seeded; rerunning the scripts with the same seeds re-produces the numerical tables in this appendix to four decimal places. Bootstrap CIs use 
+
+numpy.random.default_rng with a fixed seed. 23 Software stack. Python 3.10, scikit-learn ≥ 1.3, NumPy ≥ 1.24, pandas ≥ 2.0, SciPy ≥ 1.10, matplotlib ≥ 3.7. The companion environment file pins exact versions used to produce the tables in this paper. 24 R Literature audit of oracle-style reporting 
+
+This appendix substantiates the claim, made in §2 and the abstract, that oracle-style scores – Virtual Best Solver (VBS), selected-portfolio VBS, virtual-best encodings, and best-in-family summaries – are routinely reported in algorithm selection, solver portfolios, encoding selection, and tabular benchmarking. Table 14 lists, for each of 12 representative anchor citations, the oracle-style reporting object that appears in the work, what that row supports about the prevalence of such reporting, and an explicit caveat indicating what the row does not establish. The audit makes a deliberately narrow empirical claim. It does not claim that any cited work conflates a partition-level oracle score with a deployable system score: each cited paper either reports the oracle quantity as an explicit upper bound (e.g. AutoFolio’s oracle/VBS columns; Proteus’s VB-CSP, VB-SAT, and VB-Encoding rows reported alongside the deployable Proteus row) or studies the gap between such an oracle and a learned selector at a single decision level (e.g. encoding selection). The claim the audit does support is that an oracle-style reporting object – a virtual-best at some level, or a best-in-family summary – is the standard primary comparison object across all four sub-areas. Combined with our empirical results, this shows that the deployment-fidelity gap defined in this paper is a gap that the existing reporting practice cannot diagnose: when a reported number takes the within-family maximum after a family choice is made, the gap to a deployable end-to-end system that inherits both choices is not surfaced. Shmuel et al. [2025] is the representative tabular instance for which we have direct supporting evidence: the published headline counts of which family “wins” on which dataset are derived from the within-family argmax on 10 -fold cross-validation means, with no within-family deployable selector specified, defined, or evaluated anywhere in the paper or its supplement. 
+
+Table 14: Literature audit of oracle-style reporting. “Strength” indicates how directly the row supports the audit’s narrow claim that oracle-style quantities (VBS, selected-portfolio VBS, virtual-best encoding, best-in-family) are pervasive across algorithm selection, solver portfo-lios, encoding selection, and tabular benchmarking ( =direct, =supporting, =adjacent context). The caveat column states what each row does not establish. 
+
+Anchor Oracle-style reporting object Audit support / caveat Str. 
+
+Cameron et al. [2016] VBS defined as a hypothetical algorithm picking the best solver per instance from a portfolio; SBS–VBS gap analysed for evaluator bias under randomised solvers. Standard VBS diagnostic; bias paper for the full-portfolio VBS, not a within-family nested oracle. Caveat: not a decomposed AS critique. Bischl et al. [2016] ASlib repository: AS scenarios benchmark deployable selectors against VBS and SBS as standardised references. VBS/SBS as the AS-benchmark-ecosystem standard. Caveat: ASlib does not require nor prohibit reporting nested oracle quantities; it standardises a single-stage comparison. Lindauer et al. [2015] AutoFolio reports oracle/VBS as columns alongside the deployable selector in its re-sult tables. Joint reporting of deployable selector and oracle bound is the canonical AS format. 
+
+Caveat: AutoFolio explicitly labels oracle as a bound, not a deployable score. Lindauer et al. [2019] The 2015/2017 AS competitions normalise scores by the SBS–VBS interval. VBS is a competition-protocol primitive, not just a per-paper choice. Caveat: nor-malisation is single-level, not nested. Hurley et al. [2014] Hierarchical solver portfolio: CSP-vs-SAT, then SAT-encoding, then SAT solver. Ta-bles report VB-Proteus, VB-CSP, VB-SAT, plus per-encoding VB-DirectOrder, VB-Direct, VB-Support alongside the deploy-able Proteus selector. Direct evidence that decomposed solver portfolios report subportfolio virtual-best scores. Caveat: Proteus does not claim its subportfolio VBs are deployable; it reports the deployable system in the same table. The deployment-fidelity gap is precisely the difference between the rows. Bach et al. [2022] SAT solver k-portfolios: VBS of a selected portfolio is reported as a lower bound (i.e. best achievable cost) for any model-based selector built on that portfolio. Selected-portfolio VBS is a normal eval-uation object. Caveat: this is portfolio analysis, not a decomposed AS pipeline. 
+
+continued on next page 
+
+25 Anchor Oracle-style reporting object Audit support / caveat Str. 
+
+Kostovska et al. [2023] Black-box optimisation AAS: AAS perfor-mance is reported relative to the virtual best solver from the selected portfolio , af-ter a portfolio-selection step. Recent (2023) anchor: selected-portfolio VBS is still a primary comparator in AAS literature. Caveat: portfolio selection is a different stage from the within-family selection studied here. Stojadinovi´ c and Mari´ c[2014] CSP-to-SAT encoding selection: motivates choosing among direct, log, support, order encodings using CSP-side syntactic fea-tures because no encoding dominates uni-formly. Encoding-level family selection is a real research problem; the family abstraction in our framework maps directly onto the encoding choice. Caveat: meSAT is encoding-selection methodology, not an oracle-vs-deployable critique. Ulrich-Oltean et al. [2022] Pseudo-Boolean / linear-integer constraint encoding selection: virtual-best encoding reported as the upper bound for a learned encoding selector. Per-instance virtual-best encoding is the standard upper bound in encoding selec-tion. Caveat: a single-level oracle, evalu-ated correctly as a bound. Ulrich-Oltean et al. [2023] Journal extension: explicitly analyses the single-best vs virtual-best encoding gap and reports how much of that gap a su-pervised encoding selector closes. Single-best/virtual-best gap is now a pri-mary analysis object in the encoding-selection literature; close to the spirit of 
+
+G(R) but applied to a flat encoding choice rather than a decomposed selector. Caveat: 
+
+not a decomposed AS pipeline. McElfresh et al. [2023] TabZilla: trains a meta-model to predict whether the best neural network outper-forms the best gradient boosting model on a given dataset; analyses choosing the best algorithm family versus tuning a single model. Best-in-family is the primary comparison object in tabular benchmarking. Caveat: 
+
+an analysis paper, not an AS-system claim. Shmuel et al. [2025] Neurocomputing 2025: 111 datasets ×
+
+20 models × 10 folds. Headline rank-ing tables report each model’s number of datasets where it is best-in-family on the CV mean. The meta-learner la-bel ¯Yi = 1[max m∈ML score i(m) >
+
+max m∈DL score i(m)] takes the within-family maximum on the same scores. No within-family deployable selector is de-fined. 
+
+Named-instance evidence: a partition-level oracle quantity is the headline con-clusion object in a peer-reviewed tabular benchmark, with no deployable counter-part specified anywhere in paper or sup-plement. Caveat: the paper makes no AS claim and does not advocate deploy-ing these summaries; the omission is the absence of a within-family selector, not the misuse of one. 
+
+What the audit does and does not buy. The audit gives the abstract’s strong claim a defensible empirical grounding: oracle-style reporting objects exist at every level of the AS / portfolio / encoding / tabular pipeline, and they are the primary comparison objects in those sub-areas. What it does not do is allege misuse by any cited work. The contribution of the present paper is therefore not a critique of prior reporting but the construction of the missing object – the deployable system that inherits the partition’s family choice – and the measurement of the gap G(R) between the partition-level oracle score and that system’s score. The five most directly load-bearing anchors for our framing are Cameron et al. [2016] (VBS as the canonical AS oracle diagnostic), Bischl et al. [2016] (VBS in the benchmark-ecosystem standard), Lindauer et al. [2015] (deployable-selector vs. oracle joint reporting), Hurley et al. [2014] (hierarchical decomposed portfolio with subportfolio virtual-best scores), and either Ulrich-Oltean et al. [2023] or Shmuel et al. [2025] for a recent, named instance of single-best vs. virtual-best comparison respectively in encoding selection and tabular benchmarking. 
+
+26 S Inner-selector stress-test full results 
+
+This appendix provides the per-cell numbers backing the Inner-selector stress test paragraph in §5.5. We sweep seven within-family selector classes spanning single-best-on-train, the paper-default per-algorithm GBDT, a tuned sklearn GBDT, sklearn RandomForest, sklearn MLP, LightGBM, and XGBoost, all under the multiclass family selector and the same 5-fold split protocol as the headline runs (here with 2 seeds; the headline runs use 5). Hyperparameters: tuned GBDT n = 300 , d = 5 ;RF n = 200 , d = 10 ; MLP hidden (64 , 32) , max iter 200 ; LightGBM n = 200 , leaves = 31 , lr = 0 .05 ; XGBoost 
+
+n = 200 , d = 6 , lr = 0 .05 . The package’s existing WithinFamilySelector contract is reused; the new selector classes are declared inline in the experiment script and do not modify any package code. The summary below reports (Spart , S e2e , G ) per cell. The within-family oracle ( G = 0 ) is omitted as the trivial upper bound on each row; Spart is invariant across within-classes within a benchmark by construction (Lemma 1) and serves as a sanity check. We use this appendix only as a G-robustness summary: decision-level decomp-vs-flat verdicts are reported in Table 2 and Table 13 under the common-instance, singleton-flat protocol. The six learned within-family regressors are separated from the non-learned SingleBest reference because SingleBest is a useful stress case but not the learned selector class used in the main runs. 
+
+Inner-selector spectrum, decomposed pipeline. Per-cell Spart , S e2e , G under the paper’s primary multiclass family selector. For each benchmark the six learned within-family regressors are listed first, followed by the non-learned SingleBest reference. Spart is constant within a benchmark by Lemma 1. ID Within-class Spart Se2e G
+
+B1 PerAlgRF 0.9287 0.9205 0.0082 
+
+B1 PerAlgGBDT_default 0.9287 0.9178 0.0109 
+
+B1 PerAlgXGBoost 0.9287 0.9143 0.0143 
+
+B1 PerAlgLightGBM 0.9287 0.9137 0.0150 
+
+B1 PerAlgGBDT_tuned 0.9287 0.9090 0.0197 
+
+B1 PerAlgMLP 0.9287 0.9052 0.0235 
+
+B1 SingleBest 0.9287 0.9185 0.0102 
+
+B2 PerAlgRF 0.9464 0.9011 0.0453 
+
+B2 PerAlgXGBoost 0.9464 0.8966 0.0498 
+
+B2 PerAlgLightGBM 0.9464 0.8964 0.0500 
+
+B2 PerAlgGBDT_tuned 0.9464 0.8963 0.0501 
+
+B2 PerAlgGBDT_default 0.9464 0.8941 0.0523 
+
+B2 PerAlgMLP 0.9464 0.8922 0.0542 
+
+B2 SingleBest 0.9464 0.9099 0.0365 
+
+B3 PerAlgLightGBM 0.8362 0.7681 0.0681 
+
+B3 PerAlgRF 0.8362 0.7653 0.0709 
+
+B3 PerAlgGBDT_default 0.8362 0.7582 0.0781 
+
+B3 PerAlgXGBoost 0.8362 0.7575 0.0787 
+
+B3 PerAlgGBDT_tuned 0.8362 0.7563 0.0799 
+
+B3 PerAlgMLP 0.8362 0.7554 0.0808 
+
+B3 SingleBest 0.8362 0.7433 0.0929 
+
+B4 PerAlgGBDT_default 0.9962 0.9740 0.0222 
+
+B4 PerAlgLightGBM 0.9962 0.9725 0.0237 
+
+B4 PerAlgMLP 0.9962 0.9722 0.0240 
+
+B4 PerAlgRF 0.9962 0.9715 0.0247 
+
+B4 PerAlgXGBoost 0.9962 0.9697 0.0265 
+
+B4 PerAlgGBDT_tuned 0.9962 0.9695 0.0267 
+
+B4 SingleBest 0.9962 0.9662 0.0300 
+
+B5 PerAlgMLP 0.9491 0.8162 0.1329 
+
+B5 PerAlgGBDT_default 0.9491 0.8134 0.1357 
+
+B5 PerAlgRF 0.9491 0.8130 0.1361 
+
+B5 PerAlgLightGBM 0.9491 0.8078 0.1413 
+
+B5 PerAlgXGBoost 0.9491 0.8076 0.1414 
+
+B5 PerAlgGBDT_tuned 0.9491 0.8059 0.1431 
+
+B5 SingleBest 0.9491 0.6883 0.2608 
+
+27 After this full spectrum, we also reran targeted advantage-transfer checks aligned with the headline decomp-vs-flat com-parisons. On B2/B4, a 5-seed sweep with RF and LightGBM under both multiclass and pairwise family selectors keeps 
+
+G(R) > 0 in every cell (B2: 0.046 –0.049 ; B4: 0.024 –0.027 ). The corresponding Ae2e values remain near zero (B2: 
+
+−0.004 to +0 .001 ; B4: −0.006 to −0.003 ), so the strict sign of these small-margin cells is selector-sensitive, but no stronger selector yields a reliable positive decomp-vs-flat advantage. A lighter 3-seed B5 default-vs-RF rerun keeps 
+
+ρ at 0.407 –0.414 . The outputs are in results/exp_inner_selector_spectrum_stronger_2026_05_05_b2b4 and 
+
+results/exp_inner_selector_spectrum_stronger_2026_05_05_b5_light .
+
+Reading the table. Across the six learned within-family regressors, the spread of G is modest within each benchmark: B1 0.0082 –0.0235 , B2 0.0453 –0.0542 , B3 0.0681 –0.0808 , B4 0.0222 –0.0267 , and B5 0.1329 –0.1431 . The non-learned SingleBest reference should be read separately: it is competitive on B1/B2, worse on B3/B4, and much worse on B5, where it yields G = 0 .2608 (26.1 pp). This 26 pp SingleBest stress case is distinct from the 21 pp maximum in Figure 5, which comes from the main robustness sweep over the paper’s within-family selector classes. The learned-selector spectrum therefore supports the robustness claim without relying on the stronger SingleBest stress case. 
+
+28

@@ -18,24 +18,24 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-15
-- 运行时间：2026-09-15 22:54:19 UTC
+- 最新运行日期：2026-09-16
+- 运行时间：2026-09-16 22:09:33 UTC
 - 运行状态：成功
 - 本次总论文数：1
-- 精读区：1
-- 速读区：0
+- 精读区：0
+- 速读区：1
 
 ### 今日简报（AI）
-今日精读 1 篇 9.0 分论文，聚焦 SAT 场景下自动化高度专业化的实证证据。核心看点是"自动化能否替代细分专家"这一问题在标准化考试中的表现。普通读者可先关注该研究对备考与教育工具选择的实际启示。
-- 详情：[/202609/15/README](/202609/15/README)
+今日速读 1 篇，聚焦算法选择评估中的“分区得分≠系统得分”问题。该文（7.0/10）指出分解式算法选择在部署时存在保真度缺口，提醒别把局部指标直接当整体性能。普通读者若关注 AutoML 或算法调度，建议优先看这篇，并在实际部署前做端到端验证。
+- 详情：[/202609/16/README](/202609/16/README)
 
 ### 精读区论文标签
-1. [The Case for Automated Hyperspecialization: Evidence from SAT](/202609/15/2609.14836v1-the-case-for-automated-hyperspecialization-evidence-from-sat)  
-   标签：评分：9.0/10、query:llm-sat
-   evidence：用编码智能体自动合成面向工作负载的 SAT 求解器
+- 本次无精读推荐。
 
 ### 速读区论文标签
-- 本次无速读推荐。
+1. [Partition Scores Are Not System Scores: Deployment-Fidelity Gaps in Decomposed Algorithm Selection](/202609/16/2609.13785v1-partition-scores-are-not-system-scores-deployment-fidelity-gaps-in-decomposed-algorithm-selection)  
+   标签：评分：7.0/10、query:sat-config
+   evidence：算法选择、求解器组合与虚拟最优求解器oracle差距
 
 
 <div class="dpr-home-promo-card dpr-home-panel">

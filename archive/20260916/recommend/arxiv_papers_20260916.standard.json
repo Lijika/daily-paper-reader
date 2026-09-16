@@ -1,0 +1,74 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-16T22:08:07.333054+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 11,
+    "deep_divecandidates": 0,
+    "deep_cap": 16,
+    "deep_selected": 0,
+    "quick_candidates": 1,
+    "quick_skim_target": 21,
+    "quick_selected": 1
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.13785v1",
+      "source": "arxiv",
+      "title": "Partition Scores Are Not System Scores: Deployment-Fidelity Gaps in Decomposed Algorithm Selection",
+      "abstract": "Oracle-style quantities, including virtual best solvers, selected-portfolio VBS, virtual-best encodings, and best-in-family summaries, are widely reported as upper bounds on what a deployable selector could achieve. In decomposed algorithm selection, an analogous partition-level score grants an oracle choice of the best algorithm within the selected family; once the family selector is fixed, the deployable system must replace that within-family oracle with a learned within-family selector.   We define the deployment-fidelity gap G(R) as the difference between partition-level and deployable end-to-end utility and derive two accounting consequences: a per-instance margin-regret stability condition that tells us when a partition-time family choice is deployment-optimal, and a sharp partition-only identification interval that, when it strictly crosses zero, prevents the partition-level report from certifying the deployable winner.   Across five public algorithm-selection benchmarks spanning tabular AutoML and combinatorial CSP/SAT, every decomposed pipeline has positive G(R), ranging from 0.012 on TabZilla to 0.13 on PROTEUS-2014. Four of ten decomposed-versus-flat decisions have sign-changing point estimates; on PROTEUS-2014, a 33-point partition advantage shrinks to a 20-point end-to-end advantage. A training-side validation gap-correction diagnostic recovers the point-estimate deployable sign on all four sign-changing cells; it is a reporting aid, not a substitute for direct end-to-end evaluation. Partition and end-to-end scores should be reported side by side.",
+      "authors": [
+        "Jiachen Zhang",
+        "Yu Tang",
+        "Li Zhu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-09-12T07:55:42+00:00",
+      "link": "https://arxiv.org/pdf/2609.13785v1",
+      "tags": [
+        "keyword:GNN-SAT",
+        "keyword:LLM-SAT",
+        "keyword:SAT-RL",
+        "keyword:SAT-formal",
+        "keyword:branching",
+        "keyword:cdcl-sat",
+        "keyword:inproc-sat",
+        "keyword:neuro-cdcl",
+        "keyword:sat-config",
+        "keyword:sat-preproc",
+        "keyword:sat-proof",
+        "query:LLM-SAT",
+        "query:SAT-RL",
+        "query:SAT-formal",
+        "query:branching",
+        "query:cdcl-sat",
+        "query:inproc-sat",
+        "query:neuro-cdcl",
+        "query:sat-config",
+        "query:sat-preproc",
+        "query:sat-proof"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "algorithm selection, portfolio, virtual best solver oracle gap",
+      "llm_evidence_cn": "算法选择、求解器组合与虚拟最优求解器oracle差距",
+      "llm_evidence": "算法选择、求解器组合与虚拟最优求解器oracle差距",
+      "canonical_evidence": "算法选择、求解器组合与虚拟最优求解器oracle差距",
+      "llm_tldr_en": "Decomposed algorithm selection reports partition-level oracle scores as upper bounds on deployable performance. The paper defines the deployment-fidelity gap G(R) and derives margin-regret stability conditions, showing a learned within-family selector must replace the oracle.",
+      "llm_tldr_cn": "算法选择研究常报告虚拟最优求解器等oracle上界，但在分解式选择中，分区级oracle得分并不能代表可部署系统的真实性能。作者定义了部署保真度差距G(R)，即分区级效用与端到端可部署效用之差，并据此推导出每实例边际遗憾稳定性条件等两个核算结论。分析显示，一旦族选择器固定，必须用学习到的族内选择器替换oracle，否则会系统性高估性能。该工作为求解器组合与算法选择的评估提供了更严谨的框架。",
+      "llm_tldr": "算法选择研究常报告虚拟最优求解器等oracle上界，但在分解式选择中，分区级oracle得分并不能代表可部署系统的真实性能。作者定义了部署保真度差距G(R)，即分区级效用与端到端可部署效用之差，并据此推导出每实例边际遗憾稳定性条件等两个核算结论。分析显示，一旦族选择器固定，必须用学习到的族内选择器替换oracle，否则会系统性高估性能。该工作为求解器组合与算法选择的评估提供了更严谨的框架。",
+      "llm_tags": [
+        "query:sat-config:composite"
+      ],
+      "matched_query_tag": "query:sat-config:composite",
+      "matched_query_text": "Papers central to 请帮我查找SAT solver自动配置、参数调优、算法选择相关论文, especially work that connects or combines: instance features SAT; algorithm configuration; SAT solver algorithm selection; SAT solver parameter tuning; automatic configuration of SAT solver parameters; portfolio of SAT solvers with algorithm selection; Machine learning assisted configuration of SAT solvers; What are the state of the art methods for automatically configuring SAT solver parameters?; How to select the best SAT solver algorithm for a specific instance?; What are the recent advances in SAT solver portfolio and algorithm selection?.",
+      "matched_requirement_id": "req-composite-sat-config",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}
