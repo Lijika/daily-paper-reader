@@ -1,0 +1,378 @@
+Title: Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA
+
+URL Source: https://arxiv.org/pdf/2609.16706v1
+
+Published Time: Wed, 16 Sep 2026 00:44:58 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA 
+
+## Mikol´ aˇ s Janota and Jan Jakub˚ uv 
+
+Czech Technical University, Czechia 
+
+mikolas.janota@cvut.cz, jan.jakubuv@cvut.cz 
+
+Abstract 
+
+This paper presents the SMT solver primo , which is fully vibe-coded and then parameter-tuned, achieving state-of-the-art results on linear real arithmetic (QF-LRA). The performance of primo is achieved by a systematic literature survey, repeated profiling, and parameter tuning. The resulting solver outperforms the winner of the QF-LRA track of SMT-COMP 2026. This confirms that vibe-coding of automated reasoning tools will enable us to make great strides in the future. 
+
+# 1 Introduction 
+
+Agents powered by large language models (LLMs) have been undergoing rapid development. It quickly became clear that such agents are capable of developing formal methods tools [25, 15] including SMT solvers [18]. However, progress now in 2026 is so fast that this is no longer news. The question that we pose here is whether they can also develop state-of-the-art SMT solvers. In this paper we respond to this question positively for the theory of quantifier-free linear real arithmetic (QF-LRA); we also give an indication that similar results can be achieved for more complex theories, namely the combination of QF-LRA and EUF, i.e. QF-UFLRA. Figure 1 summarizes the iterative, human-supervised development process used in this work. We emphasize sourcing from appropriate literature. Indeed, this seems to be the most attractive skill we get from LLMs: the ability to understand an idea and bring it to life by writing code. During development, we instructed the agent to follow a clean-room policy by not looking at the source code of other SMT solvers; it may, however, look at the performance and overall statistics provided by a reference solver. The process needs to be iterated and guided by a human :the agent happily ignores parts of the literature it has found or been given, or fails to follow it carefully. Intuition is often needed to pick the next target; it therefore pays off to let the agent work on a well-defined task and then seek human input. Standard practices are a must: the agent constantly tests the solver by fuzzing [33, 6, 35]; it uses delta-debugging tools to speed up bug analysis [20, 36]; it routinely profiles with tools such as gprof to identify bottlenecks; it uses the SMT-LIB benchmarks [3] to assess progress; and it documents its steps in plain English, in the form of Markdown files. Our contributions are as follows. 1
+
+• We present primo , an SMT solver for QF-LRA (with preliminary support for QF-UFLRA) whose implementation was entirely vibe-coded, i.e. written by an LLM-powered agent under human supervision and a clean-room policy that forbids consulting the source code of existing solvers.    
+
+> 1We worked with the Claude Code agent (Opus 5 and Sonnet 5 models) and OpenAI Codex (GPT-5.4-mini, GPT-5.5, and GPT-5.6-sol). We write the agent throughout the paper, without distinguishing between them. arXiv:2609.16706v1 [cs.LO] 15 Sep 2026 QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv
+
+LLM literature survey 
+
+> Find algorithms, heuristics, and prior results
+
+LLM-assisted coding 
+
+> Implement the solver from the surveyed literature
+
+Empirical evaluation   
+
+> Profiling •Fuzzing Benchmarking
+
+Performance improvement 
+
+> Tune algorithms, code, and parameters using evidence new questions and techniques
+
+Automatic documentation in Markdown ( *.md )       
+
+> Literature notes •Design rationale •Code changes Experiment logs •Benchmark results record
+> HUMAN SUPERVISION THROUGHOUT — direction, review, and validation
+
+Figure 1: Our human-supervised, LLM-driven solver-development loop. Each iteration connects the literature to implementation and empirical evidence; all stages continuously update a shared Markdown record. 
+
+• We describe a human-supervised development methodology for building solvers this way, combining literature-driven target selection with standard solver-engineering practice — fuzzing, delta-debugging, profiling, and SMT-LIB-based regression testing — steered by iterative human feedback. 
+
+• We present RamParILS, an LLM-designed solver configuration system and a parallelized rewrite of the iterated local search system ParamILS [16]. We carry out a systematic parameter-tuning study of primo , producing a best-performing configuration ( primo ⋆)and one selected for complementarity with it ( primo +). We show that tuning alone lifts 
+
+primo from below to above the state-of-the-art solvers opensmt and yices .
+
+• We give an experimental evaluation on the full SMT-LIB QF-LRA benchmark set and on the SMT-COMP 2026 QF-LRA selection. This shows that primo ⋆ solves more instances than default opensmt at a 30 s timeout, with most of the gain concentrated in a single benchmark family, and that at the SMT-COMP 1 ,200 s timeout it still improves PAR2 by 28% over default primo and 13% over default opensmt . This pattern is also observed on the instances held out from tuning. 
+
+# 2 Preliminaries 
+
+We assume that the reader is familiar with classical first-order logic with equality [32]. For the remainder of the paper we assume the standard DPLL(T) approach to solving SMT [27]. We consider a quantifier-free linear arithmetic (QF-LRA) formula a quantifier-free first-order formula whose atoms are either propositional variables or equalities, disequalities, or inequalities of the form 
+
+a1x1 + · · · + anxn ▷◁ b, 
+
+where a1, . . . , a n and b are rational numbers, x1 . . . x n are real variables, and ▷◁ is one of the operators ≈, ≤, < with standard syntactic sugar operators >, ≥, t − s [21]. A theory solver is responsible for accepting a set of literals in the given theory and deciding whether it is satisfiable or not. If the set is unsatisfiable, it is expected to provide an explanation 2QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+which is a subset of the literals that still is unsatisfiable. Following the DPLL(T) paradigm, the theory solver is also responsible for propagation of values and may influence the decisions of the SAT solver. 
+
+## 2.1 The Solver 
+
+The solver primo is written in C++ and as SAT solver it uses CaDiCaL [29], which enables callbacks via the IPASIR-UP interface [12]. For solving LRA, it is sufficient to consider only rational numbers, but those need to be represented with arbitrary precision in order to guarantee soundness; primo uses the GMP library for this purpose [13]. ANTLR [28] is used to parse the input. These libraries were specified by human prompts to the agent from the beginning. The development was started with Claude. The models used were Sonnet 5 and Opus 5 (the latter released during the project’s development). The QF-UFLRA strand was mainly developed by Codex with the model gpt-5.6-sol. Formulas are stored using the hash-consing mechanism (no formula is represented twice in the memory). Interestingly, the agent decided not to implement reference counting so no memory is released. This is likely not an issue in the current setting because not much is discarded during solving, mainly during the preprocessing phase. However, this might need to be reconsidered if we were to support quantifiers. The current version has around 35k LOC and another 14k LOC of tests. Before solving, preprocessing is applied, which involves standard simplification techniques as well as Gaussian elimination for top-level asserted equalities. Since preprocessing is typically not idempotent, it is run repeatedly bounded by a tunable parameter. Only single query problems are accepted and there is support for theories of uninterpreted functions (QF-UF), linear real arithmetic (QF-LRA), and their combination (QF-UFLRA). Here we report mainly on QF-LRA as QF-UFLRA is currently immature. The implementation of QF-UF is heavily influenced by a previous incarnation of the solver LLM2SMT [18]; addi-tionally, we observed that adding symmetries speeds up the QF-UF SMT-LIB benchmarks [9]. The combination QF-UFLRA is solved by Nelson-Oppen closure (for convex theories) based on a model-guided approach proposed by de Moura and Bjørner [8]; its performance is on par with cvc5 but much slower than yices (see Figure 5). The solver does not yet incorporate the improvements proposed by Bjørner and Nachmanson [4]. The solver has two separate algorithms, one for QF-LRA and one for QF-UFLRA. It is plausible that in the future QF-LRA formulas could just be solved by QF-UFLRA as long as it is ensured that no additional overhead is incurred. Nevertheless, at present we support the flag --mixed-dispatch , which routes QF-LRA to the QF-UFLRA algorithm whenever there are Boolean constants in the problem; this has been useful for the diversity of the solver in portfolio mode (see Section 4). 
+
+## 2.2 LRA Theory Solver in primo 
+
+The architecture of the theory solver is anchored in a simplex variant introduced by Dutertre and de Moura [11]. Unlike the traditional simplex, this is geared towards the decision problem and supports lower and upper bounds for variables. In its essence, it is a dual-simplex, since it gradually repairs basic variables that are out of bounds. A strong point of this approach is that backtracking is cheap: no further pivoting is needed, values just need to be restored from the stack. This is why this architecture was chosen. The theory solver only accepts ≤ and < predicates. Equality s ≈ t is desugared into s ≤ t ∧ t ≤ s
+
+at the very beginning of solving. However, equalities may be propagated during preprocessing, 3QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+before the DPLL(T) loop begins. Following the original paper, strict inequalities are treated by δ-rationals [11, Sec. 5]. The original design of the simplex algorithm by Dutertre and de Moura chooses the pivot by Bland’s rule [5] in order to guarantee termination. Primo enables other pivoting rules but always falls back to Bland’s rule after a certain number of iterations. The number of iterations after which we always use Bland’s rule is kn + c, where k defaults to 4 and c to 64. Both Griggio [14] and King [34] report on such fallback techniques in their respective PhD theses. 
+
+Dantzig-style : choose most-violated basic variable, then eligible entering variable with largest absolute row coefficient [34, Sec. 2.2.12]. SOI-Simplex globally minimizes the sum of infeasibilities [19]. 
+
+Sparse pivot rule aims to limit fill-in (the creation of new nonzero tableau coefficients during pivoting). It first chooses a violated basic variable whose defining row has the fewest nonzero coefficients, breaking ties in favor of the largest bound violation. Among the nonbasic variables that can repair this violation, it then chooses one occurring in the fewest tableau rows, preferring a coefficient of +1 or −1 on ties. This favors pivots that substitute a short row into as few other rows as possible. Minimum-column entering selection and the finite switch to Bland’s rule are standard heuristics surveyed by King [34]. Monniaux motivates sparsity-oriented ordering using both short defining rows and variables with few occurrences [26]. Our shortest-row-first leaving order and its sequential combination with minimum-column entering selection is a fusion of the two. The Sparse pivot rule is the current default. During the development, in collaboration with the authors, the agent proposed and imple-mented the following heuristics and improvements. 
+
+Sharing slacks. Given two atoms 0 ≤ x, x ≤ 100, the original implementation of the algo-rithm would introduce two slack variables s1 and s2, both representing x and one bounded from below and one from above. Under the direct bounds improvement, no new slacks are created and x is directly bounded from below as well as above. Slacks are also shared for bounds on compound terms, e.g., x + y ≤ 6 and x + y ≤ 7 introduce a single slack with the possible bounds 
+
+s ≤ 6 and s ≤ 7. Note that slacks are allocated before the DPLL(T) loop starts, and therefore we do not know which of the bounds will be selected for the particular theory solver call. 
+
+Small-rationals [26]. A small wrapper has also been created around GMP so that “large” numbers do not need to be allocated if the numbers can be stored in processor-level integers; by default, 128 bits are used to perform calculations on “small” numbers. It was discovered by profiling that in many cases the numbers needed are small but GMP requires memory allocation nonetheless. Upon further inspection, we found that Monniaux reports on this approach [26]. 
+
+Model-based phase selection. Throughout its lifetime, the algorithm maintains an as-signment β giving a value to each variable x in the tableau. If there is an atom x < u and 
+
+β(x) < u , we prefer this atom to be asserted positively, because this variable does not need to be repaired—repair means pivoting on that variable. It is analogous if β(x) ≥ u. This heuristic selects the phase of the Boolean variable representing the bound without affecting the order in which variables are chosen (VSIDS is used by default). 
+
+Monotone variable elimination. If a variable is only bounded from below or only bounded from above in the original formula, it can be eliminated; this is akin to a trivial step in Fourier-Motzkin elimination [30]. The nontrivial part is the reconstruction of the model values (“post-solving” [2]), e.g., z < x ∧ x + 5 < y ∧ x + 10 < y eliminates all literals, where z and y are 4QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+unbounded but x is bounded. The post-solving process traverses the eliminated atoms and first pins x to 0; it then bounds z from above by 0, bounds y from below by 5, and bounds y from below by 10, resulting in a lower bound of 10 for y and an upper bound of 0 for z.
+
+Row-based propagation [11]. In the tableau, each basic variable x is defined by a combi-nation of the non-basic ones, e.g., x = y + z; the bounds of the non-basic ones can be combined in order to derive new bounds on x. In our example, the sum of lower bounds gives us a lower bound for x; analogously, for the upper bounds. To curb the cost of the technique, two tunable parameters are introduced: --lra-row-propagation-max-row-size , which skips propagation for rows over this size, and --lra-row-propagation-max-fanout , which limits how many other variables the propagation is recursively applied to. 
+
+Tableau representation. Several improvements were gained by improving the representa-tion of the tableau. The rows are indexed by variables, where the rows of non-basic variables are unused (the outer array is dense; each row’s own contents are stored sparsely, as described next). Each row is then a sparse vector of coefficients. Monniaux describes a vector-based representation [26], while King’s thesis [34] proposes linked lists. This comparison was carried out by the authors independently of the development process, after primo ’s implementation was already complete: cvc5 uses linked lists, while opensmt , z3 , and yices use vectors, though with some differences from primo ’s scheme. A notable feature of our representation is that vectors are sorted by variable ID; a feature present in opensmt but not the others. The second notable feature is how we keep track of in which row a variable occurs. After some experiments, we decided to not use hash-sets to store this piece of information but it is again a vector of vectors 
+
+occ , i.e. occ [v] is the vector of rows in which v appears; this vector is unsorted, so removal is done by swap-pop. Updates to the occurrence vectors were initially expensive but we realized that update is only really necessary when the variable gets canceled out (its coefficient sums to 0); for the entering variable v, occ [v] is emptied unconditionally. Further, the tableau contains pointers back to the occurrence list, i.e. the rows of the tableau contain triples ⟨x, c, i ⟩, where x
+
+is the variable, c its coefficient in the row, and i the index in the occ [x] vector. This maintains the invariant that if a row indexed by variable y contains the entry ⟨x, c, i ⟩, then occ [x][ i] = y.
+
+yices and z3 maintain similar backlinks. See also Appendix B for illustrative picture. 
+
+# 3 Parameter Vibe-Tuning 
+
+SMT solvers typically expose a large number of options that control their behavior, either given on the command line or set from within the SMT-LIB input. A solver ships with a default configuration that performs reasonably well across the board. Choosing option values that make it perform well on a particular benchmark is the algorithm configuration problem, which is well studied in the literature [16, 22, 37, 1, 23]. In this section we describe our tuning of 
+
+primo ’s options with RamParILS, 2 our vibe-coded Rust rewrite of the algorithm configuration tool ParamILS [16]. RamParILS extends ParamILS chiefly with parallel evaluation and a fast result cache. The rest of this section describes RamParILS, the search it performs, and the parameter space we built for primo . The best configurations it finds for quantifier-free LRA problems from SMTLIB are evaluated in Section 4. 
+
+> 2https://deeper4ai.github.io/ramparils
+
+5QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv                                   
+
+> θ
+> input config (or random)
+> Evaluate
+> the input config θ
+> on all instances
+> Basic local search
+> explores single-parameter neighbors of θθbase ←local optimum
+> θbase
+> initial local optimum (perturbation base)
+> θinc ←θbase
+> Perturbation
+> ssingle-parameter random flips from θbase
+> θ←perturbed config
+> Evaluate
+> the perturbed config θ
+> on all instances
+> Basic local search
+> explores single-parameter neighbors of θθ←local optimum
+> θinc ←θif better
+> Acceptance criterion
+> compares θwith θbase
+> θbase ←θif better
+> θbase
+> θ=current config θbase =perturbation start config θinc =incumbent: the best config
+> Basic ILS: initialization Basic ILS: first local search Basic ILS: main loop — repeat until the deadline, then return θinc
+
+Figure 2: Basic Iterative Local Search (ILS) implemented in ParamILS [16] and RamParILS. 
+
+Iterated Local Search (ILS). The core of the ParamILS and RamParILS algorithms is iterated local search interleaved with random search to escape local optima [16]. The input to the algorithm is a configuration space and a target benchmark, and the goal is to find a configuration that performs best on that benchmark under a given evaluation metric. Aconfiguration space is a set of parameters, each with a finite set of values, and a configuration 
+
+θ assigns one value to every parameter. Figure 2 illustrates the basic variant of the ILS algorithm. Starting from the input config-uration θ, the algorithm repeatedly explores the neighboring configurations, those that differ in exactly one parameter, and moves to the first one that scores better. This local search is interleaved with a perturbation phase, in which s parameters are set at random in an attempt to escape a local optimum, where s is called the perturbation strength . The configuration a perturbation starts from is θbase , and it is replaced whenever the acceptance criterion prefers the local optimum just found. The best configuration seen, the incumbent θinc , is returned once the tuning time budget is exhausted. A configuration is scored by the mean runtime of the solver over the tuning instances. Basic ILS always evaluates a configuration on all available instances. The alternative, focused ILS , scores configurations on a growing prefix of the instances, so that weak candidates are rejected after few solver runs. We do not need it: our tuning set is small enough to score every configuration on all of it, which has the further advantage that all scores are directly comparable. Both variants are implemented in RamParILS. 
+
+RamParILS. ParamILS is an iterated local search over a discrete parameter space, written in Ruby. RamParILS is a reimplementation in Rust, intended to speed up the tuning process through parallel configuration evaluation and persistent result caching. Its main extensions over ParamILS are the following. 1. Parallel evaluation. ParamILS evaluates one configuration at a time. RamParILS submits a whole neighborhood to a pool of workers and takes the first neighbor that finishes with 6QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+a better score, so that with 60 workers an evaluation that would take an hour sequentially finishes in minutes. 2. Persistent cache. Every solver run is stored in an SQLite database keyed by the configu-ration and the instance. The database outlives the run, so a configuration that the search revisits costs no solver calls. This matters because several RamParILS runs are typi-cally launched during a tuning session. Caching the instances that time out is especially valuable, since those are the most expensive to re-run. 3. Escaping a frozen search. ParamILS accepts a new local optimum only when it is at least as good as the current one, so a search that stops improving perturbs the same configuration for the rest of its budget. ParamILS addresses this by random restarts under a fixed probability. RamParILS in addition accepts a slightly worse local optimum, and it restarts from the best configuration found after several rejections in a row. RamParILS was itself written by an LLM agent. The initial request was a parallel and caching rewrite of ParamILS in Rust. The design of the new features was discussed in detail to ensure the efficiency of the implementation, while the remaining ParamILS features were to be reproduced as in the original Ruby version. Extension 3 was not part of that plan and was added along the way: two tuning runs turned out to spend most of their budget perturbing the same configuration, and the escape mechanism was implemented in response. The agent was able to carry out the project on its own, and it was also used to analyze the experiment logs and to locate and fix bugs. 
+
+Parameter space. primo exposes ca. 90 command-line options. Most of them are opt-in heuristics that were implemented, tested on a developer-scale sample, and assigned a reasonable default. From the options that plausibly affect the QF-LRA problems in our benchmark we built a space of 11 parameters and 8 ,640 configurations, in which primo ’s default configuration has 16 neighbors. The agent was able to analyze primo ’s source code and design the parameter space on its own. This helps close a usability gap in parameter tuning, where setting up a space normally demands solver-specific knowledge. It also shrank the space considerably: from the logs of trial RamParILS runs and the results in its cache, the agent detected dependencies between parameters, which RamParILS can express by declaring a parameter active only for certain values of another. Such dependencies are invisible from the outside, showing up only as flat regions of the space in which whole neighborhoods score identically. Finding them required an inspection of the source. 
+
+Tuning setting. Scoring a configuration on the whole SMT-LIB QF-LRA benchmark [3] of 1,753 instances can be too expensive, so we tune on a representative subset of 473 instances. Based on a preliminary evaluation of several configurations, we remove trivial problems solved by all of them. We take the 300 instances with the highest variance across configurations, subject to a floor of eight per benchmark family so that no family is dropped entirely. Additionally, 151 instances unsolved by all configurations are added in proportion to each family’s share. We tune on this subset with a timeout of 10 seconds per solver run, termed cutoff . The tuning objective is to minimize the mean runtime; we use perturbation strength s = 3 and an overall tuning time budget of 12 hours. The runs are reported in Section 4. 7QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv          
+
+> primo ⋆primo +
+> 1. --lra-model-phase
+> 2. --monotone-elimination
+> 1. --lra-model-phase
+> 2. --monotone-elimination
+> 3. --mixed-dispatch wide
+> 4. --lra-row-propagation
+> 5. --lra-row-propagation-max-row-size 256
+> 6. --lra-row-propagation-max-fanout 1024
+
+Figure 3: The two best primo configurations found by RamParILS tuning. 
+
+# 4 Experiments: Strategy Tuning and Analysis 
+
+We perform several tuning runs, evaluate the promising configurations on all QF-LRA instances of SMT-LIB to select two primo configurations, and compare these in an experiment reproduc-ing the SMT-COMP 2026 competition on QF-LRA instances [31]. We compare the primo 
+
+configurations with two state-of-the-art SMT solvers, opensmt [17] and yices [10], which were the two best solvers on QF-LRA at SMT-COMP 2026. The primo configurations evaluated are (1) the default configuration, (2) primo ⋆, the best configuration found by tuning, and (3) 
+
+primo +, the configuration most complementary to primo ⋆.3
+
+Tuning runs. We made several RamParILS runs starting from different initial configurations. The first run starts from primo ’s default configuration, while each subsequent run restarts from the final configuration of the previous one. From the run logs, we extract all configurations reported as incumbents and evaluate them on all QF-LRA instances from SMT-LIB. The over-all best configuration, denoted primo ⋆, and its most complementary configuration, denoted 
+
+primo +, are reported in Figure 3. What the tuner selected are switches that turn on techniques of Subsection 2.2, each of which 
+
+primo leaves off by default. Of these, primo ⋆ turns on the first two: (1) lra-model-phase en-ables model-based phase selection, and (2) monotone-elimination enables monotone variable elimination in preprocessing. The complementary configuration primo + is a proper extension of primo ⋆, keeping both and adding four flags. Flag (3), mixed-dispatch wide , counts a Bool-sorted constant as an EUF predicate, routing pure QF-LRA formulas that contain propositional variables through the combined EUF/LRA path. The remaining three concern row-based prop-agation: (4) enables it, while (5) and (6) widen its cost caps from the default of 64, to 256 for the size of a row propagated over and to 1 ,024 for the fanout. 
+
+Full QF-LRA evaluation. Table 1 reports the whole QF-LRA division of SMT-LIB, 1 ,753 instances. Of these, SMT-LIB declares 946 satisfiable and 683 unsatisfiable, while the remaining 124 declare an unknown status. The three status columns of Table 1 report solver performance on the problems declared with that status. Between them the five configurations settle 102 of the 124 open instances, and 82 instances are not solved at all. The overall winner is primo ⋆
+
+solving 1 ,599 instances in total and reaching the best PAR2 score (the sum of runtimes, where an unsolved instance counts as twice the cutoff). Note that opensmt maintains its superiority on unsatisfiable instances as it keeps a 23-instance lead even against primo ⋆.The best tuned configuration primo ⋆ improves over the default primo by 63 instances, which is enough to outperform default opensmt by 21 and yices by 36. The gain is not spread      
+
+> 3Experiments performed on two AMD EPYC 7513 32-core processors with 512 GB of RAM, running 64 solver instances concurrently. We use opensmt v2.9.2-35-g15b42c6f and yices 2.7.0 (revision 4f19700f ).
+
+8QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv                                                               
+
+> configuration total (1 ,753) sat (946) unsat (683) unknown (124) PAR2
+> primo ⋆1,599 91 .2% 890 94 .1% 614 89 .9% 95 76 .6% 12 ,806
+> opensmt (default) 1,578 90 .0% 853 90 .2% 637 93 .3% 88 71 .0% 14 ,193
+> yices (default) 1,563 89 .2% 889 94 .0% 580 84 .9% 94 75 .8% 13 ,886
+> primo +1,562 89 .1% 892 94 .3% 583 85 .4% 87 70 .2% 15 ,458
+> primo (default) 1,536 87 .6% 857 90 .6% 585 85 .7% 94 75 .8% 16 ,597
+> VBS (union) 1,671 95 .3% 922 97 .5% 647 94 .7% 102 82 .3% 7,673
+
+Table 1: Evaluation on full SMT-LIB QF-LRA (1 ,753 instances), 30 s cutoff.                                                                 
+
+> solved PAR2 configuration all (519) train (194) test (325) all train test
+> primo ⋆504 97 .1% 192 99 .0% 312 96 .0% 47 ,653 6,509 41 ,144
+> primo +502 96 .7% 192 99 .0% 310 95 .4% 53 ,167 6,818 46 ,350
+> opensmt (default) 502 96 .7% 192 99 .0% 310 95 .4% 54 ,584 8,253 46 ,331
+> primo (default) 499 96 .1% 191 98 .5% 308 94 .8% 65 ,821 11 ,426 54 ,395
+> yices (default) 495 95 .4% 187 96 .4% 308 94 .8% 73 ,077 19 ,588 53 ,489
+> VBS (union) 511 98 .5% 193 99 .5% 318 97 .8% 25 ,725 3,400 22 ,325
+
+Table 2: Evaluation on the SMT-COMP 2026 QF-LRA selection (519 instances), 1 ,200 s cutoff. evenly over QF-LRA: 62 of the 77 instances primo ⋆ adds come from the LassoRanker fam-ily, program-analysis queries encoded through Farkas’ lemma, whose large disjunctive Boolean structure is what monotone-elimination simplifies. Tuning for complementarity costs aggre-gate performance: primo + ends 37 instances behind primo ⋆, yet solves 23 that primo ⋆ misses. The improvement of primo ⋆ over the default primo is not free: it adds 77 instances but loses 14, and all the lost instances are satisfiable. This is because the option lra-model-phase steers the polarity from one candidate model, which can make the solver miss a model that lies elsewhere. On unsatisfiable instances there is no model to miss. The most complementary pair is primo ⋆ with default opensmt : together they solve 1 ,639 instances, 40 more than primo ⋆ alone. Pairing primo ⋆ with yices instead solves 1 ,638, 39 more than primo ⋆ alone. All three solvers combined reach 1 ,660, 61 more than primo ⋆ alone, and all five configurations together 1 ,671, 72 more. The two reference solvers complement primo ⋆ on opposite answers: 28 of the 40 instances opensmt adds are unsatisfiable, whereas 20 of the 39 added by yices are satisfiable. 
+
+The SMT-COMP competition experiments. Since the annual SMT-COMP competition uses a much higher cutoff of 1 ,200 seconds, we repeat the comparison on the SMT-COMP 2026 QF-LRA selection [31] at that cutoff. The only difference from the actual competition is the memory limit, which we set to 7 GB as opposed to the 30 GB used there, so that all 64 workers fit in memory in the worst case. This has negligible effect, since only a single solver run terminated out of memory. The results are presented in Table 2, which splits the 519 instances into the 194 that belong to the tuning set and the 325 test instances never used for tuning. Instance counts almost stop discriminating here: only 8 of the 519 are unsolved by all five configurations, and the spread among the four primo /opensmt rows is 5, against 63 at the 30 s cutoff. The train half is close to saturated, with default primo already solving 98 .5% of it, and this follows from how the subset was chosen rather than from the tuning: its instances were selected because they discriminate between configurations at a 10 s cutoff, and given 1 ,200 seconds nearly all of them come within reach of every solver. What discrimination remains 9QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+therefore sits in the held-out half, where primo ⋆ gains 4 of its 5 instances. A configuration that had overfitted the tuning subset would show the opposite pattern. The runtime does not seem to be saturated in this way since primo ⋆ improves PAR2 by 28% against default primo and by 13% against default opensmt . On the 483 instances all five solve, it takes 46 .6% less total time than default primo (7 ,284 s against 13 ,648 s), where a repeated measurement of the same configuration suggests a noise level of about 1%. The instance-count advantage of tuning is largely a short-cutoff phenomenon while the speedup is not. 
+
+# 5 Conclusions and Future Work 
+
+We describe a fully vibe-coded SMT solver for the theory of quantifier-free linear arithmetic (QF-LRA). We also study automated tuning of the solver’s parameters. opensmt was in fact the winner of the QF-LRA (single query) track of SMT-COMP 2026, and primo ⋆ outperforms it both in the number of instances solved and in PAR2 score. Our motivation is mainly to gauge how well LLM-guided agents can integrate existing literature into code. One valid concern is whether the agent simply copies code from existing solvers into the new one. Our experience speaks against this: the agent behaves much like a human, in the sense that it usually starts with a naive implementation of what it understands and requires considerable human supervision and further effort to make it efficient. Currently, the repository contains roughly one thousand commits spanning one month (the agent performs commits on its own and is instructed to do so frequently). We have also used anti-plagiarism software, Dolos [24] and PMD [7], run against z3 , opensmt , yices , and cvc5 . This analysis did not yield any overlaps apart from boilerplate enums. Nevertheless, this remains an inherent threat to validity, because we cannot control on which data the LLM was trained on. The use of an agent helps us quickly integrate, evaluate, and eventually tune various tech-niques, as shown in this paper. One natural issue arising from integrating many different algo-rithms into the solver is correctness. We used fuzzing during development, but it turned out to be insufficient in some cases or insufficiently seeded. To address this, we have also included some hand-written fuzzers for dedicated fragments, which have weeded out some bugs—one such tricky fragment was functions taking Boolean arguments. Increasing the test coverage further is subject to future work. This work has enabled us to produce a solver that is state of the art in the sense reported in Section 4: on the SMT-LIB QF-LRA benchmark and the SMT-COMP 2026 QF-LRA selection, 
+
+primo ⋆ solves more instances and reaches a better PAR2 score than the default configurations of opensmt and yices at both the 30 s and 1 ,200 s cutoffs used there. We also relate the im-plementation to the existing literature, which we hope is useful to the community. Currently, we also have an implementation of Nelson–Oppen closure combining real arithmetic and un-interpreted functions. Improving this implementation and extending the solver to integers are therefore natural continuations of this work. 
+
+# References         
+
+> [1] Kristina Aleksandrova, Jan Jakubuv, and Cezary Kaliszyk. Prover9 unleashed: Automated configuration for enhanced proof discovery. In Nikolaj S. Bjørner, Marijn Heule, and Andrei Voronkov, editors, LPAR: Proceedings of 25th Conference on Logic for Programming, Artificial Intelligence and Reasoning , volume 100 of EPiC Series in Computing , pages 360–369. EasyChair, 2024. doi:10.29007/SD6T .
+
+10 QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+[2] Erling D. Andersen and Knud D. Andersen. Presolving in linear programming. Mathematical Programming , 71(2):221–245, December 1995. doi:10.1007/bf01586000 .[3] Clark Barrett, Pascal Fontaine, and Cesare Tinelli. The SMT-LIB Standard: Version 2.6. Technical report, Dep. of Computer Science, The Uni. of Iowa, 2017. Available at www.SMT-LIB.org .[4] Nikolaj S. Bjørner and Lev Nachmanson. Arithmetic solving in Z3. In Arie Gurfinkel and Vi-jay Ganesh, editors, Computer Aided Verification - 36th International Conference, CAV , volume 14681, pages 26–41. Springer, 2024. doi:10.1007/978-3-031-65627-9\_2 .[5] Robert G. Bland. New finite pivoting rules for the simplex method. Mathematics of Operations Research , 2(2):103–107, May 1977. doi:10.1287/moor.2.2.103 .[6] Robert Brummayer and Armin Biere. Fuzzing and delta-debugging SMT solvers. In Proceedings of the 7th International Workshop on Satisfiability Modulo Theories , SMT ’09, pages 1–5. ACM, August 2009. doi:10.1145/1670412.1670413 .[7] PMD contributors. PMD: An extensible multilanguage static code analyzer (version 7.26.0), CPD — copy/paste detector module, 2026. URL: https://pmd.github.io/ .[8] Leonardo Mendon¸ ca de Moura and Nikolaj S. Bjørner. Model-based theory combination. In Sava Krstic and Albert Oliveras, editors, Proceedings of the 5th International Workshop on Satisfiability Modulo Theories, SMTCAV , volume 198 of Electronic Notes in Theoretical Computer Science ,pages 37–49. Elsevier, 2007. doi:10.1016/J.ENTCS.2008.04.079 .[9] David D´ eharbe, Pascal Fontaine, Stephan Merz, and Bruno Woltzenlogel Paleo. Exploiting sym-metry in SMT problems. In Nikolaj S. Bjørner and Viorica Sofronie-Stokkermans, editors, Auto-mated Deduction - CADE-23 - 23rd International Conference on Automated Deduction , volume 6803, pages 222–236. Springer, 2011. doi:10.1007/978-3-642-22438-6\_18 .[10] Bruno Dutertre. Yices 2.2. In Armin Biere and Roderick Bloem, editors, Computer Aided Ver-ification - 26th International Conference, CAV 2014, Held as Part of the Vienna Summer of Logic, VSL 2014, Vienna, Austria, July 18-22, 2014. Proceedings , volume 8559 of Lecture Notes in Computer Science , pages 737–744. Springer, 2014. doi:10.1007/978-3-319-08867-9\_49 .[11] Bruno Dutertre and Leonardo Mendon¸ ca de Moura. A fast linear-arithmetic solver for DPLL(T). In Thomas Ball and Robert B. Jones, editors, Computer Aided Verification, 18th International Conference, CAV 2006, Seattle, WA, USA, August 17-20, 2006, Proceedings , volume 4144 of 
+
+Lecture Notes in Computer Science , pages 81–94. Springer, 2006. doi:10.1007/11817963\_11 .[12] Katalin Fazekas, Aina Niemetz, Mathias Preiner, Markus Kirchweger, Stefan Szeider, and Armin Biere. IPASIR-UP: User Propagators for CDCL. In Meena Mahajan and Friedrich Slivovsky, editors, 26th International Conference on Theory and Applications of Satisfiability Testing (SAT 2023) , volume 271, pages 8:1–8:13, Dagstuhl, Germany, 2023. Schloss Dagstuhl – Leibniz-Zentrum f¨ ur Informatik. doi:10.4230/LIPIcs.SAT.2023.8 .[13] Torbj¨ orn Granlund and the GMP development team. GNU MP: The GNU Multiple Precision Arithmetic Library . Free Software Foundation, 6.3.0 edition, 2023. URL: https://gmplib.org/ .[14] Alberto Griggio. An effective SMT engine for Formal Verification . PhD thesis, Universit` a degli studi di Trento, 2009. doi:10.15168/11572_368265 .[15] Arie Gurfinkel. CTAC: Building a verifier with LLMs, 2026. URL: https://sat-smt-ar-school. gitlab.io/www/2026/slides/gurfinkel3.pdf .[16] Frank Hutter, Holger H. Hoos, Kevin Leyton-Brown, and Thomas St¨ utzle. ParamILS: An automatic algorithm configuration framework. J. Artif. Intell. Res. , 36:267–306, 2009. doi: 10.1613/JAIR.2861 .[17] Antti E. J. Hyv¨ arinen, Matteo Marescotti, Leonardo Alt, and Natasha Sharygina. OpenSMT2: An SMT solver for multi-core and cloud computing. In Nadia Creignou and Daniel Le Berre, editors, 
+
+Theory and Applications of Satisfiability Testing - SAT 2016 - 19th International Conference, Bordeaux, France, July 5-8, 2016, Proceedings , volume 9710 of Lecture Notes in Computer Science ,pages 547–553. Springer, 2016. doi:10.1007/978-3-319-40970-2\_35 .[18] Mikol´ aˇ s Janota and Mirek Olˇ s´ ak. LLM2SMT: Building an SMT solver with zero human-written 
+
+11 QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+code, 2026. URL: https://arxiv.org/abs/2603.06931 .[19] Tim King, Clark Barrett, and Bruno Dutertre. Simplex with sum of infeasibilities for SMT. In 2013 Formal Methods in Computer-Aided Design , pages 189–196. IEEE, October 2013. doi: 10.1109/fmcad.2013.6679409 .[20] Gereon Kremer, Aina Niemetz, and Mathias Preiner. ddSMT 2.0: Better delta debugging for the SMT-LIBv2 language and friends. In Computer Aided Verification - 33rd International Conference, CAV , volume 12760 of Lecture Notes in Computer Science , pages 231–242. Springer, 2021. doi: 10.1007/978-3-030-81688-9\_11 .[21] Daniel Kroening and Ofer Strichman. Decision Procedures - An Algorithmic Point of View .Texts in Theoretical Computer Science. An EATCS Series. Springer, 2016. doi:10.1007/ 978-3-662-50497-0 .[22] Marius Lindauer, Katharina Eggensperger, Matthias Feurer, Andr´ e Biedenkapp, Difan Deng, Car-olin Benjamins, Tim Ruhkopf, Ren´ e Sass, and Frank Hutter. SMAC3: A versatile bayesian opti-mization package for hyperparameter optimization. J. Mach. Learn. Res. , 23:54:1–54:9, 2022. [23] Zhengyang Lu, Stefan Siemer, Piyush Jha, Joel D. Day, Florin Manea, and Vijay Ganesh. Layered and staged monte carlo tree search for SMT strategy synthesis. In Proceedings of the Thirty-Third International Joint Conference on Artificial Intelligence, IJCAI 2024, Jeju, South Korea, August 3-9, 2024 , pages 1907–1915. ijcai.org, 2024. doi:10.24963/ijcai.2024/211 .[24] Rien Maertens, Maarten Van Neyghem, Maxiem Geldhof, Charlotte Van Petegem, Niko Strijbol, Peter Dawyndt, and Bart Mesuere. Discovering and exploring cases of educational source code plagiarism with Dolos. SoftwareX , 26:101755, May 2024. doi:10.1016/j.softx.2024.101755 .[25] Ruben Martins. Can LLMs build a MaxSAT solver from papers? the CoreForge experience, 2026. URL: https://arxiv.org/abs/2607.14818 , arXiv:2607.14818 .[26] David Monniaux. On Using Floating-Point Computations to Help an Exact Linear Arith-metic Decision Procedure , pages 570–583. Springer Berlin Heidelberg, 2009. doi:10.1007/ 978-3-642-02658-4_42 .[27] Robert Nieuwenhuis, Albert Oliveras, and Cesare Tinelli. Solving SAT and SAT Modulo The-ories: From an abstract Davis–Putnam–Logemann–Loveland procedure to DPLL(T). J. ACM ,53(6):937–977, 2006. doi:10.1145/1217856.1217859 .[28] Terence Parr. The definitive ANTLR 4 reference. 2013. [29] Florian Pollitt, Mathias Fleury, Katalin Fazekas, Nils Froleyks, Andr´ e Schidler, Dominik Schreiber, and Armin Biere. Cadical 3.0 (tool paper). In Alexey Ignatiev and Stefan Szeider, editors, 29th International Conference on Theory and Applications of Satisfiability Testing, SAT 2026, Lisbon, Portugal, July 20-23, 2026 , volume 377 of LIPIcs , pages 40:1–40:14. Schloss Dagstuhl - Leibniz-Zentrum f¨ ur Informatik, 2026. doi:10.4230/LIPICS.SAT.2026.40 .[30] Alexander Schrijver. Theory of linear and integer programming . John Wiley & Sons, 1998. [31] SMT-COMP. SMT-COMP 2026 results: QF LRA, single query track, 2026. Per-logic table; the enclosing QF LinearRealArith division page combines QF LRA with QF RDL. Available at 
+
+https://smt-comp.github.io/2026/results/qf_lra-single-query .[32] Raymond M. Smullyan. First-Order Logic . Springer Berlin Heidelberg, 1968. doi:10.1007/ 978-3-642-86718-7 .[33] Michael Sutton, Adam Greene, and Pedram Amini. Fuzzing: brute force vulnerability discovery .Pearson Education, 2007. [34] King Tim. Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic . PhD thesis, Dep. of Comp. Science, New York University, 2014. URL: 
+
+https://cs.nyu.edu/media/publications/king_tim.pdf .[35] Dominik Winterer, Chengyu Zhang, and Zhendong Su. On the unusual effectiveness of type-aware operator mutations for testing SMT solvers. Proc. ACM Program. Lang. , 4(OOPSLA):193:1– 193:25, 2020. doi:10.1145/3428261 .
+
+12 QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+[36] A. Zeller and R. Hildebrandt. Simplifying and isolating failure-inducing input. IEEE Transactions on Software Engineering , 28(2):183–200, February 2002. doi:10.1109/32.988498 .[37] Liao Zhang, Fabian Mitterwallner, Jan Jakubuv, and Cezary Kaliszyk. Automated strategy in-vention for confluence of term rewrite systems. In Proceedings of the Thirty-Fourth International Joint Conference on Artificial Intelligence, IJCAI 2025, Montreal, Canada, August 16-22, 2025 ,pages 4724–4732. ijcai.org, 2025. doi:10.24963/IJCAI.2025/526 .
+
+13 QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+# A Performance Cactus Plots 
+
+Figure 4 plots the two QF-LRA evaluations of Section 4, the full benchmark at 30 s and the SMT-COMP selection at 1 ,200 s. Figure 5 compares primo with four other solvers on QF-UFLRA, a different recently-implemented logic combination, at a 120 s cutoff and over the instances that not every solver settles within 5 s. 
+
+full benchmark, 30 s    
+
+> 50 60 70 80 90 100 0.01 0.1 110 30 time (s) solved [%]
+
+SMT-COMP selection, 1 ,200 s         
+
+> 20 40 60 80 100 0.01 0.1 110 100 1000 time (s) solved [%]
+> opensmt yices primo primo ⋆
+
+Figure 4: Percentage of instances solved against wall-clock time. 
+
+Figure 5: Comparison of solvers on QF-UFLRA. 14 QF-LRA: Vibe-Coded and Tuned Janota and Jakub˚ uv 
+
+# B Tableau Structure 
+
+Sparse basic rows 
+
+entries are triples ⟨x, c, i ⟩, contiguous and sorted by x
+
+rows [x5] x = x0, c = 2 
+
+i = 0 
+
+x = x3, c = −1
+
+i = 0 
+
+rows [x6] x = x3, c = 1 
+
+i = 1 
+
+x = x4, c = 7 
+
+i = 0 
+
+rows [x7] x = x0, c = 1 
+
+i = 1 
+
+x = x1, c = 1 
+
+i = 0 
+
+x = x4, c = −3
+
+i = 1 
+
+Reverse occurrence index 
+
+occ [v]: unsorted vector of rows containing v
+
+occ[x0] i = 0 
+
+y = x5
+
+i = 1 
+
+y = x7
+
+occ[x1] i = 0 
+
+y = x7
+
+occ[x3] i = 0 
+
+y = x5
+
+i = 1 
+
+y = x6
+
+occ[x4] i = 0 
+
+y = x6
+
+i = 1 
+
+y = x7
+
+A ABB
+
+if the row indexed by y contains ⟨x, c, i ⟩, then occ [x][ i] = y
+
+Removing one occurrence by swap-pop 
+
+1. Swap-pop the column 
+
+before 
+
+i = 0 
+
+x5 
+
+i = 1 
+
+x7 
+
+after 
+
+i = 0 
+
+x7 
+
+unlink slot 0; move last 
+
+2. Repair the moved row entry 
+
+before 
+
+rows [x7] entry for x0
+
+i = 1
+
+after 
+
+rows [x7] entry for x0
+
+i = 0
+
+binary-search the sorted row: O(log |row x7|)
+
+The removed rows [x5] entry disappears; only the surviving moved column element needs a new back-index. 
+
+15

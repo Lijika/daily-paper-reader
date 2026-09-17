@@ -1,0 +1,24 @@
+{
+  "label": "2026-09-17",
+  "date": "2026-09-17",
+  "generated_at": "2026-09-17T22:59:46",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202609/17/2609.16706v1-vibe-coded-and-tuned-a-state-of-the-art-smt-solver-for-qf-lra",
+      "section": "quick",
+      "title_en": "Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA",
+      "authors": "Mikoláš Janota, Jan Jakubův",
+      "date": "2026-09-15",
+      "pdf": "https://arxiv.org/pdf/2609.16706v1",
+      "score": "6.0",
+      "evidence": "LLM氛围编码并参数调优的SMT求解器",
+      "tldr": "针对线性实数算术（QF-LRA）的 SMT 求解难题，本文提出求解器 primo。primo 完全由 vibe-coding 生成，并借助系统文献调研、反复性能剖析与参数调优完成优化。在 QF-LRA 基准上，primo 达到当前最佳性能，并超越 SMT-COMP 2026 该赛道冠军。该工作表明，vibe-coding 有望为自动推理工具带来显著进展。",
+      "tags": "query:llm-sat",
+      "abstract_en": "This paper presents the SMT solver primo, which is fully vibe-coded and then parameter-tuned, achieving state-of-the-art results on linear real arithmetic (QF-LRA). The performance of primo is achieved by a systematic literature survey, repeated profiling, and parameter tuning. The resulting solver outperforms the winner of the QF-LRA track of SMT-COMP~2026. This confirms that vibe-coding of automated reasoning tools will enable us to make great strides in the future.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

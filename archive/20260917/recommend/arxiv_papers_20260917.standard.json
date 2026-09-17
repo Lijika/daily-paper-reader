@@ -1,0 +1,73 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-17T22:58:59.015766+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 11,
+    "deep_divecandidates": 0,
+    "deep_cap": 16,
+    "deep_selected": 0,
+    "quick_candidates": 1,
+    "quick_skim_target": 21,
+    "quick_selected": 1
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.16706v1",
+      "source": "arxiv",
+      "title": "Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA",
+      "abstract": "This paper presents the SMT solver primo, which is fully vibe-coded and then parameter-tuned, achieving state-of-the-art results on linear real arithmetic (QF-LRA). The performance of primo is achieved by a systematic literature survey, repeated profiling, and parameter tuning. The resulting solver outperforms the winner of the QF-LRA track of SMT-COMP~2026. This confirms that vibe-coding of automated reasoning tools will enable us to make great strides in the future.",
+      "authors": [
+        "Mikoláš Janota",
+        "Jan Jakubův"
+      ],
+      "primary_category": "cs.LO",
+      "categories": [
+        "cs.LO"
+      ],
+      "published": "2026-09-15T06:31:22+00:00",
+      "link": "https://arxiv.org/pdf/2609.16706v1",
+      "tags": [
+        "keyword:GNN-SAT",
+        "keyword:LLM-SAT",
+        "keyword:SAT-RL",
+        "keyword:SAT-formal",
+        "keyword:branching",
+        "keyword:cdcl-sat",
+        "keyword:inproc-sat",
+        "keyword:neuro-cdcl",
+        "keyword:sat-config",
+        "keyword:sat-preproc",
+        "keyword:sat-proof",
+        "query:GNN-SAT",
+        "query:LLM-SAT",
+        "query:SAT-RL",
+        "query:SAT-formal",
+        "query:branching",
+        "query:cdcl-sat",
+        "query:inproc-sat",
+        "query:neuro-cdcl",
+        "query:sat-config",
+        "query:sat-preproc",
+        "query:sat-proof"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "vibe-coded and parameter-tuned SMT solver via LLM",
+      "llm_evidence_cn": "LLM氛围编码并参数调优的SMT求解器",
+      "llm_evidence": "LLM氛围编码并参数调优的SMT求解器",
+      "canonical_evidence": "LLM氛围编码并参数调优的SMT求解器",
+      "llm_tldr_en": "The paper presents primo, a fully vibe-coded and parameter-tuned SMT solver for QF-LRA that beats the SMT-COMP 2026 winner, showing LLM-generated and tuned solver code can reach state of the art.",
+      "llm_tldr_cn": "自动化推理求解器的开发长期依赖人工编码与繁琐调参，难以快速达到竞赛级性能。本文提出完全由大语言模型氛围编码（vibe-coding）生成、随后进行系统参数调优的SMT求解器primo，面向线性实数算术（QF-LRA）。通过系统文献调研、反复性能剖析与参数调优，primo在SMT-COMP 2026的QF-LRA赛道超越冠军求解器。该工作表明借助LLM自动生成与调优求解器代码可显著加速推理工具研发，与LLM辅助求解器设计及参数调优主题高度相关。",
+      "llm_tldr": "自动化推理求解器的开发长期依赖人工编码与繁琐调参，难以快速达到竞赛级性能。本文提出完全由大语言模型氛围编码（vibe-coding）生成、随后进行系统参数调优的SMT求解器primo，面向线性实数算术（QF-LRA）。通过系统文献调研、反复性能剖析与参数调优，primo在SMT-COMP 2026的QF-LRA赛道超越冠军求解器。该工作表明借助LLM自动生成与调优求解器代码可显著加速推理工具研发，与LLM辅助求解器设计及参数调优主题高度相关。",
+      "llm_tags": [
+        "query:llm-sat"
+      ],
+      "matched_query_tag": "query:llm-sat",
+      "matched_query_text": "LLM based automatic optimization of SAT solver code",
+      "matched_requirement_id": "req-95",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

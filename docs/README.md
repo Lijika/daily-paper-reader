@@ -18,24 +18,24 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-09-16
-- 运行时间：2026-09-16 22:09:33 UTC
+- 最新运行日期：2026-09-17
+- 运行时间：2026-09-17 22:59:43 UTC
 - 运行状态：成功
 - 本次总论文数：1
 - 精读区：0
 - 速读区：1
 
 ### 今日简报（AI）
-今日速读 1 篇，聚焦算法选择评估中的“分区得分≠系统得分”问题。该文（7.0/10）指出分解式算法选择在部署时存在保真度缺口，提醒别把局部指标直接当整体性能。普通读者若关注 AutoML 或算法调度，建议优先看这篇，并在实际部署前做端到端验证。
-- 详情：[/202609/16/README](/202609/16/README)
+今天速读 1 篇论文，聚焦用"氛围编程"方式调优出面向 QF-LRA 的最新 SMT 求解器。这篇《Vibe-Coded and Tuned》评分 6.0/10，值得关注的是它把工程化调参和 SMT 求解性能结合起来的思路。普通读者可先了解 SMT 求解器在自动推理中的作用，再决定是否深入这篇的具体调优细节。
+- 详情：[/202609/17/README](/202609/17/README)
 
 ### 精读区论文标签
 - 本次无精读推荐。
 
 ### 速读区论文标签
-1. [Partition Scores Are Not System Scores: Deployment-Fidelity Gaps in Decomposed Algorithm Selection](/202609/16/2609.13785v1-partition-scores-are-not-system-scores-deployment-fidelity-gaps-in-decomposed-algorithm-selection)  
-   标签：评分：7.0/10、query:sat-config
-   evidence：算法选择、求解器组合与虚拟最优求解器oracle差距
+1. [Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA](/202609/17/2609.16706v1-vibe-coded-and-tuned-a-state-of-the-art-smt-solver-for-qf-lra)  
+   标签：评分：6.0/10、query:llm-sat
+   evidence：LLM氛围编码并参数调优的SMT求解器
 
 
 <div class="dpr-home-promo-card dpr-home-panel">
