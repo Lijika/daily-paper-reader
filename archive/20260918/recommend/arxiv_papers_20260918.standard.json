@@ -1,0 +1,76 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-09-18T21:54:42.639437+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 11,
+    "deep_divecandidates": 0,
+    "deep_cap": 16,
+    "deep_selected": 0,
+    "quick_candidates": 1,
+    "quick_skim_target": 21,
+    "quick_selected": 1
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2609.19353v1",
+      "source": "arxiv",
+      "title": "Scaling Zero Knowledge UNSAT Verification via Normalized Chaining",
+      "abstract": "Proofs of UNSAT are a standard primitive in formal verification and software assurance. In many real-world settings, the proof itself encodes proprietary or security-sensitive information, making public disclosure undesirable. Zero-knowledge certification of UNSAT addresses this tension: it enables a prover to convince a verifier that no satisfying assignment exists, without revealing anything about the underlying proof beyond its validity. Luo et al. recently introduced ZkUnsat, a protocol that achieves this goal by proving the validity of a weakened resolution proof in zero knowledge. ZkUnsat demonstrates the feasibility of zero-knowledge certification; however, its scalability to larger, real-world instances is constrained by substantial prover memory overhead, limiting its real-world applicability. Motivated by advances in UNSAT proof formats such as LRAT, which enable efficient plain-text verification, we present a preprocessing technique that improves the efficiency of ZkUnsat without introducing additional leakage. Our approach normalizes the proof so that each derived clause is justified by a resolution chain of fixed public length k. This eliminates chain-length leakage and reduces prover memory usage. With k = 16, our method certifies roughly 62% more instances than baseline ZkUnsat on the SAT 2002 competition benchmarks. Furthermore, for an equivalent number of certified instances, the memory footprint drops to under 25% of that required by the baseline.",
+      "authors": [
+        "Ashwin Karthikeyan",
+        "Ethan Kharitonov",
+        "Kuldeep S. Meel",
+        "Anwar Hithnawi"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.LO"
+      ],
+      "published": "2026-09-16T19:28:06+00:00",
+      "link": "https://arxiv.org/pdf/2609.19353v1",
+      "tags": [
+        "keyword:GNN-SAT",
+        "keyword:LLM-SAT",
+        "keyword:SAT-RL",
+        "keyword:SAT-formal",
+        "keyword:branching",
+        "keyword:cdcl-sat",
+        "keyword:inproc-sat",
+        "keyword:neuro-cdcl",
+        "keyword:sat-config",
+        "keyword:sat-preproc",
+        "keyword:sat-proof",
+        "query:GNN-SAT",
+        "query:LLM-SAT",
+        "query:SAT-RL",
+        "query:SAT-formal",
+        "query:branching",
+        "query:cdcl-sat",
+        "query:inproc-sat",
+        "query:neuro-cdcl",
+        "query:sat-config",
+        "query:sat-preproc",
+        "query:sat-proof"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Zero-knowledge UNSAT proof certification and certificate checking",
+      "llm_evidence_cn": "零知识UNSAT证明认证与证书检查",
+      "llm_evidence": "零知识UNSAT证明认证与证书检查",
+      "canonical_evidence": "零知识UNSAT证明认证与证书检查",
+      "llm_tldr_en": "Zero-knowledge UNSAT certification hides sensitive proofs but ZkUnsat scales poorly due to prover memory overhead. The paper introduces normalized chaining to restructure proof verification, cutting memory cost and enabling certification of larger real-world instances, advancing privacy-preserving proof checking.",
+      "llm_tldr_cn": "UNSAT证明常编码专有或敏感信息，公开披露并不合适，而零知识认证可在不泄露证明内容的前提下让验证者确信不存在满足赋值，但现有ZkUnsat协议受证明者内存开销制约，难以扩展到大规模实例。论文提出归一化链式方法，重新组织弱化归结证明的零知识验证流程以降低内存负担。实验显示该方法在更大规模的真实实例上仍保持可行。该成果提升了零知识UNSAT认证的可扩展性，对形式验证中的证明与证书检查具有实用价值。",
+      "llm_tldr": "UNSAT证明常编码专有或敏感信息，公开披露并不合适，而零知识认证可在不泄露证明内容的前提下让验证者确信不存在满足赋值，但现有ZkUnsat协议受证明者内存开销制约，难以扩展到大规模实例。论文提出归一化链式方法，重新组织弱化归结证明的零知识验证流程以降低内存负担。实验显示该方法在更大规模的真实实例上仍保持可行。该成果提升了零知识UNSAT认证的可扩展性，对形式验证中的证明与证书检查具有实用价值。",
+      "llm_tags": [
+        "query:sat-proof"
+      ],
+      "matched_query_tag": "query:sat-proof",
+      "matched_query_text": "certificate checking for SAT solver",
+      "matched_requirement_id": "req-104",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

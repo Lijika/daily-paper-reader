@@ -1,0 +1,816 @@
+Title: Scaling Zero Knowledge UNSAT Verification via Normalized Chaining
+
+URL Source: https://arxiv.org/pdf/2609.19353v1
+
+Published Time: Fri, 18 Sep 2026 00:13:00 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+# Scaling Zero Knowledge UNSAT Verification via Normalized Chaining 
+
+## Ashwin Karthikeyan 1∗
+
+## , Ethan Kharitonov 2∗
+
+## , Kuldeep S. Meel 1,3, and Anwar Hithnawi 1 
+
+> 1
+
+University of Toronto, Canada 
+
+ashwin@cs.toronto.edu, meel@cs.toronto.edu, ahithnawi@cs.toronto.edu  
+
+> 2
+
+Independent, Canada 
+
+ethan.kharitonov@gmail.com  
+
+> 3
+
+Georgia Institute of Technology, USA 
+
+meel@gatech.edu 
+
+Abstract 
+
+Proofs of UNSAT are a standard primitive in formal verification and software assur-ance. In many real-world settings, the proof itself encodes proprietary or security-sensitive information, making public disclosure undesirable. Zero-knowledge certification of UNSAT addresses this tension: it enables a prover to convince a verifier that no satisfying assign-ment exists, without revealing anything about the underlying proof beyond its validity. Luo et al. recently introduced ZkUnsat , a protocol that achieves this goal by proving the validity of a weakened resolution proof in zero knowledge. ZkUnsat demonstrates the feasibility of zero-knowledge certification; however, its scalability to larger, real-world instances is constrained by substantial prover memory overhead, limiting its real-world ap-plicability. Motivated by advances in UNSAT proof formats such as LRAT, which enable efficient plain-text verification, we present a preprocessing technique that improves the efficiency of ZkUnsat without introducing additional leakage. Our approach normalizes the proof so that each derived clause is justified by a resolution chain of fixed public length 
+
+k. This eliminates chain-length leakage and reduces prover memory usage. With k = 16, our method certifies roughly 62% more instances than baseline ZkUnsat on the SAT 2002 competition benchmarks. Furthermore, for an equivalent number of certified instances, the memory footprint drops to under 25% of that required by the baseline. 
+
+# 1 Introduction 
+
+As SAT solvers are increasingly deployed across diverse domains—from verifying safety-critical systems [6] to solving long-standing mathematical conjectures [22, 14]—the question of trust has become paramount. Modern SAT solvers are remarkably effective, capable of solving instances with millions of variables and clauses that would have been intractable mere decades ago [27]. Yet this effectiveness comes with a caveat: state-of-the-art solvers are large, highly optimized systems comprising hundreds of thousands of lines of code, making them susceptible to subtle implementation bugs [8]. To address these concerns, the SAT community has made substantial progress over the past two decades in proof-logging techniques. Early work centered on independently check-able resolution proofs [38], which, while theoretically sound and complete, imposed significant overhead on both proof generation and verification. The introduction of the RUP (Reverse Unit Propagation) [17, 16] proof format marked a turning point; it reduced the burden on 
+
+> ∗
+
+These authors contributed equally to this work. arXiv:2609.19353v1 [cs.CR] 16 Sep 2026 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+solvers by allowing them to emit proofs without explicit resolution chains, and DRUP (Dele-tion Reverse Unit Propagation) [23] extended this approach with clause deletion information, making proofs efficiently checkable. More recently, LRAT (Linear Resolution Asymmetric Tau-tology) [12] pushed the boundary further by enabling more efficient, formally verified proof checking. These advances, coupled with highly optimized proof checkers [28] and proof trim-ming tools such as drat-trim [36] and lrat-trim [32], have made it practical for solvers to emit independently checkable certificates of unsatisfiability. This ecosystem of proof formats and checkers has established trust in solver outputs across diverse applications. However, proof verification requires complete disclosure of the underlying proof, exposing the very witness the prover may wish to protect. This barrier increasingly prevents adoption in privacy-sensitive settings. Consider a proprietary SAT solver whose competitive advantage lies in carefully tuned heuristics—the proof itself may reveal the decision sequence and branching patterns that encode years of engineering effort. In industrial verification workflows, the unsat-isfiability proof of a formula encoding a system’s specification might leak sensitive architectural details or security properties that the vendor wishes to protect. Zero-knowledge (ZK) proofs offer an elegant resolution to this tension. In a zero-knowledge proof system, a prover convinces a verifier of a statement’s truth without revealing any infor-mation about the witness beyond its existence. The recent work of Luo et al. [31] introduced 
+
+ZkUnsat , a protocol that achieves zero-knowledge certification of Boolean formula unsatisfia-bility. While it does not match the efficiency of plaintext proof checkers, ZkUnsat represents the first zero-knowledge Unsat protocol with practical viability, in contrast to earlier con-structions that remained largely theoretical [4, 29]. Its key insight is to prove the validity of a weakened resolution proof in zero knowledge, using a polynomial commitment scheme and a modified zero-knowledge RAM [15] to hide the proof’s contents while establishing its cor-rectness. Despite this important feasibility demonstration, ZkUnsat ’s scalability to real-world instances remains severely constrained: memory exhaustion has been identified as the primary limitation [31], a finding we independently confirm on the SAT 2002 competition benchmarks, where ZkUnsat exhausts available memory on the majority of instances (see Section 4.1). This gap underscores the need to reduce the overhead of zero-knowledge proof checking to a level practical for real-world use. The central contribution of this work is to substantially improve the scalability of zero-knowledge Unsat certification, bringing it closer to practical deployment. To this end, we conduct a systematic analysis to identify the bottleneck constraining ZkUnsat ’s performance. 
+
+ZkUnsat expects proofs in which each proof line represents a single resolution step—every derived clause must be produced from exactly two parent clauses. To satisfy this requirement, proofs produced by modern SAT solvers must be fully unfolded : a chained resolution step of length m is decomposed into m − 1 intermediate resolution steps, each introducing an interme-diate clause. Our investigation reveals that this unfolding is the dominant source of memory overhead. Each intermediate clause requires its own index and cryptographic commitment in the zero-knowledge RAM, causing the prover’s memory footprint to scale with the fully unfolded proof size rather than the original proof structure. To quantify this overhead, we introduce a variant that verifies chained proofs directly without unfolding, which we call Var-Chain-ZkUnsat . On 510 proofs from the SAT 2002 competition benchmarks, ZkUnsat successfully certifies 220 instances before exhausting the 32 GB memory limit, with 290 instances aborted due to memory exhaustion. In contrast, Var-Chain-ZkUnsat 
+
+certifies 281 instances, with only 103 memory-related failures and peak memory usage remaining below 15 GB on most instances. This reduction confirms that unfolding is the primary bottle-neck. Furthermore, ZkUnsat exhibits a tight correlation between runtime and peak memory— 2Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+both scale together—whereas Var-Chain-ZkUnsat shows no such pattern, with memory usage entirely decoupled from execution time. However, bypassing unfolding introduces a critical issue: Var-Chain-ZkUnsat reveals the length of each resolution chain to the verifier, directly violating zero-knowledge guarantees. Our key insight is that weakened resolution chains can be 
+
+normalized to a fixed public length k while preserving zero-knowledge: the verifier learns only the number of lines in the normalized proof and the public parameter k, with no information about the structure of the underlying proof. To achieve this, we present a preprocessing algorithm that transforms any chained res-olution proof into one where every chain has length exactly k. The algorithm operates by padding shorter chains (exploiting the fact that a clause can be weakly resolved with itself) and decomposing longer chains into sequences of k-length chains. This normalization preserves zero-knowledge: the verifier learns only the number of proof lines and the public parameter k,with no information about the original chain-length distribution. Yet it captures the memory benefits of chaining by eliminating the intermediate clauses from unfolding. With k = 16, our method—which we call k-Chain-ZkUnsat —reduces average peak prover memory and enables certification of approximately 62% more instances compared to baseline ZkUnsat on the SAT 2002 benchmarks. Critically, this improvement shifts the performance bottleneck from memory constraints to computational runtime, substantially expanding the range of instances amenable to zero-knowledge verification. Beyond improving scalability, we make a methodological con-tribution by developing an accurate estimator for the peak memory usage of the certification protocol. 
+
+Organization : The remainder of this paper is organized as follows. Section 2 introduces the necessary preliminaries, covering the logical foundations of resolution-based refutation and the cryptographic primitives underlying zero-knowledge certification. Section 3 provides back-ground on proof formats, and the ZkUnsat construction. Section 4 presents our analysis identifying unfolding as the primary bottleneck and introduces the normalization algorithm. Section 5 establishes the zero-knowledge guarantees of the normalized protocol and derives a peak memory estimator. Section 6 details our experimental evaluation on the SAT 2002 bench-marks, demonstrating both the performance improvements and the accuracy of our estimators. We conclude in Section 7 with directions for future work. 
+
+# 2 Preliminaries 
+
+## 2.1 Logic 
+
+Boolean formulas. Let V be a finite set of Boolean variables and B = {⊤ , ⊥} . A Boolean formula φ : BV −→ B is satisfiable (SAT) if there exists an assignment σ ∈ BV such that 
+
+φ(σ) = ⊤, and unsatisfiable (UNSAT) otherwise. A literal is a variable x ∈ V or its negation 
+
+¬x. A clause is a disjunction of literals ℓ1 ∨ · · · ∨ ℓn. A formula in conjunctive normal form (CNF) is a conjunction of clauses φ = C1 ∧ · · · ∧ Cm. We identify clauses with their sets of literals and formulas with their sets of clauses, writing ℓ ∈ C and C ∈ φ accordingly. 
+
+Resolution proofs. A resolution proof of unsatisfiability for a CNF formula φ is a sequence of clauses terminating in the empty clause ⊥, where each clause is either from φ or derived by resolving two previous clauses. Given clauses C = ℓ1 ∨ · · · ∨ ℓn ∨ x and C′ = ℓ′ 
+
+> 1
+
+∨ · · · ∨ ℓ′ 
+
+> m
+
+∨ ¬ x
+
+for some variable x ∈ V , their resolvent on x is Cres = ℓ1 ∨ · · · ∨ ℓn ∨ ℓ′ 
+
+> 1
+
+∨ · · · ∨ ℓ′
+
+> m
+
+.A chained resolution step of length k specifies clauses C1, . . . , C k+1 and pivot variables 
+
+x1, . . . , x k. The chain is evaluated left-to-right: C1 resolves with C2 on x1 to produce an 3Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+intermediate clause, which then resolves with C3 on x2, and so forth until the final resolvent is obtained. Modern proof formats such as DRAT [36] and LRAT [12] employ chained resolution to reduce proof size by avoiding explicit representation of intermediate clauses. 
+
+Weakened resolution. A clause D′ is a weakening of clause D if D′ = D ∨ S for some clause 
+
+S. A clause Cwres is called a weakened resolvent of clauses C1 and C2 if it is the resolvent of the weakenings C′ 
+
+> 1
+
+and C′ 
+
+> 2
+
+of C1 and C2 respectively. Ordinary resolution can be seen as a special case of weakened resolution where the weakenings of the premise clauses are C′ 
+
+> 1
+
+= C1 ∨ ⊥ and 
+
+C′ 
+
+> 2
+
+= C2 ∨ ⊥ . Weakened resolution proofs are sound and complete: they exist if and only if φ is unsatisfiable [31]. We write C1 ⊙x C2 to denote a weakened resolvent of C1 and C2 on variable 
+
+x, treating the operator as left associative for chains: C1 ⊙x1 C2 ⊙x2 C3 = ( C1 ⊙x1 C2) ⊙x2 C3.
+
+## 2.2 Cryptography 
+
+We recall the necessary cryptographic notions, following [1, 3, 18, 19, 20, 31, 33, 35], and provide the formal definitions for the convenience of the reader in Appendix A following [3, 18, 20]. 
+
+Interactive proofs. An interactive proof system for a language L is a protocol between two parties: a computationally unbounded prover P and a probabilistic polynomial-time (PPT) verifier V , who exchange messages over multiple rounds. The system satisfies two properties: 
+
+completeness : for every x ∈ L, a verifier V accepts with high probability; and soundness : for every x / ∈ L and every (possibly cheating) prover, V accepts with low probability. We refer the reader to Appendix A.1 for the formal definition. 
+
+Proofs of knowledge. Conceptually, a proof of knowledge is a protocol between two proba-bilistic polynomial time (PPT) parties, a prover P and a verifier V , where P convinces V that for a given common input ψ and relation R ⊆ { 0, 1}∗ × { 0, 1}∗, P knows a witness w such that (ψ, w ) ∈ R. A formal definition is included in Appendix A.2. 
+
+Zero knowledge proofs. A zero-knowledge proof system is an interactive proof with the additional property that the verifier learns nothing beyond the validity of the statement being proved. More formally, an interactive protocol between P and V is perfect zero-knowledge with respect to auxiliary input if for every PPT verifier V ∗, there exists a PPT machine M ∗ (called the simulator) such that {M ∗(x, z )}x∈L, z ∈{ 0,1}∗ (i.e., the output of machine M ∗ on common input x and auxiliary input z) is identically distributed to {⟨ P (y), V ∗(z)⟩(x)}x∈L, z ∈{ 0,1}∗ (i.e., the output of V ∗ after it interacts with P on common input x and auxiliary inputs y and z), where y is the prover’s private input. 1 Intuitively, everything the verifier could compute from the interaction can be computed from the public input alone. The formal definition appears in Appendix A.3. 
+
+Commit-and-prove zero knowledge proofs. Zero knowledge proofs can be constructed in multiple ways. ZkUnsat is constructed in the commit-and-prove paradigm. A commit-and-prove zero knowledge proof proceeds in two phases. The first is a commitment phase where given a field element m in some finite field, the prover commits to it via a cryptographic commitment, denoted as [ m], while maintaining two key properties: (1) Hiding: [m] does not         
+
+> 1As is standard, the simulator is permitted to output a special failure symbol ⊥with probability at most 12,and the two distributions are required to agree conditioned on M∗(x, z )̸=⊥.
+
+4Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+reveal m, and (2) Binding: Except with negligible probability, [ m] cannot be the commitment of another message m′. Therefore, once a value m is committed, it cannot be altered to be the commitment of another value. The second phase is the proving phase where the prover proves a relation about the committed values. 
+
+Polynomial commitments. Fix a large finite field F and public degree bound d, and let 
+
+Fd[X] denote the polynomials over F of degree at most d ∈ Z+. A polynomial p(X) ∈ Fd[X]can be committed by committing to the d + 1 coefficients of the polynomial. ZkUnsat instan-tiates commitments using a scheme based on Vector Oblivious Linear Evaluation (VOLE) [37] that enables proving relations between these polynomials via their commitments. We denote this commitment of p(X) by [ p(X)]. In particular, given p(X), q (X), r (X) ∈ Fd[X], one can perform an equality check to prove the polynomial underlying [ p(X)] is equal to the polyno-mial underlying [ q(X)], and a factor check to prove [ r(X)] is a commitment of the polynomial 
+
+p(X) · q(X). Given that resolution steps can be performed by treating clauses as sets (for ex-ample, C = ( l1, . . . , l n) can be treated as the set {l1, . . . , l n}), encoding clauses as polynomials, where a root of the polynomial corresponds to a literal in the clause, enables reasoning about clauses in a hiding and binding manner. Hereafter, we refer to the polynomial commitment scheme instantiated in ZkUnsat as the VOLE-based PCS. 
+
+# 3 Related Work 
+
+To provide a broader context for our work, we first briefly discuss the evolution of certification in the SAT community and then focus on recent efforts on zero-knowledge certification. 
+
+## 3.1 UNSAT Proof Formats 
+
+The development of UNSAT proof formats has been a sustained effort in the SAT commu-nity [17, 16, 36, 12, 2], driven by two complementary goals: minimizing proof-generation over-head on solvers, and enabling checkers to verify certificates efficiently. Resolution proofs [38] were the first independently checkable certificates for SAT solvers. RUP (Reverse Unit Propa-gation) [17, 16] simplified proof generation by allowing solvers to emit derived clauses without explicit resolution chains, delegating justification reconstruction to the checker via unit prop-agation. The RAT (Resolution Asymmetric Tautology) property [24] extended this to clauses not logically implied by the formula, and the RAT format [21] enabled solvers to emit and justify such clauses. DRAT [36] augmented RAT with clause deletion, allowing solvers to signal when learned clauses are no longer needed; the accompanying DRAT-trim tool reduced proof size by eliminating clauses irrelevant to the final refutation. GRIT [13] introduced efficient certified resolution proof checking by providing clause indices as hints, and allowing clause deletion, enabling verification in time proportional to the hint annotations rather than requiring expen-sive unit clause searches. Finally, LRAT [12] built on GRIT’s hint-based approach, extending it to the RAT proof system and enabling an efficient formally verified proof checker, imple-mented in ACL2. These combined efforts have led to faster LRAT checking than solving [32] with CaDiCaL [7], striking a balance between efficient proof generation by the SAT solver and efficient verification by the proof checker. The striking improvements in proof checking are a core motivation of our work as we seek to achieve similar improvements for proof checking with zero-knowledge. 5Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+## 3.2 Zero-Knowledge UNSAT Certification 
+
+Building on these advances in efficient plaintext checking, recent work seeks to extend com-parable certification guarantees to privacy-sensitive settings via zero-knowledge verification of UNSAT. ZkUnsat [31] established the first practically viable protocol of this kind, proving the validity of a weakened resolution proof in zero knowledge. More recently, ZK-ProVer [26] proposed a non-interactive alternative based on Scalable Transparent ARguments of Knowledge (zk-STARKs) [5]. While ZK-ProVer substantially reduces verifier time and communication, it does so at a steep cost in prover memory: across their benchmarks, ZkUnsat exhibits markedly flatter and lower memory utilization, in some configurations as much as 10 × lower than the ZK-ProVer construction. Since prover memory is the dominant scalability bottleneck we target, 
+
+ZkUnsat remains the natural baseline for zero-knowledge UNSAT certification. 
+
+3.2.1 ZKUNSAT 
+
+Let φ be a CNF formula and π a chained weakened resolution proof of its unsatisfiability. 
+
+ZkUnsat [31] is an interactive proof protocol in which a prover P holding π convinces a verifier V that φ is unsatisfiable. When π is fully unfolded prior to execution, the protocol is zero-knowledge: V learns nothing beyond the existence of a weakened resolution proof, the length of the unfolded proof, and the size of the largest clause appearing in any step of the proof. 
+
+ZkUnsat encodes clauses as polynomials over a finite field F. Luo et al. construct an encoding ϕ of clauses into the set of polynomials Fd[X] where d ∈ Z+ is the size of the largest clause appearing in the proof. The encoding is such that verifying Cwres = C ⊙x C′ reduces to checking algebraic identities involving ϕ(C), ϕ(C′), ϕ(x), and two witness polynomials w, w ′.We write [ C] := [ ϕ(C)] to denote the commitment of the polynomial encoding of the clause C.We refer the reader to [31] for a complete treatment of ϕ.
+
+ZkUnsat is analyzed in the Universal Composability (UC) framework [9, 10, 11, 20], where each cryptographic primitive is modeled as an ideal functionality : a trusted third party that captures the primitive’s intended security guarantees. The protocol’s security is established by showing that a real execution is indistinguishable from one in which these ideal functionalities are present. ZkUnsat relies on three such functionalities, whose formal specifications appear in Appendix B: 
+
+• FZK handles zero-knowledge commitments and polynomial checks. It allows the prover to commit secret field elements (via Witness ), both parties to authenticate shared values (via 
+
+Instance ), and both parties to verify circuit relations and product-of-polynomial equality checks over committed values. 
+
+• FClause provides clause-level operations in zero knowledge. It supports committing a clause with a width bound (via Input ), checking equality of two committed clauses (via Equal ), verifying that a committed clause is a weakened resolvent of two others (via X − Res ), and asserting that a committed clause is the empty clause (via IsFalse ). 
+
+• FFlexZKArray implements a zero-knowledge random-access array, hereafter referred to as the 
+
+ZkRam [15]. It is initialized with a sequence of committed values and supports private-index reads: the prover retrieves an entry at a secret index while the verifier learns only an upper bound on that index. A deferred check operation verifies the consistency of all preceding accesses, detecting any attempt by the prover to read a value that differs from the one originally stored. 6Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+The protocol is built on the clause encoding ϕ, the VOLE-based PCS, and the ZkRam R,and follows the commit-and-prove paradigm (Section 2.2). 
+
+Commit phase. The |φ| clauses of the input formula are committed through FClause and the 
+
+d + 1 coefficients of each clause are confirmed to represent the clauses in φ using the Instance 
+
+operation from FZK to authenticate the coefficients. The |π| derived clauses in the fully unfolded proof, known only to P, are committed via FClause ’s Input operation as degree d polynomials. The ZkRam R then initializes all |φ| + |π| commitments through FFlexZKArray .
+
+Proving phase. The protocol iterates over the |π| steps of the refutation. In each iteration 
+
+i, the prover privately retrieves two premise clauses Cki and Cli from R via FFlexZKArray ’s Read 
+
+operation—so that the verifier learns only an upper bound on the accessed indices—and then both parties invoke FClause ’s X-Res operation to verify that the i-th derived clause Ci is a valid weakened resolvent of Cki and Cli . After all |π| iterations, both parties call IsFalse on the final clause to confirm it equals ⊥, and invoke FFlexZKArray ’s deferred check to verify the consistency of all preceding array accesses. Note that |π| is revealed as it is the number of iterations in the proving phase, and that the size d of the largest clause is revealed as part of the specification of the PCS. 
+
+Security. The setting in which one or more subprotocols are replaced by their ideal function-alities ( F1, . . . , Fm) is called a ( F1, . . . , Fm)-hybrid model . The authors of [31] prove that ZkUn-sat is a zero knowledge proof of knowledge (in the ( FZK , FClause , FFlexZKArray )-hybrid model) in the full version [30]. 
+
+Scaling. Recent work [25] on proving quantified Boolean formulas in zero knowledge scales 
+
+ZkUnsat by introducing a clause-partitioning scheme that buckets clauses of similar width and commits to them as lower-degree polynomials. While this optimization improves the runtime of ZkUnsat by approximately 50%, it accepts an explicit leakage-efficiency tradeoff: bucketing reveals structural information about the clause-width distribution. We do not adopt this opti-mization, as our goal is to reduce prover memory without introducing the structural leakage it incurs. 
+
+# 4 Identifying and Addressing the Unfolding Bottleneck 
+
+ZkUnsat expects a weakened resolution proof in which each proof line encodes a single reso-lution step. To meet this requirement, proofs produced by SAT solvers must be fully unfolded: every derived clause is produced from exactly two parent clauses, substantially inflating proof size. In this section, we show that this inflation is the dominant scalability bottleneck in 
+
+ZkUnsat , and present a preprocessing algorithm that normalizes each resolution chain to a fixed public length k – capturing the memory benefits of chaining without introducing additional leakage. 
+
+## 4.1 The Memory Bottleneck from Unfolding 
+
+Unfolding a chained resolution step of length m introduces m − 1 intermediate clauses. Each of these requires its own index and ZkRam commitment, so the prover’s memory footprint grows 7Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+0 1000 2000 3000 4000 5000 0510 15 20 25 30 Runtime (s) Peak Memory (GB) Var-Chain-ZkUnsat 
+
+0 1000 2000 3000 4000 5000 0510 15 20 25 30 Runtime (s) 
+
+ZkUnsat 
+
+Figure 1: Runtime vs. prover peak memory usage on the SAT 2002 benchmarks for Var-Chain-
+
+ZkUnsat and ZkUnsat .with the fully unfolded proof size. To quantify this cost, we ran ZkUnsat directly on chained resolution proofs, bypassing unfolding entirely. We refer to this variant as Var-Chain-ZkUnsat .On the 510 proofs we obtain from the SAT 2002 benchmark suite (Section 6), ZkUnsat verified 220 of 510 instances, with 290 aborted due to memory exhaustion at the 32 GB virtual memory limit within 5 ,000 seconds. Var-Chain-ZkUnsat verified 281, with only 103 memory aborts and 126 timeouts with the same resource limits. As Figure 1 shows, ZkUnsat ’s runtime and peak memory are tightly correlated, consistent with memory being the primary bottleneck. Var-Chain-ZkUnsat exhibits no such pattern, and its peak memory stays below 15 GB on most instances. Var-Chain-ZkUnsat , however, reveals the length of each resolution chain to the verifier. In the next section, we show how to recover the memory benefits of chaining without this leakage. 
+
+## 4.2 Fixed-Length Chain Normalization 
+
+We present a preprocessing algorithm that converts an input chained resolution proof – which we refer to as the parent proof – into a chained weakened resolution proof in which every chain has length exactly k, exploiting the surprisingly useful fact that the weakened resolution of a clause C with itself on any pivot variable x admits C as a weakened resolvent. The algorithm processes each proof line incrementally while maintaining an index mapping, map , that takes a clause index from the old proof and provides its corresponding index in the new proof. If the hints on a line are I1, . . . , I m, it invokes Normalize( k, h1, . . . , h m) (Alg. 1) where hi = map [Ii]. For a fixed k, we call this combined pipeline—normalizing a parent proof into one where every chain has length k, then running ZkUnsat —k-Chain-ZkUnsat (a formal description of the protocol is included in Appendix C). Note that 1-Chain-ZkUnsat is precisely ZkUnsat on fully unfolded proofs. We also note that given a parent proof with chain lengths L1, . . . , L n, the Normalize algorithm produces a weakened resolution proof containing precisely Pni=1 k · ⌈ Li/k ⌉
+
+weakened resolution steps. Therefore, the public parameters of k-Chain-ZkUnsat are: the input formula φ, k, the number of chains in the normalized proof |π| = Pni=1 ⌈Li/k ⌉, and the 8Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Algorithm 1 Normalize( k, (h1, . . . , h m))  
+
+> 1:
+
+if m ≤ k + 1 then  
+
+> 2:
+
+C ← Resolve( h1, . . . , h m) 
+
+> 3:
+
+for i ∈ { 1, . . . , k + 1 − m} do  
+
+> 4:
+
+h1,i ← h1 
+
+> 5:
+
+Print (C, (h1,1, . . . , h 1,(k+1 −m), h 1, . . . , h m))  
+
+> 6:
+
+else ▷ m > k + 1  
+
+> 7:
+
+C ← Resolve( h1, . . . , h k+1 ) 
+
+> 8:
+
+Print (C, (h1, . . . , h k+1 ))  
+
+> 9:
+
+Normalize( k, (Index( C), hk+2 , . . . , h m)) degree d of the polynomials used to represent the clauses in the proof. 
+
+# 5 Security and Memory Analysis 
+
+In this section, we state the central security guarantee of k-Chain-ZkUnsat , that it constitutes a zero-knowledge proof of knowledge of a normalized weakened chained resolution proof, with the accompanying proof given in Appendix D. We also identify two usage restrictions that must be observed to maintain this guarantee, namely, k must be selected a priori, independent of the proof structure, and the protocol must be executed for only a single value of k on any given parent proof. We then derive a peak memory estimator that allows practitioners to predict, before committing to a full execution, whether a given (instance, k) pair will fit within a memory budget. 
+
+## 5.1 Security Analysis 
+
+The high-level proof structure of [30, Theorem 1]—establishing that the ZkUnsat protocol con-stitutes a zero-knowledge proof of knowledge of a refutation—generalizes to k-Chain-ZkUnsat .We state this formally below and include a proof in Appendix D for the convenience of the reader. 
+
+Theorem 1. k-Chain-ZkUnsat is, against static corruption, a zero-knowledge proof of knowl-edge of a length-k chained weakened resolution proof, with common input ψ = ( φ, k, |π|, d ),where φ is the input formula, k the chain bound, |π| the number of chains in the nor-malized proof, and d the degree of the polynomials encoding the clauses in ZkUnsat ’s 
+
+(FZK , FClause , FFlexZKArray )-hybrid model. 
+
+We note two important usage restrictions regarding k-Chain-ZkUnsat . First, for any given parent proof there exists a k such that the peak memory is minimal for that parent proof, and the runtime is minimal for that peak memory usage. This is primarily because the prover’s peak memory scales with the total number of clauses committed within the ZkRam , which is minimal when k ≥ max i{Li}, and given this constraint on k, the k that minimizes the number of operations to be proven/verified is k = max i{Li}. Such values of k that depend on the parent proof should not be used in practice, as their values may reveal information about the underlying Li. We therefore recommend selecting k a priori , without knowledge of the proof structure, to prevent such leakage. 9Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Second, one should not execute k-Chain-ZkUnsat for multiple values of k on the same parent proof if the k-Chain proofs were produced by the Normalize algorithm, as doing so may leak information about the parent proof’s chain length distribution. For instance, if k-Chain-
+
+ZkUnsat is executed for all k ∈ { 1, . . . , p }, where p is the total number of resolution steps as revealed by 1-Chain-ZkUnsat , this would reveal the number of chains of length l for every 1 ≤ l ≤ p, which is formalized in the following proposition (a proof is included in Appendix D). 
+
+Proposition 1. Given a parent proof, if the k-Chain-ZkUnsat protocol is executed for all 
+
+k ∈ { 1, . . . , p } where p is the total number of resolution steps in the parent proof, and the k-Chain weakened resolution proofs are derived using the Normalize algorithm, then the collection of all executions reveals the number of chains of length l for every 1 ≤ l ≤ p.
+
+## 5.2 Deriving a Peak Memory Estimator 
+
+While ZkUnsat provides reliable runtime estimates, no comparable prediction exists for its peak memory consumption. We address this gap by analyzing the implementation and deriving a lightweight heuristic Em, that allows a user to predict, before committing to a full protocol execution, whether a given normalized proof will fit within a memory budget. The estimator depends on the proof parameters |φ| (the number of input clauses), |π| (the number of chains in the normalized proof), k (the chain length), and the largest clause degree d, together with two ZkUnsat configuration constants: the ZkRam index bit-width I (so the maximum table size is 2 I−1) and the consistency-check batch size cφ, detailed below. 
+
+Batched Consistency Checks. The ZkRam maintains an access record that is initialized with the |φ| + |π| clauses in the proof. Every time a clause is subsequently retrieved, the clause and its index are appended to this log. To amortize the cost of verifying the log’s consistency, the implementation does not check after every access. Instead, it executes a check() routine that sorts the accumulated record entries, verifies that every accessed index maps to the correct clause, and then truncates the record back to its initial size |φ| + |π|. The routine is invoked automatically once every cφ accesses, where cφ = 2( |φ| + |π|) by default. 
+
+Counting Accesses and Checks. In k-Chain-ZkUnsat , each normalized chain triggers (k + 2) ZkRam accesses: one for each of the k + 1 clauses in the chain, plus one final access to assert that the resulting clause matches the entry stored in the ZkRam . Over all |π| chains, the total number of accesses is ( k + 2) · | π|, and the number of access-triggered check() invocations is Nchk =
+
+j (k+2) ·| π|
+
+> cφ
+
+k
+
+.Table 1 details the size of the primary data structures allocated during this operation. By summing the bit-sizes from Table 1 and converting the total to 128-bit blocks (a standard metric for emp-tool [34] structures), we arrive at our peak memory estimator. We must account for two scenarios: if Nchk ≥ 1, peak memory occurs during an intermediate check() with exactly |φ| + |π| + cφ elements, and if Nchk = 0, the number of accesses never reaches the consistency-check batch size cφ, and the sole check() occurs at the end of the protocol with 
+
+|φ| + |π| + ( k + 2) · | π| elements. Therefore, the peak memory usage in 128-bit blocks is: 
+
+Em =
+
+(
+
+(|φ| + |π| + cφ) · (2 I + 133 + 6 d) if Nchk ≥ 1(|φ| + |π| + |π|(k + 2)) · (2 I + 133 + 6 d) otherwise We emphasize that Em is an implementation-level heuristic tied to the current ZkUnsat 
+
+codebase, not a fundamental bound on the memory requirements of zero-knowledge UNSAT certification. Changes to the ZkRam ’s batching strategy or internal data structures would 10 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Data Structure Size (in bits) 
+
+sorted clear access (n)(64 + 64 d)
+
+clear access record (n)(64 + 64 d)
+
+access record (index) (n)(128 I)
+
+access record (clause) (n)( d(128 · 2 + 64)) 
+
+sorted index (n)(128 I)
+
+sorted clause (n)( d(128 · 2 + 64)) 
+
+HRecord (n)(128) 
+
+HRecord mac (n)(128) 
+
+sorted HRecord (n)(128) 
+
+sorted HRecord mac (n)(128) 
+
+sorted hash value (n)(128 2)Table 1: Largest data structures allocated during check() , where n denotes the number of entries in the access record at invocation time. require re-deriving the estimator. Nevertheless, Em serves a concrete and practical role: it allows us to predict, before committing to a full protocol execution, whether a given (instance, 
+
+k) pair will fit within a memory budget. 
+
+# 6 Experimental Evaluation 
+
+We evaluate k-Chain-ZkUnsat empirically, addressing four questions: (1) How many additional instances can k-Chain-ZkUnsat certify compared to the baseline ZkUnsat under realistic resource constraints? (2) How do runtime and peak memory vary with k? (3) How should one select k in practice? (4) How well does the peak memory estimator Em predict the actual peak memory of k-Chain-ZkUnsat across different values of k?Section 6.1 describes our experimental setup, Section 6.2 presents performance results for 
+
+k-Chain-ZkUnsat , and Section 6.3 evaluates the peak memory estimator. 
+
+## 6.1 Setup 
+
+For all experiments, we use a cluster equipped with two 96-core AMD EPYC 9655 proces-sors running at a 2.6 GHz base frequency, with 810 GB of memory per node. To maximize throughput, we deploy 10 ZkUnsat prover–verifier pairs concurrently per node, limiting the virtual memory of each prover and verifier process individually to 32GB using ulimit . We also co-locate each prover-verifier pair on the same node and route their protocol communication via localhost. To generate proofs and perform evaluations, we pick the SAT Competition 2002 bench-mark suite. We select this benchmark suite over the benchmarks in [31] because the latter demonstrates the scalability of ZkUnsat on only 58 instances—a sample too small to support statistically meaningful conclusions for our research questions. Moreover, the SAT 2002 bench-marks represent an achievable frontier for ZkUnsat as the original ZkUnsat already exhausts 11 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Variant Verified Aborts (OOM) Timeouts 
+
+ZkUnsat 220 290 0k=3 276 234 0k=5 317 193 0
+
+k=16 357 146 7
+
+k=32 339 121 50 Table 2: Performance of different variants of ZkUnsat on the SAT 2002 competition bench-marks (timeout: 25,000 s; virtual memory limit per prover and verifier process: 32 GB; 
+
+index sz =22). memory on the majority of these instances. Modern competition benchmarks, which tend to produce substantially larger proofs, would yield even fewer certifiable instances, limiting the scope for meaningful comparison. We obtain 1,964 CNF formulas by combining both the gener-ated and the submitted instance sets. We solve these instances with CaDiCaL v2.1.3 [7] under a 3,600s timeout, with UNSAT certification enabled via the flags --lrat and --binary=false .CaDiCaL returns UNSAT certificates for 554 instances. For these 554 instances, we post-process the produced LRAT proofs using lrat-trim. With a virtual memory limit of 8 GB, lrat-trim successfully produced 548 trimmed proofs. These trimmed proofs are the input to our preprocessing pipeline, which consists of two Python scripts. 2 The first script is a modified version of the ExtendProof.py preprocessor shipped with ZkUnsat , which converts a formula and its trimmed LRUP-style proof into a chained resolution proof in the format expected by ZkUnsat : it reverses the hint order of every proof line and recovers the pivot of each resolution step. This conversion succeeded on 510 instances. The resulting chained resolution proofs serve as the parent proofs for our evaluation. Our second script is an implementation of the Normalize algorithm (Algorithm 1), which given a parent proof and a chain bound k, normalizes every chain to k-Chain(s) and emits the resulting 
+
+k-Chain weakened resolution proof, which is then passed to the ZkUnsat prover. We consider five preprocessing configurations with chain bound k ∈ { 1, 3, 5, 16 , 32 }. Note that the configuration k = 1 corresponds precisely to the baseline ZkUnsat . We select k ∈{3, 5, 16 , 32 } since excessively large values of k introduce a significant number of padded hints, increasing runtime without further reducing memory. We set the timeout to be 25 ,000 seconds. Since ZkUnsat fixes the bit-width used to represent clause indices via the macro index sz 
+
+(set to 20 by default), which effectively caps the maximum clause index at 2 19 = 524 ,288, 
+
+ZkUnsat ’s default configuration cannot accommodate several of our larger proofs. Since smaller values of index sz yield better runtime performance, we increased this parameter to 
+
+index sz = 22 after consulting a developer of ZkUnsat , raising the limit to 2 21 = 2 ,097 ,152 clause indices. 3 Apart from this change, the prover and verifier of the ZkUnsat implementation are unmodified. 
+
+## 6.2 Results 
+
+Table 2 summarizes the performance of k-chain-ZkUnsat for varying values of k. For each 
+
+k ∈ { 1, 3, 5, 16 , 32 }, the 510 test instances are split across three columns: Verified, Aborts      
+
+> 2Available at https://github.com/meelgroup/chain-normalize
+> 3Even with this increase, an error arose in baseline ZkUnsat since one proof contained 4 ,187 ,924 indexed clauses; increasing index sz to 24 for this instance caused the prover to abort due to memory exhaustion.
+
+12 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi   
+
+> 02,000 4,000 02,000 4,000
+
+k = 3   
+
+> y = x 02,000 4,000 02,000 4,000
+
+k = 5   
+
+> y = x 02,000 4,000 02,000 4,000
+
+k = 16   
+
+> y = x 02,000 4,000 02,000 4,000
+
+k = 32 
+
+> y = x
+
+Figure 2: Runtime (s) of k-Chain-ZkUnsat (y-axis) against runtime (s) of baseline ZkUnsat 
+
+(x-axis), restricted to instances verified by baseline ZkUnsat . Each panel corresponds to a different value of k. Points below the diagonal represent instances with faster verification under 
+
+k-Chain-ZkUnsat .(OOM) and Timeouts. The verified column notes how many instances were verified within the time and memory constraints. The Aborts (OOM) column notes the number of instances on which the protocol exceeded the memory limit, and the Timeouts column notes the number of instances on which the protocol ran out of time. Note that the first row shows the performance of the original ZkUnsat protocol, which corresponds to k = 1. We take this to be our baseline. 
+
+Overall Performance. Baseline ZkUnsat successfully certifies 220 of the 510 instances, with 290 aborted due to memory exhaustion and none timing out. In contrast, 16-Chain-ZkUnsat 
+
+certifies 357 instances, an improvement of approximately 62%, while reducing the number of memory-related aborts from 290 to 146. This confirms that the chain normalization technique in Section 4.2 effectively addresses the memory bottleneck of ZkUnsat .
+
+Effect of Varying k. Increasing k from 1 to 32 monotonically reduces memory-related aborts: 
+
+k = 3 reduces aborts to 234, k = 5 to 193, k = 16 to 146, and k = 32 to 121. However, larger values of k introduce additional padding operations per chain, which increases runtime. This trade-off is visible in the timeout column of Table 2: while k ∈ { 3, 5} incur no timeouts and 
+
+k = 16 incurs only 7, k = 32 times out on 50 instances under the 25 ,000 s limit. As a result, 32-Chain-ZkUnsat verifies fewer instances (339) than 16-Chain-ZkUnsat (357), despite having fewer memory aborts. This demonstrates that k = 16 strikes the best balance between memory savings and runtime overhead on this benchmark suite. 
+
+Runtime Comparison. Figure 2 shows scatter plots comparing the runtime of k-Chain-
+
+ZkUnsat (y-axis) against baseline ZkUnsat (x-axis) for each k ∈ { 3, 5, 16 , 32 }, restricted to instances verified by baseline ZkUnsat . Note that every such instance is also verified by 
+
+k-Chain-ZkUnsat for all values of k considered. Points below the diagonal correspond to instances where k-Chain-ZkUnsat is faster. 
+
+• For k = 3 and k = 5, the vast majority of points lie below the diagonal, indicating consistent speedups across the benchmark suite. 
+
+• For k = 16, most points remain below the diagonal, though a small number of instances exhibit comparable or slightly higher runtimes. 
+
+• For k = 32, several points shift above the diagonal, reflecting the increased cost of padding short chains to length 32. 
+
+Memory Comparison. Figure 3a shows the number of instances verified as a function of peak prover memory usage for each configuration. A point ( x, y ) indicates that y instances 13 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 0 10 20 30 0100 200 300 Peak Memory (GB) Number of Instances Verified          
+
+> ZkUnsat
+> k=3 k=5 k=16 k=32
+> (a) Peak memory comparison of ZkUnsat against
+> k-Chain-ZkUnsat for k∈ { 3,5,16 ,32 }on the SAT 2002 Competition benchmarks.
+
+0 500 1,000 1,500 010 20 30 
+
+Em(×10 −6)Peak Memory (GB) 
+
+ZkUnsat 
+
+k=3 k=5 k=16 k=32             
+
+> (b) Correlation between the memory estimator
+> Em(with cφ=2( |φ|+|π|)) and the prover’s peak memory usage. The line of best fit achieves
+> R2= 0 .9984.
+
+Figure 3: Memory usage and estimation for ZkUnsat and k-Chain-ZkUnsat for k ∈{3, 5, 16 , 32 } on the SAT 2002 Competition benchmarks. were verified with a peak memory usage of at most x GB. We see that while the curve for baseline ZkUnsat plateaus at 220 instances, 16-Chain-ZkUnsat verifies 220 instances—the same count as baseline ZkUnsat’s total—using less than 25% of the peak memory that baseline 
+
+ZkUnsat required. 
+
+Shifting the Bottleneck. A key qualitative observation is that chain normalization shifts the performance bottleneck from memory to runtime. For baseline ZkUnsat , all 290 failures are caused by memory exhaustion. For 16-Chain-ZkUnsat , only 146 of 153 failures are memory-related, with 7 due to timeouts, and finally for 32-Chain-ZkUnsat , timeouts account for 50 of 171 failures, while memory aborts drop to 121. 
+
+6.2.1 Selecting k 
+
+The chain length parameter k must be fixed a priori to preserve the zero-knowledge guarantees established in Theorem 1, so we conclude with practical guidance for its selection. Our results reveal a clear trade-off governed by two competing effects: increasing k reduces the prover’s peak memory footprint by avoiding intermediate clause materialization, but simultaneously increases runtime due to the padding of chains whose length is not a multiple of k. This tension is quantified in Table 2, where moving from k = 1 to k = 16 monotonically increases the number of verified instances (from 220 to 357) as memory aborts drop. However, beyond this point, the padding overhead dominates – k = 32 suffers 50 timeouts despite having the fewest memory aborts (121), ultimately certifying fewer instances than k = 16. Figure 2 corroborates this pattern at the per-instance level, where for k = 3 and k = 5, nearly all points fall below the diagonal, indicating consistent speedups, whereas for k = 16 and k = 32 a growing number of instances shift above it. More broadly, the best choice of k depends on the resource profile of the deployment en-vironment. In time-restricted settings where wall-clock budget is the binding constraint, our results suggest k ≤ 16: values in this range yield substantial memory savings while introducing 14 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+few or no timeouts, whereas in memory-restricted settings, where the prover must operate under a tight memory ceiling, larger values of k are preferable, since each increase in k reduces the number of intermediate clauses committed to the ZkRam . This is corroborated in Figure 3a: 16-Chain-ZkUnsat matches the baseline’s total of 220 verified instances using less than 25% of the maximum peak memory used by baseline ZkUnsat , leaving considerable headroom for instances that the baseline could not attempt. 
+
+## 6.3 Peak Memory Estimation 
+
+To evaluate the accuracy of the peak memory estimator Em derived in Section 5.2, we compare the predicted values of Em against the observed peak memory usage of the prover across all configurations k ∈ { 3, 5, 16 , 32 } and the baseline ZkUnsat .Figure 3b demonstrates the strong correlation between our estimator Em (with cφ = 2( |φ| +
+
+|π|)) and the protocol’s peak memory usage across all configurations. Each point corresponds to a single (instance, k) pair, and the five configurations are distinguished by marker style. The line of best fit achieves an R2 = 0 .9984, showing that the estimator is a near-perfect linear predictor of peak memory across the full range of configurations and instance sizes. Notably, the line of best fit holds uniformly across all our configurations. In particular, the estimator remains accurate both for the baseline ZkUnsat , where a significant number of instances used more than 20 GB, and for 32-Chain-ZkUnsat , where almost all instances used less than 20 GB, suggesting that Em can serve as a lightweight feasibility filter, allowing practitioners to skip doomed executions and allocate computational resources only to instances likely to complete within a given memory budget. 
+
+# 7 Conclusion 
+
+We presented k-Chain-ZkUnsat , an approach to scaling zero-knowledge certification of Boolean formula unsatisfiability. Our analysis showed that proof unfolding—expanding chained resolu-tion steps into binary resolution sequences—is the main source of memory overhead in ZkUn-sat , a finding we confirmed via the Var-Chain variant. To fix this without losing zero-knowledge guarantees, we introduced a normalization algorithm that rewrites any chained resolution proof so that every chain has length exactly k, and proved that the resulting protocol reveals nothing beyond the number of proof lines and the public parameter k. On the SAT 2002 benchmarks, 
+
+k = 16 certifies roughly 62% more instances than baseline ZkUnsat , and for an equivalent num-ber of certified instances, keeps peak prover memory below 25% of what the baseline requires— moving the bottleneck from memory to runtime. We also developed a peak memory estimator 
+
+Em that achieves R2 = 0 .9984, giving practitioners a simple way to predict whether an instance will fit in memory before running the full protocol. 
+
+# 8 Acknowledgement 
+
+We thank Arijit Shaw, Nikolay Avramov, Hidde Lycklama, Alexander Viand, and Ning Luo for many useful discussions. This work was partially supported by the Natural Sciences and Engineering Research Council of Canada (NSERC) through a Discovery Grant [RGPIN-2025-06535, RGPIN-2024-05956]. Computations were performed on the Trillium supercomputer at the SciNet HPC Consortium. SciNet is funded by Innovation, Science and Economic Develop-ment Canada; the Digital Research Alliance of Canada; the Ontario Research Fund: Research 15 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Excellence; and the University of Toronto. 
+
+# References 
+
+[1] Timos Antonopoulos, Ning Luo, and Ruzica Piskac. Towards privacy-preserving verification. In 
+
+Proc. of Formal Methods , pages 21–43, 2026. [2] Seulkee Baek, Mario Carneiro, and Marijn J. H. Heule. A flexible proof format for sat solver-elaborator communication. Logical Methods in Computer Science , 18(2), 2022. [3] Mihir Bellare and Oded Goldreich. On defining proofs of knowledge. In Proceedings of the 12th An-nual International Cryptology Conference on Advances in Cryptology , CRYPTO ’92, page 390–420. Springer-Verlag, 1992. [4] M. Ben-Or, O. Goldreich, S. Goldwasser, J. H˚ astad, J. Kilian, S. Micali, and P. Rogaway. Every-thing provable is provable in zero-knowledge. In Proc. on Advances in Cryptology – CRYPTO’88 ,page 37–56. Springer-Verlag, 1990. [5] Eli Ben-Sasson, Iddo Bentov, Yinon Horesh, and Michael Riabzev. Scalable, transparent, and post-quantum secure computational integrity. Cryptology ePrint Archive, Paper 2018/046, 2018. [6] Armin Biere, Alessandro Cimatti, Edmund M. Clarke, and Yunshan Zhu. Symbolic model checking without bdds. In Proc. of TACAS , page 193–207. Springer-Verlag, 1999. [7] Armin Biere, Tobias Faller, Katalin Fazekas, Mathias Fleury, Nils Froleyks, and Florian Pollitt. CaDiCaL 2.0. In Proc. of CAV , pages 133–152, 2024. [8] Robert Brummayer, Florian Lonsing, and Armin Biere. Automated testing and debugging of sat and qbf solvers. In Proc. of SAT , pages 44–57, 2010. [9] Ran Canetti. Security and composition of multiparty cryptographic protocols. J. Cryptol. ,13(1):143–202, 2000. [10] Ran Canetti. Universally composable security. J. ACM , 67(5), 2020. [11] Ran Canetti, Yehuda Lindell, Rafail Ostrovsky, and Amit Sahai. Universally composable two-party and multi-party secure computation. Cryptology ePrint Archive, Paper 2002/140, 2002. [12] Lu´ ıs Cruz-Filipe, Marijn J. H. Heule, Warren A. Hunt, Matt Kaufmann, and Peter Schneider-Kamp. Efficient certified rat verification. In Proc. of CADE , pages 220–236. Springer International Publishing, 2017. [13] Lu´ ıs Cruz-Filipe, Joao Marques-Silva, and Peter Schneider-Kamp. Efficient certified resolution proof checking. In Proc. of TACAS , page 118–135. Springer-Verlag, 2017. [14] Michael R. Dransfield, Victor W. Marek, and Miroslaw Truszczy´ nski. Satisfiability and computing van der waerden numbers. In Proc. of SAT , pages 1–13. Springer Berlin Heidelberg, 2004. [15] Nicholas Franzese, Jonathan Katz, Steve Lu, Rafail Ostrovsky, Xiao Wang, and Chenkai Weng. Constant-overhead zero-knowledge for ram programs. In Proc. of CCS , page 178–191. ACM, 2021. [16] Allen Van Gelder. Verifying rup proofs of propositional unsatisfiability. In Proc. of ISAIM , 2008. [17] Evgueni Goldberg and Yakov Novikov. Verification of proofs of unsatisfiability for cnf formulas. In Proc. of DATE , page 10886. IEEE Computer Society, 2003. [18] Oded Goldreich. Foundations of Cryptography: Volume 1 . Cambridge University Press, 2006. [19] S Goldwasser, S Micali, and C Rackoff. The knowledge complexity of interactive proof-systems. In Proc. of STOC , page 291–304. Association for Computing Machinery, 1985. [20] Carmit Hazay and Yehuda Lindell. A note on zero-knowledge proofs of knowledge and the ZKPOK ideal functionality. Cryptology ePrint Archive, Paper 2010/552, 2010. [21] Marijn J. H. Heule, Warren A. Hunt, and Nathan Wetzler. Verifying refutations with extended resolution. In Proc. of CADE , page 345–359. Springer-Verlag, 2013. [22] Marijn J. H. Heule, Oliver Kullmann, and Victor W. Marek. Solving and verifying the boolean pythagorean triples problem via cube-and-conquer. In Proc. of SAT , pages 228–245. Springer 
+
+16 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+International Publishing, 2016. [23] Marijn J.H. Heule, Warren A. Hunt, and Nathan Wetzler. Trimming while checking clausal proofs. In Proc. of FMCAD , pages 181–188, 2013. [24] Matti J¨ arvisalo, Marijn J. H. Heule, and Armin Biere. Inprocessing rules. In Proc. of IJCAR ,page 355–370. Springer-Verlag, 2012. [25] Ashwin Karthikeyan, Hengyu Liu, Kuldeep S. Meel, and Ning Luo. Towards Practical Zero-Knowledge Proof for PSPACE . In Proc. of IEEE S&P , pages 751–770. IEEE Computer Society, 2026. [26] Jingyu Ke, Haoyu Wei, Ruibang Liu, and Guoqiang Li. ZK-ProVer: Non-interactive zero-knowledge certification for SAT-based program verification. Cryptology ePrint Archive, Paper 2025/1152, 2025. [27] Donald E. Knuth. The Art of Computer Programming, Volume 4, Fascicle 6: Satisfiability .Addison-Wesley Professional, 1st edition, 2015. [28] Peter Lammich. Fast and verified unsat certificate checking. In Proc. of IJCAR , page 439–457. Springer-Verlag, 2024. [29] Carsten Lund, Lance Fortnow, Howard Karloff, and Noam Nisan. Algebraic methods for interactive proof systems. Journal of the ACM , 39(4):859–868, 1992. [30] Ning Luo, Timos Antonopoulos, William Harris, Ruzica Piskac, Eran Tromer, and Xiao Wang. Proving UNSAT in zero knowledge. Cryptology ePrint Archive, Paper 2022/206, 2022. [31] Ning Luo, Timos Antonopoulos, William R. Harris, Ruzica Piskac, Eran Tromer, and Xiao Wang. Proving unsat in zero knowledge. In Proc. of CCS , page 2203–2217. ACM, 2022. [32] Florian Pollitt, Mathias Fleury, and Armin Biere. Faster LRAT Checking Than Solving with CaDiCaL. In Proc. of SAT , pages 21:1–21:12, 2023. [33] J. Thaler. Proofs, Arguments, and Zero-Knowledge . Foundations and trends in privacy and security. Now Publishers Incorporated, 2022. [34] Xiao Wang, Alex J. Malozemoff, and Jonathan Katz. EMP-toolkit: Efficient MultiParty compu-tation toolkit. https://github.com/emp-toolkit , 2016. [35] Chenkai Weng, Kang Yang, Jonathan Katz, and Xiao Wang. Wolverine: Fast, scalable, and communication-efficient zero-knowledge proofs for boolean and arithmetic circuits. In Proc. of IEEE S&P , pages 1074–1091, 2021. [36] Nathan Wetzler, Marijn J. H. Heule, and Warren A. Hunt. Drat-trim: Efficient checking and trimming using expressive clausal proofs. In Proc. of SAT , pages 422–429. Springer International Publishing, 2014. [37] Kang Yang, Pratik Sarkar, Chenkai Weng, and Xiao Wang. Quicksilver: Efficient and affordable zero-knowledge proofs for circuits and polynomials over any field. In Proc. of ACM CCS , page 2986–3001. Association for Computing Machinery, 2021. [38] Lintao Zhang and Sharad Malik. Validating sat solvers using an independent resolution-based checker: Practical implementations and other applications. In Proc. of DATE , page 10880. IEEE Computer Society, 2003. 
+
+17 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+# A Formal Definitions 
+
+We present formal definitions of the notions presented in this paper. 
+
+## A.1 Interactive Proofs 
+
+We present the definition of the augmented interactive proof system as in [18]. We begin by defining an interactive turing machine (with auxiliary input). 
+
+Definition 1. “(An Interactive Machine): 
+
+• An interactive Turing machine (ITM) is a (deterministic) multi-tape Turing machine. The tapes are a read-only input tape, a read-only random tape, a read-andwrite work tape, a write-only output tape, a pair of communication tapes, and a read-and-write switch tape consisting of a single cell. One communication tape is read-only, and the other is write-only. 
+
+• Each ITM is associated a single bit σ ∈ { 0, 1}, called its identity . An ITM is said to be active, in a configuration, if the content of its switch tape equals the machine’s identity. Otherwise the machine is said to be idle. While being idle, the state of the machine, the locations of its heads on the various tapes, and the contents of the writable tapes of the ITM are not modified. 
+
+• The content of the input tape is called input , the content of the random tape is called random input, and the content of the output tape at termination is called output . The content written on the write-only communication tape during a (time) period in which the machine is active is called the message sent at that period. Likewise, the content read from the read-only communication tape during an active period is called the message received (at that period). (Without loss of generality, the machine movements on both communication tapes are in only one direction, e.g., from left to right.)” 
+
+An interactive machine can be augmented to have an additional read-only tape called the 
+
+auxiliary-input tape . The content of this tape is called auxiliary input .“The complexity of such an interactive machine is still measured as a function of the (com-mon) input length. Namely, the interactive machine A has time-complexity t : N → N if for every interactive machine B and every string x, it holds that when interacting with machine 
+
+B, on common input x, machine A always (i.e., regardless of the content of its random tape and its auxiliary-input tape, as well as the content of B’s tapes) halts within t(|x|) steps. We denote by ⟨A(y), B (z)⟩(x) the random variable representing the (local) output of B
+
+when interacting with machine A on common input x, when the random input to each machine is uniformly and independently chosen, and A (resp., B) has auxiliary input y (resp., z).” 
+
+Definition 2. (Interactive Proof System with auxiliary input): “ A pair of interac-tive machines (P,V) is called an interactive proof system for a language L if machine V is polynomial-time and the following two conditions hold: 
+
+• Completeness: For every x ∈ L, there exists a string y such that for every z ∈ { 0, 1}∗
+
+Pr[ ⟨P (y), V (z)⟩(x) = 1] ≥ 2318 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+• Soundness: For every x / ∈ L and every interactive machine B, and every y, z ∈ { 0, 1}∗
+
+Pr[ ⟨B, V ⟩(x) = 1] ≤ 13
+
+”
+
+It is to be noted that while the verifier V in the above definition is required to be a (prob-abilistic) polynomial time machine, the prover is unbounded in its computational power. 
+
+## A.2 Proofs of Knowledge 
+
+We present the definition as in [20], adapted from [3]. We assume that both P and V are PPT machines, and begin by defining an interactive function as in [3]. We replace the source’s variable name x with ψ following our notation for common input. 
+
+Definition 3. An interactive function A associates to each ψ ∈ { 0, 1}∗ and η ∈ { 0, 1}∗ (prefix of a conversation) a probability distribution on {0, 1}∗.
+
+Let R ⊆ { 0, 1}∗ × { 0, 1}∗ be an NP relation. i.e. if ( x, w ) ∈ R, then |w| < p (|x|) for some polynomial p (The | · | operator denotes the length of the string). Now, we define LR = {x :(x, w ) ∈ R} as in [20]. A proof of knowledge for the relation R is defined as follows. 
+
+Definition 4. Let κ : {0, 1}∗ → [0 , 1] be a function. A protocol (P, V ) is a proof of knowledge for the relation R with knowledge error κ, if it satisfies the following properties: 
+
+• Completeness. If P and V follow the protocol on input ψ and private input w to P
+
+where (ψ, w ) ∈ R, then V always accepts. 
+
+• Knowledge soundness/validity. There exists a constant c > 0 and a probabilistic oracle machine K, called the knowledge extractor, such that for every interactive prover function P∗ and every ψ ∈ LR, the machine K satisfies the following condition. Let ϵ(ψ)
+
+be the probability that V accepts on input ψ after interacting with P∗. If ϵ(ψ) > κ (ψ),then upon input ψ and oracle access to P∗, the machine K outputs a string w such that 
+
+(ψ, w ) ∈ R within an expected number of steps bounded by 
+
+|ψ|c
+
+ϵ(ψ) − κ(ψ)
+
+## A.3 Zero Knowledge Proofs 
+
+We present the definition of Perfect Zero-Knowledge as in [18] augmented to accept auxiliary inputs. 
+
+Definition 5 (Perfect Zero-Knowledge with respect to auxiliary input) . Let (P, V ) be an inter-active proof system with auxiliary inputs for some language L. For x ∈ L, let PL(x) be the set of prover auxiliary inputs y satisfying the completeness condition with respect to x. We say that 
+
+(P, V ) is perfect zero-knowledge with respect to auxiliary input if for every probabilistic polynomial-time interactive machine V ∗ there exists a probabilistic algorithm M ∗, running in time polynomial in the length of its first input, such that for every x ∈ L, every y ∈ PL(x), and every z ∈ { 0, 1}∗ the following two conditions hold: 1. With probability at most 12 , on input (x, z ), machine M ∗ outputs a special symbol denoted 
+
+⊥  i.e., Pr[ M ∗(x, z ) = ⊥] ≤ 12
+
+.
+
+19 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Functionality FZK 
+
+Witness: On receiving ( Witness , x ) from the prover, where x ∈ F, store x and send [ x] to each party. 
+
+Instance: On receiving ( Instance , x ) from both parties, where x ∈ F, store x and send [ x] to each party. If the inputs sent by the two parties do not match, the functionality aborts. 
+
+Circuit relation: On receiving ( Relation , C, [x0], . . . , [xn−1]) from both parties, where x0 ∈ F and 
+
+C ∈ Fn → Fm, compute y1, . . . ,y m := C(x0, . . . , x n−1) and send {[y1], . . . , [ym]} to both parties. 
+
+Productions-of-polynomial equality check: On receiving (PoPEqCheck , n 
+
+{[Pi(X)] }i∈[n], {[Qi(X)] }i∈[m]) from both parties, where [Pi(X)] and [Qi(X)] are polyno-mials with their coefficients committed: if ΠiPi(X)̸ = ΠiQi(X), the functionality aborts. 
+
+Figure 4: Functionality for zero-knowledge proofs of circuit satisfiability and polynomials. 
+
+Functionality FClause 
+
+Input: On receiving ( Input , ℓ 0, . . . , ℓ k−1, w ) from prover and ( Input , w ) from verifier where ℓi ∈ Lits ,the functionality check that k ≤ w and abort if it does not hold. Otherwise store C = ℓ0 ∨· · ·∨ ℓk−1,and send [ C] to each party. 
+
+Equal: On receiving ( Equal , [C0], [C1]) from both parties, check if C0 = C1; if not, the functionality aborts. 
+
+X-Res: On receiving ( Xres , [C0], [C1], [Cr ]) from both parties, check if {C0, C 1} ⊢ X-Res Cr ; if not the functionality aborts. 
+
+IsFalse: On receiving ( IsFalse , [C]) from both parties, check if C = ⊥; if not, the functionality aborts. 
+
+Figure 5: Functionality for ZK operations on clauses. 
+
+2. Let m∗(x, z ) be a random variable describing the distribution of M ∗(x, z ) conditioned on 
+
+M ∗(x, z )̸ = ⊥  i.e., Pr[ m∗(x, z ) = α] = Pr[ M ∗(x, z ) = α | M ∗(x, z )̸ = ⊥] for every 
+
+α ∈ { 0, 1}∗. Then the following random variables are identically distributed: 
+
+• ⟨P (y), V ∗(z)⟩(x) (i.e., the output of the interactive machine V ∗, on auxiliary input 
+
+z, after interacting with the interactive machine P , on auxiliary input y, on common input x)
+
+• m∗(x, z ) (i.e., the output of machine M ∗ on input (x, z ), conditioned on not being 
+
+⊥)Machine M ∗ is called a perfect simulator for the interaction of V ∗ with P .
+
+# B Functionalities 
+
+We present the ideal functionalities FZK , FClause and FFlexZKArray as presented in [31] in Figure 4, 5, and 6 to define the k-Chain-ZkUnsat protocol (Figure 7). 20 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Functionality FFlexZKArray 
+
+Array initialization: On receiving ( Init , N, [m0], . . . , [mN −1]) from P and V, where mi ∈ F, store the mi and set f := honest and ignore subsequent initialization calls. 
+
+Array read: On receiving ( Read , ℓ, d, t ) from P, and ( Read , t ) from V, where d ∈ F and ℓ, t ∈ N,send [ d] to each party. If d̸ = mℓ or t from both parties do not match or ℓ ≥ t then set f := cheating .
+
+Array check: Upon receiving ( check ) from V do: If P sends ( cheat ) then send cheating to V. If 
+
+P sends continue then send f to V,
+
+Figure 6: Functionality for weak random access arrays in ZK. 
+
+# C The k-Chain-ZKUNSAT Protocol 
+
+We present the k-Chain-ZkUnsat protocol (Figure 7) closely modeled after the ”CheckProof” protocol in [31]. 
+
+# D Proof of Security 
+
+We note that Theorem 1 and Proposition 1 are restated in this section under their original numbering. Our analysis repeatedly needs to recompute and verify weakened resolvents, so we first record a convenient characterization of them. 
+
+Fact 1. Let V be the set of variables in a formula φ, Lits = {x|¬ x : x ∈ V } and let ℓ ∈ Lits .A clause C′′ is a weakened resolvent of C and C′ on ℓ iff 
+
+(C \ { ℓ}) ∪ (C′ \ {¬ ℓ}) ⊆ C′′ .
+
+In particular, every superset of a weakened resolvent is again a weakened resolvent. The smallest such C′′ is (C \ { ℓ}) ∪ (C′ \ {¬ ℓ}) itself. 
+
+We now make explicit the NP relation that k-Chain-ZkUnsat proves knowledge of. 
+
+Definition 6. Fix a chain length k ≥ 1, and write ψ = ( φ, k, |π|, d ) for the common input, with 
+
+k, |π|, and d encoded in unary, where φ is the input formula, |π| the number of chains, and d
+
+the clause-width bound. A witness Π for ψ is given as a sequence of clauses D0, . . . , D |φ|+|π|− 1
+
+together with, for each chain j ∈ { 1, . . . , |π|} , premise indices pj, 0, . . . , p j,k (not necessarily distinct) and pivot literals ℓj, 1, . . . , ℓ j,k ∈ Lits . Write Cj, 0 = Dpj, 0 and, for 1 ≤ i ≤ k, let 
+
+Cj,i =  Cj,i −1 \ { ℓj,i } ∪  Dpj,i \ {¬ ℓj,i }
+
+be the least weakened resolvent at step i (Fact 1). The witness must satisfy: (i) D0, . . . , D |φ|− 1 are the clauses of φ in the public order fixed by ψ;(ii) 0 ≤ pj,i < |φ|+j −1 for each i ∈ { 0, . . . , k }, and the chain result satisfies Cj,k ⊆ D|φ|+j−1;(iii) every clause Dt and every intermediate resolvent Cj,i (1 ≤ i ≤ k − 1) has width at most 
+
+d;(iv) D|φ|+|π|− 1 = ⊥.
+
+21 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Protocol k-Chain-ZkUnsat 
+
+Inputs: Both parties have formula φ = C0 ∧ · · · ∧ C|φ|− 1. Prover P has a k-normalized weakened resolution proof (( h10 , h 11 , . . . , h 1k ), . . . , (h|π|0, . . . , h |π|k )) (This notation denotes the ordered in-dices of the clauses being resolved in each chain); both parties know the length of the normalized proof |π|, the chain bound k, and the maximum clause width in the proof d (This is the maximum width of all clauses including the intermediate clauses derived via resolution within a chain). 
+
+Protocol: 
+
+1. The two parties obtain [ Ci]i∈[0 ,|φ|− 1] using FClause : since φ is known to both parties, it uses 
+
+instance to authenticate the coefficients. 2. P locally gets C|φ|− 1+ i for i ∈ [1 , |π|] from their normalized weakened resolution proof. The two parties obtain [ Ci]i∈[|φ|,|φ|− 1+ |π|] using FClause using witness to authenticate the coefficients. 3. The two parties send ( Init , |φ| + |π|, [C0], . . . , [C|φ|+|π|− 1]) to FFlexZKArray .4. For the i-th iteration, the two parties advance the proof check by doing the following for j
+
+ranging from 1 to k:(a) When j = 1, the prover looks up the tuple ( hi0, h i1) from the k-normalized weakened resolution proof, and computes the clause C(1)  
+
+> i
+
+such that {Chi0 , C hi1 } ⊢ X-Res C(1)  
+
+> i
+
+and 
+
+C(1)  
+
+> i
+
+⊙ Chi2 ⊙ · · · ⊙ Chik = C|φ|− 1+ i.When j ∈ { 2, . . . , k }, the prover looks up hij from the k-normalized weakened res-olution proof, and computes a clause C(j) 
+
+> i
+
+such that {C(j−1)  
+
+> i
+
+, C hij } ⊢ X-Res C(j) 
+
+> i
+
+and 
+
+C(j) 
+
+> i
+
+⊙ · · · ⊙ Chik = C|φ|− 1+ i.(b) Fetching the premises: when j = 1, the prover sends ( Read , h i0, C hi0 , |φ| − 1 + i)and ( Read , h i1, C hi1 , |φ| − 1 + i) to FFlexZKArray ; V sends ( Read , |φ| − 1 + i) twice to 
+
+FFlexZKArray , from which the two parties obtain [ Chi0 ] and [ Chi1 ]. When j ∈ { 2, . . . , k } the prover sends ( Read , h ij , C hij , |φ|− 1+ i) to FFlexZKArray ; V sends (Read , |φ| − 1 + i) to FFlexZKArray , from which the two parties obtain [ Chij ]. Similarly, the two parties obtain [ C|φ|− 1+ i]. (c) Committing intermediate clauses: when j ∈ { 1, . . . , k −1}, the two parties obtain [ C(j) 
+
+> i
+
+]using FClause with witness to authenticate the coefficients. (d) Checking the chain of inferences: When j = 1, the two parties send (Xres , [Chi0 ], [Chi1 ], [C(1)  
+
+> i
+
+]) to FClause . When j ∈ {2, . . . , k − 1}, the two parties send ( Xres , [C(j−1)  
+
+> i
+
+], [Chij ], [C(j) 
+
+> i
+
+]) to FClause , and when j = k, the two parties send (Xres , [C(k−1)  
+
+> i
+
+], [Chik ], [C|φ|− 1+ i]) to FClause .5. After |π| iterations, the two parties use FClause to check that [ C|φ|− 1+ |π|] equals ⊥; if the functionality aborts, V aborts. 6. The two parties send ( check ) to FFlexZKArray ; if the functionality aborts, V aborts. 
+
+Figure 7: Protocol for checking a k-normalized weakened resolution proof. 
+
+Define Rk = {(ψ, Π) : Π is a witness for ψ} and LRk = {ψ : ∃ Π ( ψ, Π) ∈ Rk}.
+
+22 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Lemma 1. Fix a chain length k ≥ 1. The relation Rk (Definition 6) is an NP relation. Proof. Given ψ and a candidate witness Π, the test reads Π, recomputes each Cj,i by the recurrence of Definition 6, and verifies conditions (i) to (iv), in poly( |ψ| + |Π|) time. Since k,
+
+|π|, and d are encoded in unary (Definition 6), the witness comprises |φ| + |π| clauses of width at most d together with, per chain, k + 1 indices and k pivot literals, so |Π| = poly( |ψ|) (a width-w clause encodes as a degree-w polynomial [31]). Hence Rk is an NP relation. 
+
+Lemma 2. Fix a chain length k ≥ 1. For every CNF formula φ, φ is unsatisfiable if and only if (φ, k, |π|, d ) ∈ LRk for some |π| and d.Proof. This follows from the soundness and completeness of weakened resolution [31] together with the fact that Normalize (Algorithm 1) produces a chained proof with chains of length exactly k.Establishing zero-knowledge requires isolating exactly what each functionality call exposes, so we separate every prover invocation into a public and a secret component, and prove that the order of invocation of functionalities if fixed for a fixed ψ.
+
+Definition 7 (Public and secret components) . Consider a single invocation the honest prover sends to a hybrid functionality F ∈ {F ZK , FClause , FFlexZKArray }. Its input splits into two com-ponents. A public component : the invoked operation together with its public arguments, and a 
+
+secret component : the private inputs of the prover for the invoked operation. 
+
+For example, in a Read to FFlexZKArray the prover sends ( Read , ℓ, d, t ). The public component is the operation Read together with the bound t, and the secret component is the index ℓ and the retrieved value d.
+
+Definition 8 (Public invocation pattern) . Fix a common input ψ = ( φ, k, |π|, d ) and a witness 
+
+Π of ψ. The honest prover’s control flow is determined by (ψ, Π) , so its invocations to the hybrid functionalities occur in a fixed order; let there be N of them. The public invocation pattern is 
+
+B(ψ, Π) =   (Fi, pub i) Ni=1 ,
+
+where Fi is the target functionality of the ith invocation and pub i its public component (Defi-nition 7). 
+
+Lemma 3. Fix a common input ψ. The public invocation pattern B(ψ, Π) is identical for every witness Π of ψ.Proof. A Read takes a public bound and returns a fresh commitment to the value at a prover-chosen secret index ℓ [31, Fig. 5]. At Init the |φ| public clauses of φ are fixed as the instance in cells 0 , . . . , |φ| − 1 of FFlexZKArray [31]. Because Normalize makes every chain length exactly k,chain j issues k +1 premise Read s with public bound |φ|+j −1, makes k X-Res calls committing each step resolvent through FClause with public width d, and appends its result to the cell at public index |φ| + j − 1; the run closes with one IsFalse and one check . Every public argument is thereby a function of ψ and the public chain index j ∈ { 1, . . . , |π|} , hence of ψ alone. 
+
+Lemma 4 (Pivot recovery) . Let (X-Res , [C], [C′], [C′′ ]) be a non-aborting call to FClause . Apivot literal ℓ ∈ Lits witnessing this, that is, with (C \ { ℓ}) ∪ (C′ \ {¬ ℓ}) ⊆ C′′ , is computable from C, C ′, C ′′ in time polynomial in |ψ|.
+
+23 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+Proof. The call was certified on some supplied pivot literal, so a valid ℓ exists. By Fact 1, testing ( C \ { ℓ}) ∪ (C′ \ {¬ ℓ}) ⊆ C′′ for each of the 2 |V | literals ℓ and returning one that passes recovers a valid pivot literal in O(|V |) subset tests on width-≤ d clauses. With these components in place, we can state and prove the main security guarantee. 
+
+Theorem 1. Let Rk be the relation in Definition 6. Against static corruption, k-Chain-
+
+ZkUnsat perfectly UC-realizes [10] the zero-knowledge proof-of-knowledge functionality FRk 
+
+> ZKPoK
+
+[20] in ZkUnsat ’s (FZK , FClause , FFlexZKArray )-hybrid model. Proof. Fix an arbitrary environment Z and, without loss of generality, let the real adversary be the dummy adversary. For each static corruption pattern we describe a simulator S such that the hybrid and ideal execution ensembles are identically distributed, and hence Z’s views coincide. The both-honest and both-corrupt patterns are immediate, so it suffices to treat the two interesting cases. 
+
+Malicious verifier (zero-knowledge): The functionality FRk 
+
+> ZKPoK
+
+leaks only the common input ψ = ( φ, k, |π|, d ). By Lemma 3 the public invocation pattern depends on ψ alone, that is B(ψ, Π) = B(ψ), so from ψ alone S reproduces every functionality call, answering each with an opaque handle and the non-abort verdict that an honest prover with Π ∈ Rk induces. The handles hide the committed values, so the joint view of Z and the corrupt verifier is identical in the two worlds. 
+
+Malicious prover (knowledge soundness): The simulator S internally emulates FZK ,
+
+FClause , and FFlexZKArray honestly, running their code exactly as specified, and thereby observes the committed clauses Dt, the secret Read indices pj,i , and a pivot literal ℓj,i for each X-Res 
+
+call, where the pivot is recovered in polynomial time by Lemma 4. The non-abort conditions of the functionalities enforce exactly the four requirements of Definition 6: Instance enforces (i), the width bound of Input enforces (iii), the index bound of Read together with the X-Res checks enforce (ii), and IsFalse enforces (iv). Hence the run is non-aborting if and only if ( ψ, Π) ∈ Rk,so S submits a valid witness to FRk 
+
+> ZKPoK
+
+in exactly those runs where the hybrid-world verifier would accept. Lemma 1 guarantees that this membership test is well defined, and Lemma 2 gives completeness. 
+
+Proposition 1. Given a parent proof, if the k-Chain-ZkUnsat protocol is executed for all 
+
+k ∈ { 1, . . . , p } where p is the total number of resolution steps in the parent proof, and the k-Chain weakened resolution proofs are derived using the Normalize algorithm, then the collection of all executions reveals the number of chains of length l for every 1 ≤ l ≤ p.Proof. Let P be an arbitrary parent proof, and let Pk for k ∈ { 1, . . . , p } be the k-Chain weakened resolution proofs derived by the Normalize algorithm. Let there be m chains in P , and Li be the length of the ith chain in P .An adversary who knows the public parameters –  ψ, k, P
+
+> i
+
+ Li
+
+> k
+
+ , d  – for all k ∈ { 1, . . . , p }
+
+learns P
+
+> i
+
+ Li
+
+> k
+
+ for each k. Define ⃗ l = ( l1, . . . , l p) ∈ Zp 
+
+> +
+
+where li = P
+
+> j
+
+l Lj
+
+> i
+
+m
+
+. Since p is the total number of resolution steps as revealed by the public parameters in the k = 1 execution, the adversary learns lp = m. Now, the adversary can define ⃗ t1 = ( t(1) 1 = l1 − m, . . . , t (p)1 = lp − m)and infer that the last non-zero entry t(s−1) 1 denotes the number of chains in P of length s. The adversary can now infer the number of lines in each execution that were added as a result of 
+
+P containing t(s−1) 1 chains of length s. Let ⃗e 1 = ( e(1) 1 , . . . , e (p)1 ) denote the expected addition 24 Scaling Zero Knowledge UNSAT Verification Karthikeyan, Kharitonov, Meel and Hithnawi 
+
+because of P containing t(s−1) 1 chains of length s. Define ⃗ t2 =⃗ t1 −⃗e 1 and proceed similarly to deduce the number of chains of length l for every 1 ≤ l ≤ p.25

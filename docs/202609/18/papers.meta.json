@@ -1,0 +1,24 @@
+{
+  "label": "2026-09-18",
+  "date": "2026-09-18",
+  "generated_at": "2026-09-18T21:55:56",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202609/18/2609.19353v1-scaling-zero-knowledge-unsat-verification-via-normalized-chaining",
+      "section": "quick",
+      "title_en": "Scaling Zero Knowledge UNSAT Verification via Normalized Chaining",
+      "authors": "Ashwin Karthikeyan, Ethan Kharitonov, Kuldeep S. Meel, Anwar Hithnawi",
+      "date": "2026-09-16",
+      "pdf": "https://arxiv.org/pdf/2609.19353v1",
+      "score": "6.0",
+      "evidence": "零知识UNSAT证明认证与证书检查",
+      "tldr": "UNSAT证明常含敏感信息，零知识认证可在不泄露证明的前提下验证其有效性。ZkUnsat已实现该目标，但证明者内存开销大，难以扩展至真实实例。本文提出归一化链式预处理，将每个推导子句的归结链长度固定为公开值k，消除链长泄漏并降低内存。在SAT 2002基准上，k=16时认证实例数较基线增约62%，等效认证下内存降至基线25%以下。",
+      "tags": "query:sat-proof",
+      "abstract_en": "Proofs of UNSAT are a standard primitive in formal verification and software assurance. In many real-world settings, the proof itself encodes proprietary or security-sensitive information, making public disclosure undesirable. Zero-knowledge certification of UNSAT addresses this tension: it enables a prover to convince a verifier that no satisfying assignment exists, without revealing anything about the underlying proof beyond its validity. Luo et al. recently introduced ZkUnsat, a protocol that achieves this goal by proving the validity of a weakened resolution proof in zero knowledge. ZkUnsat demonstrates the feasibility of zero-knowledge certification; however, its scalability to larger, real-world instances is constrained by substantial prover memory overhead, limiting its real-world applicability. Motivated by advances in UNSAT proof formats such as LRAT, which enable efficient plain-text verification, we present a preprocessing technique that improves the efficiency of ZkUnsat without introducing additional leakage. Our approach normalizes the proof so that each derived clause is justified by a resolution chain of fixed public length k. This eliminates chain-length leakage and reduces prover memory usage. With k = 16, our method certifies roughly 62% more instances than baseline ZkUnsat on the SAT 2002 competition benchmarks. Furthermore, for an equivalent number of certified instances, the memory footprint drops to under 25% of that required by the baseline.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
