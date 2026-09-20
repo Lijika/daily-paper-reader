@@ -1,0 +1,24 @@
+{
+  "label": "2026-09-20",
+  "date": "2026-09-20",
+  "generated_at": "2026-09-20T21:31:17",
+  "count": 1,
+  "papers": [
+    {
+      "paper_id": "202609/20/2609.13785v1-partition-scores-are-not-system-scores-deployment-fidelity-gaps-in-decomposed-algorithm-selection",
+      "section": "quick",
+      "title_en": "Partition Scores Are Not System Scores: Deployment-Fidelity Gaps in Decomposed Algorithm Selection",
+      "authors": "Jiachen Zhang, Yu Tang, Li Zhu",
+      "date": "2026-09-12",
+      "pdf": "https://arxiv.org/pdf/2609.13785v1",
+      "score": "6.0",
+      "evidence": "算法选择与求解器组合、虚拟最优求解器、分区级oracle与实际可选选择器",
+      "tldr": "分解式算法选择常把分区级 oracle 分数当作系统上限，但固定家族选择器后，家族内 oracle 须换成学习选择器，产生部署保真度缺口。论文定义 G(R) 为分区级与可部署端到端效用之差，并给出 margin-regret 稳定性条件与仅分区识别区间。五个基准上所有分解流程 G(R) 均为正，最高 PROTEUS-2014 达 0.13；十个分解对平坦决策中四个符号翻转，33 点分区优势缩至 20 点端到端优势。作者主张分区分数与端到端分数应并排报告，避免误认证可部署赢家。",
+      "tags": "query:sat-config",
+      "abstract_en": "Oracle-style quantities, including virtual best solvers, selected-portfolio VBS, virtual-best encodings, and best-in-family summaries, are widely reported as upper bounds on what a deployable selector could achieve. In decomposed algorithm selection, an analogous partition-level score grants an oracle choice of the best algorithm within the selected family; once the family selector is fixed, the deployable system must replace that within-family oracle with a learned within-family selector.   We define the deployment-fidelity gap G(R) as the difference between partition-level and deployable end-to-end utility and derive two accounting consequences: a per-instance margin-regret stability condition that tells us when a partition-time family choice is deployment-optimal, and a sharp partition-only identification interval that, when it strictly crosses zero, prevents the partition-level report from certifying the deployable winner.   Across five public algorithm-selection benchmarks spanning tabular AutoML and combinatorial CSP/SAT, every decomposed pipeline has positive G(R), ranging from 0.012 on TabZilla to 0.13 on PROTEUS-2014. Four of ten decomposed-versus-flat decisions have sign-changing point estimates; on PROTEUS-2014, a 33-point partition advantage shrinks to a 20-point end-to-end advantage. A training-side validation gap-correction diagnostic recovers the point-estimate deployable sign on all four sign-changing cells; it is a reporting aid, not a substitute for direct end-to-end evaluation. Partition and end-to-end scores should be reported side by side.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
